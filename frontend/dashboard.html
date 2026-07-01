@@ -178,21 +178,26 @@
 
         <div class="card">
           <form id="register-form" novalidate>
-            <div class="form-row">
-              <div class="form-group">
-                <label for="reg-lat" data-i18n="reg_lat">Latitude</label>
-                <input type="number" id="reg-lat" name="lat" step="0.000001" min="-90" max="90" required placeholder="-23.5505" />
+            <!-- Hidden lat/lng filled by GPS or search -->
+            <input type="hidden" id="reg-lat" name="lat" />
+            <input type="hidden" id="reg-lng" name="lng" />
+
+            <!-- Location picker -->
+            <div class="form-group">
+              <label data-i18n="reg_location">Localização</label>
+              <div style="display:flex; gap:0.5rem; align-items:stretch; flex-wrap:wrap;">
+                <button type="button" id="btn-gps" class="btn btn-secondary" style="white-space:nowrap; flex-shrink:0;" data-i18n="reg_gps_btn">
+                  📍 Usar minha localização
+                </button>
+                <input type="text" id="reg-address-search" placeholder="Ou busque um endereço..." data-i18n-placeholder="reg_address_placeholder" style="flex:1; min-width:180px;" />
+                <button type="button" id="btn-address-search" class="btn btn-secondary" style="white-space:nowrap; flex-shrink:0;" data-i18n="reg_search_btn">🔍</button>
               </div>
-              <div class="form-group">
-                <label for="reg-lng" data-i18n="reg_lng">Longitude</label>
-                <input type="number" id="reg-lng" name="lng" step="0.000001" min="-180" max="180" required placeholder="-46.6333" />
-              </div>
+              <div id="reg-location-status" style="margin-top:0.5rem; font-size:0.85rem; color:var(--text-muted); min-height:1.2em;"></div>
             </div>
 
             <div class="form-group">
               <label for="reg-name" data-i18n="reg_name">Nome do Local</label>
-              <input type="text" id="reg-name" name="name" required maxlength="100" placeholder="Ex: Praça da Sé, entrada norte" />
-            </div>
+              <input type="text" id="reg-name" name="name" required maxlength="100" placeholder="Ex: Rampa Hotel Pajuçara, Maceió" /></div>
 
             <div class="form-row">
               <div class="form-group">
@@ -314,7 +319,9 @@
         map_title:"Mapa de Locais Acessíveis", map_placeholder:"Mapa interativo em desenvolvimento", map_placeholder_sub:"Locais aparecem aqui após conexão",
         event_log_title:"Eventos em Tempo Real", event_log_desc:"Atualizações ao vivo da Arc Testnet via WebSocket.", event_log_empty:"Aguardando eventos...",
         register_title:"Mapear Novo Local", register_subtitle:"Registre um local acessível na Arc Testnet. Você será recompensado em USDC após verificação.",
-        reg_lat:"Latitude", reg_lng:"Longitude", reg_name:"Nome do Local", reg_category:"Categoria", reg_photo:"Foto do Local", reg_submit:"Registrar Local",
+        reg_location:"Localização", reg_gps_btn:"📍 Usar minha localização", reg_address_placeholder:"Ou busque um endereço...", reg_search_btn:"🔍",
+        reg_name:"Nome do Local", reg_category:"Categoria", reg_photo:"Foto do Local", reg_submit:"Registrar Local",
+        reg_gps_detecting:"Detectando sua localização...", reg_gps_ok:"📍 Localização detectada!", reg_gps_error:"Não foi possível obter localização. Busque pelo endereço.",
         verify_title:"Verificar Contribuição", verify_subtitle:"Apenas verificadores aprovados podem validar contribuições.",
         verify_denied:"Você não é um verificador aprovado. Apenas verificadores podem validar contribuições.",
         verify_id_label:"ID da Contribuição (hex)", verify_approve:"Aprovar", verify_reject:"Rejeitar",
@@ -348,7 +355,9 @@
         map_title:"Accessible Locations Map", map_placeholder:"Interactive map in development", map_placeholder_sub:"Locations appear here after connection",
         event_log_title:"Real-time Events", event_log_desc:"Live updates from Arc Testnet via WebSocket.", event_log_empty:"Waiting for events...",
         register_title:"Map New Location", register_subtitle:"Register an accessible location on Arc Testnet. You'll be rewarded in USDC after verification.",
-        reg_lat:"Latitude", reg_lng:"Longitude", reg_name:"Location Name", reg_category:"Category", reg_photo:"Location Photo", reg_submit:"Register Location",
+        reg_location:"Location", reg_gps_btn:"📍 Use my location", reg_address_placeholder:"Or search an address...", reg_search_btn:"🔍",
+        reg_name:"Location Name", reg_category:"Category", reg_photo:"Location Photo", reg_submit:"Register Location",
+        reg_gps_detecting:"Detecting your location...", reg_gps_ok:"📍 Location detected!", reg_gps_error:"Could not get location. Search by address instead.",
         verify_title:"Verify Contribution", verify_subtitle:"Only approved verifiers can validate contributions.",
         verify_denied:"You are not an approved verifier. Only verifiers can validate contributions.",
         verify_id_label:"Contribution ID (hex)", verify_approve:"Approve", verify_reject:"Reject",

@@ -418,8 +418,12 @@ async function handleRegisterLocation(e) {
   const category = parseInt(document.getElementById('reg-category').value, 10);
   const photoInput = document.getElementById('reg-photo');
 
-  if (!lat || !lng || !name || isNaN(category)) {
-    showAlert('register-alert', 'danger', s.err_tx_failed || 'Please fill all fields');
+  if (isNaN(lat) || isNaN(lng)) {
+    showAlert('register-alert', 'danger', s.reg_gps_error || 'Use o GPS ou busque um endereço primeiro.');
+    return;
+  }
+  if (!name || isNaN(category)) {
+    showAlert('register-alert', 'danger', s.err_tx_failed || 'Preencha todos os campos.');
     return;
   }
 
@@ -612,7 +616,7 @@ async function estimateRegisterGas() {
   const category = parseInt(document.getElementById('reg-category')?.value, 10);
   const gasEl = document.getElementById('register-gas-estimate');
 
-  if (!lat || !lng || !name || isNaN(category) || !publicClient) return;
+  if (isNaN(lat) || isNaN(lng) || !name || isNaN(category) || !publicClient) return;
 
   try {
     const viem = window.viem;
@@ -641,6 +645,38 @@ async function estimateRegisterGas() {
  *  Init
  * ═══════════════════════════════════════════════════════════════ */
 
+/* ═══════════════════════════════════════════════════════════════
+ *  GPS + address search helpers
+ * ═══════════════════════════════════════════════════════════════ */
+
+function setDetectedLocation(lat, lng, label) {
+  document.getElementById('reg-lat').value = lat;
+  document.getElementById('reg-lng').value = lng;
+  const status = document.getElementById('reg-location-status');
+  const s = getStrings();
+  if (status) status.innerHTML = `<span style="color:var(--success)">✅ ${label}</span>`;
+  estimateRegisterGas();
+}
+
+async function reverseGeocode(lat, lng) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&accept-language=pt`;
+    const r = await fetch(url, { headers: { 'User-Agent': 'Stepless-dApp/1.0' } });
+    const data = await r.json();
+    return data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  } catch {
+    return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  }
+}
+
+async function geocodeAddress(query) {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&accept-language=pt`;
+  const r = await fetch(url, { headers: { 'User-Agent': 'Stepless-dApp/1.0' } });
+  const data = await r.json();
+  if (!data.length) throw new Error('Endereço não encontrado');
+  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), label: data[0].display_name };
+}
+
 function initEventListeners() {
   // Register form
   const regForm = document.getElementById('register-form');
@@ -648,8 +684,56 @@ function initEventListeners() {
     regForm.addEventListener('submit', handleRegisterLocation);
   }
 
-  // Gas estimate on input change
-  ['reg-lat', 'reg-lng', 'reg-name', 'reg-category'].forEach(id => {
+  // GPS button
+  const btnGps = document.getElementById('btn-gps');
+  if (btnGps) {
+    btnGps.addEventListener('click', async () => {
+      const status = document.getElementById('reg-location-status');
+      const s = getStrings();
+      if (status) status.textContent = s.reg_gps_detecting || 'Detectando localização...';
+      btnGps.disabled = true;
+      if (!navigator.geolocation) {
+        if (status) status.textContent = s.reg_gps_error || 'GPS não disponível neste dispositivo.';
+        btnGps.disabled = false;
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude: lat, longitude: lng } = pos.coords;
+          const label = await reverseGeocode(lat, lng);
+          setDetectedLocation(lat, lng, label);
+          btnGps.disabled = false;
+        },
+        () => {
+          if (status) status.textContent = s.reg_gps_error || 'Não foi possível obter localização.';
+          btnGps.disabled = false;
+        },
+        { timeout: 10000, enableHighAccuracy: true }
+      );
+    });
+  }
+
+  // Address search button + Enter key
+  const btnSearch = document.getElementById('btn-address-search');
+  const addrInput = document.getElementById('reg-address-search');
+  async function doAddressSearch() {
+    const query = addrInput?.value.trim();
+    if (!query) return;
+    const status = document.getElementById('reg-location-status');
+    const s = getStrings();
+    if (status) status.textContent = 'Buscando...';
+    try {
+      const { lat, lng, label } = await geocodeAddress(query);
+      setDetectedLocation(lat, lng, label);
+    } catch (err) {
+      if (status) status.textContent = s.reg_gps_error || 'Endereço não encontrado.';
+    }
+  }
+  if (btnSearch) btnSearch.addEventListener('click', doAddressSearch);
+  if (addrInput) addrInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doAddressSearch(); } });
+
+  // Gas estimate on name/category change
+  ['reg-name', 'reg-category'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', estimateRegisterGas);
   });
