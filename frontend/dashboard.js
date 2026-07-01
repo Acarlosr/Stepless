@@ -187,6 +187,7 @@ async function connect() {
 
     // Carrega dados e inicia subscriptions
     await refreshAll();
+    await checkAdminPanel();
     startWebSocketSubscriptions(viem);
 
   } catch (err) {
@@ -194,6 +195,87 @@ async function connect() {
     alert(handleArcError(err));
     if (btn) { btn.textContent = originalText; btn.disabled = false; }
     if (btnLarge) { btnLarge.textContent = originalText; btnLarge.disabled = false; }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ *  Admin panel — autorizar relayer (só aparece para o admin)
+ * ═══════════════════════════════════════════════════════════════ */
+
+const RELAYER_ADDRESS = '0xDEA4841D45F44deC58eB246Ac985693cc562aEc5';
+
+async function checkAdminPanel() {
+  try {
+    const admin = await publicClient.readContract({
+      address: cfg.contracts.SteplessOracle,
+      abi: cfg.abis.SteplessOracle,
+      functionName: 'admin',
+    });
+
+    if (admin.toLowerCase() !== walletAddress.toLowerCase()) return;
+
+    // Verifica se relayer já está autorizado
+    const isAuth = await publicClient.readContract({
+      address: cfg.contracts.SteplessOracle,
+      abi: cfg.abis.SteplessOracle,
+      functionName: 'authorizedCallers',
+      args: [RELAYER_ADDRESS],
+    });
+
+    // Monta painel admin (não existindo ainda)
+    let panel = document.getElementById('admin-panel');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'admin-panel';
+      panel.style.cssText = 'margin:1rem 0; padding:1rem; border:1px solid var(--warning,#b45309); border-radius:8px; background:var(--surface);';
+      document.querySelector('#register')?.insertAdjacentElement('beforebegin', panel);
+    }
+
+    if (isAuth) {
+      panel.innerHTML = '<p style="color:var(--success,#16a34a)">✅ <strong>Admin:</strong> Relayer autorizado no Oracle.</p>';
+    } else {
+      panel.innerHTML = `
+        <p style="color:var(--warning,#b45309)"><strong>⚠️ Admin:</strong> Relayer ainda não autorizado no Oracle.</p>
+        <button id="btn-authorize-relayer" class="btn btn-primary" style="margin-top:0.5rem">🔐 Autorizar Relayer Agora</button>
+        <span id="auth-status" style="margin-left:1rem; font-size:0.85rem;"></span>
+      `;
+      document.getElementById('btn-authorize-relayer')?.addEventListener('click', authorizeRelayer);
+    }
+  } catch (err) {
+    console.warn('Admin check error:', err);
+  }
+}
+
+async function authorizeRelayer() {
+  const btn = document.getElementById('btn-authorize-relayer');
+  const status = document.getElementById('auth-status');
+  if (btn) btn.disabled = true;
+  if (status) status.textContent = 'Enviando transação...';
+
+  try {
+    const viem = window.viem;
+    const provider = window.ethereum;
+    if (!provider) throw new Error('Wallet não detectada');
+
+    const walletClient = viem.createWalletClient({
+      account: walletAddress,
+      chain: { id: 5042002, name: 'Arc Testnet', nativeCurrency: { name:'USDC', symbol:'USDC', decimals:6 }, rpcUrls: { default: { http: ['https://rpc.testnet.arc.network'] } } },
+      transport: viem.custom(provider),
+    });
+
+    const txHash = await walletClient.writeContract({
+      address: cfg.contracts.SteplessOracle,
+      abi: cfg.abis.SteplessOracle,
+      functionName: 'setAuthorizedCaller',
+      args: [RELAYER_ADDRESS, true],
+    });
+
+    if (status) status.textContent = `✅ TX enviada: ${txHash.slice(0,12)}... Aguarde confirmação.`;
+    await publicClient.waitForTransactionReceipt({ hash: txHash });
+    await checkAdminPanel(); // re-renderiza como autorizado
+  } catch (err) {
+    if (status) status.textContent = `❌ ${err.shortMessage || err.message}`;
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -457,9 +539,11 @@ async function handleRegisterLocation(e) {
     const photoBuffer = await photoFile.arrayBuffer();
     const dataHash = viem.keccak256(new Uint8Array(photoBuffer));
 
-    // lat/lng em inteiros (multiplicar por 1e6)
-    const latPacked = Math.round(lat * 1e6);
-    const lngPacked = Math.round(lng * 1e6);
+    // lat/lng com offset para uint256 (contrato não aceita negativos)
+    // lat: -90..+90  → offset +90  → 0..180  * 1e6
+    // lng: -180..+180 → offset +180 → 0..360 * 1e6
+    const latPacked = Math.round((lat + 90) * 1e6);
+    const lngPacked = Math.round((lng + 180) * 1e6);
 
     // locationHash = keccak256(latPacked, lngPacked, fullName)
     const locationHash = viem.keccak256(
@@ -634,8 +718,8 @@ async function estimateRegisterGas() {
 
   try {
     const viem = window.viem;
-    const latInt = BigInt(Math.round(lat * 1e6));
-    const lngInt = BigInt(Math.round(lng * 1e6));
+    const latInt = BigInt(Math.round((lat + 90) * 1e6));
+    const lngInt = BigInt(Math.round((lng + 180) * 1e6));
     const dummyHash = viem.keccak256('0x00');
 
     const gasEstimate = await publicClient.estimateContractGas({

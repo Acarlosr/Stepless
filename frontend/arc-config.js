@@ -281,6 +281,30 @@ const STEPLESS_ORACLE_ABI = [
   },
   {
     type: "function",
+    name: "setAuthorizedCaller",
+    inputs: [
+      { name: "caller",     type: "address", internalType: "address" },
+      { name: "authorized", type: "bool",    internalType: "bool"    },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "admin",
+    inputs: [],
+    outputs: [{ name: "", type: "address", internalType: "address" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "authorizedCallers",
+    inputs: [{ name: "caller", type: "address", internalType: "address" }],
+    outputs: [{ name: "", type: "bool", internalType: "bool" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "locationCount",
     inputs: [],
     outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
