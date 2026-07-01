@@ -212,6 +212,12 @@
               </div>
             </div>
 
+            <!-- "Outro" free-text field — shown only when category = 7 -->
+            <div class="form-group" id="reg-other-group" style="display:none;">
+              <label for="reg-other-desc" data-i18n="reg_other_desc">Descreva o recurso de acessibilidade</label>
+              <input type="text" id="reg-other-desc" name="otherDesc" maxlength="120" placeholder="Ex: Piso tátil, corrimão duplo, porta automática..." />
+            </div>
+
             <div id="register-alert"></div>
 
             <div class="flex items-center gap-2 wrap">
@@ -322,6 +328,7 @@
         reg_location:"Localização", reg_gps_btn:"📍 Usar minha localização", reg_address_placeholder:"Ou busque um endereço...", reg_search_btn:"🔍",
         reg_name:"Nome do Local", reg_category:"Categoria", reg_photo:"Foto do Local", reg_submit:"Registrar Local",
         reg_gps_detecting:"Detectando sua localização...", reg_gps_ok:"📍 Localização detectada!", reg_gps_error:"Não foi possível obter localização. Busque pelo endereço.",
+        reg_other_desc:"Descreva o recurso de acessibilidade",
         verify_title:"Verificar Contribuição", verify_subtitle:"Apenas verificadores aprovados podem validar contribuições.",
         verify_denied:"Você não é um verificador aprovado. Apenas verificadores podem validar contribuições.",
         verify_id_label:"ID da Contribuição (hex)", verify_approve:"Aprovar", verify_reject:"Rejeitar",
@@ -358,6 +365,7 @@
         reg_location:"Location", reg_gps_btn:"📍 Use my location", reg_address_placeholder:"Or search an address...", reg_search_btn:"🔍",
         reg_name:"Location Name", reg_category:"Category", reg_photo:"Location Photo", reg_submit:"Register Location",
         reg_gps_detecting:"Detecting your location...", reg_gps_ok:"📍 Location detected!", reg_gps_error:"Could not get location. Search by address instead.",
+        reg_other_desc:"Describe the accessibility feature",
         verify_title:"Verify Contribution", verify_subtitle:"Only approved verifiers can validate contributions.",
         verify_denied:"You are not an approved verifier. Only verifiers can validate contributions.",
         verify_id_label:"Contribution ID (hex)", verify_approve:"Approve", verify_reject:"Reject",
@@ -447,6 +455,11 @@
           {id:6, label:strings.cat_braille}, {id:7, label:strings.cat_other},
         ];
         sel.innerHTML = cats.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
+        // Show/hide "Outro" description field
+        sel.addEventListener('change', function() {
+          const otherGroup = document.getElementById('reg-other-group');
+          if (otherGroup) otherGroup.style.display = this.value === '7' ? 'block' : 'none';
+        });
       }
       // Notify dashboard.js
       window.dispatchEvent(new CustomEvent('langchange', { detail: { lang, strings } }));

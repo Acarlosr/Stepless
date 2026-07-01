@@ -133,7 +133,6 @@ const REWARD_DISTRIBUTOR_ABI = [
       { name: "totalEarned", type: "uint256", internalType: "uint256" },
       { name: "contributions", type: "uint256", internalType: "uint256" },
       { name: "verifications", type: "uint256", internalType: "uint256" },
-      { name: "lastRewardAt", type: "uint256", internalType: "uint256" },
     ],
     stateMutability: "view",
   },
@@ -153,7 +152,7 @@ const REWARD_DISTRIBUTOR_ABI = [
   },
   {
     type: "function",
-    name: "isVerifier",
+    name: "verifiers",
     inputs: [{ name: "account", type: "address", internalType: "address" }],
     outputs: [{ name: "", type: "bool", internalType: "bool" }],
     stateMutability: "view",

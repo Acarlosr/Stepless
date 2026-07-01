@@ -416,6 +416,9 @@ async function handleRegisterLocation(e) {
   const lng = parseFloat(document.getElementById('reg-lng').value);
   const name = document.getElementById('reg-name').value.trim();
   const category = parseInt(document.getElementById('reg-category').value, 10);
+  const otherDesc = document.getElementById('reg-other-desc')?.value.trim() || '';
+  // When "Outro" (id=7) is selected and user filled the description, append it
+  const fullName = (category === 7 && otherDesc) ? `${name} — ${otherDesc}` : name;
   const photoInput = document.getElementById('reg-photo');
 
   if (isNaN(lat) || isNaN(lng)) {
@@ -447,11 +450,11 @@ async function handleRegisterLocation(e) {
     const latPacked = Math.round(lat * 1e6);
     const lngPacked = Math.round(lng * 1e6);
 
-    // locationHash = keccak256(latPacked, lngPacked, name)
+    // locationHash = keccak256(latPacked, lngPacked, fullName)
     const locationHash = viem.keccak256(
       viem.encodePacked(
         ['int256', 'int256', 'string'],
-        [BigInt(latPacked), BigInt(lngPacked), name]
+        [BigInt(latPacked), BigInt(lngPacked), fullName]
       )
     );
 
