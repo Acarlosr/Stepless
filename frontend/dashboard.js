@@ -187,6 +187,7 @@ async function connect() {
 
     // Carrega dados e inicia subscriptions
     await refreshAll();
+    await checkRelayerSetup();
     await checkAdminPanel();
     startWebSocketSubscriptions(viem);
 
@@ -203,6 +204,43 @@ async function connect() {
  * ═══════════════════════════════════════════════════════════════ */
 
 const RELAYER_ADDRESS = '0xDEA4841D45F44deC58eB246Ac985693cc562aEc5';
+
+// Verifica se relayer está autorizado e mostra banner de setup se não estiver
+async function checkRelayerSetup() {
+  try {
+    const resp = await fetch('/api/setup');
+    const data = await resp.json();
+    const panel = document.getElementById('admin-setup-panel');
+    if (!panel) return;
+    if (data.isAuthorized) {
+      panel.style.display = 'none';
+    } else {
+      panel.style.display = 'block';
+    }
+  } catch (_) {}
+}
+
+// Botão de autorizar relayer (chama /api/setup POST)
+window.setupRelayer = async function() {
+  const btn = document.getElementById('btn-setup-relay');
+  const status = document.getElementById('setup-status');
+  if (btn) btn.disabled = true;
+  if (status) status.textContent = 'Autorizando...';
+  try {
+    const resp = await fetch('/api/setup', { method: 'POST' });
+    const data = await resp.json();
+    if (data.success) {
+      if (status) status.textContent = '✅ Autorizado! Pode registrar locais agora.';
+      setTimeout(() => { document.getElementById('admin-setup-panel').style.display = 'none'; }, 3000);
+    } else {
+      if (status) status.textContent = `❌ ${data.error}`;
+      if (btn) btn.disabled = false;
+    }
+  } catch (err) {
+    if (status) status.textContent = `❌ ${err.message}`;
+    if (btn) btn.disabled = false;
+  }
+};
 
 async function checkAdminPanel() {
   try {

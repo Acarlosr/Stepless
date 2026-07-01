@@ -171,6 +171,13 @@
         </div>
       </section>
 
+      <!-- ── Admin Setup Panel ── -->
+      <div id="admin-setup-panel" style="display:none; margin-bottom:1rem; padding:1rem; border-radius:8px; border:2px solid var(--warning,#b45309); background:var(--surface);">
+        <strong>⚠️ Setup necessário:</strong> O relayer ainda não está autorizado no Oracle.
+        <button id="btn-setup-relay" class="btn btn-primary" style="margin-left:1rem;" onclick="window.setupRelayer()">🔐 Autorizar Relayer</button>
+        <span id="setup-status" style="margin-left:1rem; font-size:0.85rem;"></span>
+      </div>
+
       <!-- ── Register Location ── -->
       <section id="register" aria-labelledby="register-title" class="mb-3">
         <h2 class="section-title" id="register-title" data-i18n="register_title">Mapear Novo Local</h2>
