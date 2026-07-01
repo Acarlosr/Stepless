@@ -163,7 +163,8 @@ contract SteplessOracle {
 
         // Attach memo with structured metadata (Arc Memo contract)
         // This emits a Memo event indexable by Goldsky without expensive storage
-        memo.attachMemo(locationHash, abi.encodePacked(latPacked, lngPacked, dataHash));
+        // try/catch: memo may not be available on all Arc testnet instances
+        try memo.attachMemo(locationHash, abi.encodePacked(latPacked, lngPacked, dataHash)) {} catch {}
 
         emit LocationRegistered(locationHash, msg.sender, latPacked, lngPacked, block.number);
     }
@@ -199,7 +200,7 @@ contract SteplessOracle {
         });
 
         // Memo for contribution metadata
-        memo.attachMemo(contributionId, abi.encodePacked(locationHash, dataHash));
+        try memo.attachMemo(contributionId, abi.encodePacked(locationHash, dataHash)) {} catch {}
 
         emit ContributionSubmitted(
             contributionId,
