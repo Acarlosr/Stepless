@@ -430,21 +430,18 @@ async function handleRegisterLocation(e) {
     return;
   }
 
-  if (!photoInput.files || photoInput.files.length === 0) {
-    showAlert('register-alert', 'danger', s.err_tx_failed || 'Please select a photo');
-    return;
-  }
-
   submitBtn.disabled = true;
   submitBtn.textContent = s.loading || 'Loading...';
 
   try {
     const viem = window.viem;
 
-    // Hash do arquivo de foto → bytes32
-    const photoFile = photoInput.files[0];
-    const photoBuffer = await photoFile.arrayBuffer();
-    const dataHash = viem.keccak256(new Uint8Array(photoBuffer));
+    // Hash do arquivo de foto → bytes32 (opcional)
+    let dataHash = null;
+    if (photoInput.files && photoInput.files.length > 0) {
+      const photoBuffer = await photoInput.files[0].arrayBuffer();
+      dataHash = viem.keccak256(new Uint8Array(photoBuffer));
+    }
 
     // lat/lng em inteiros (multiplicar por 1e6)
     const latPacked = Math.round(lat * 1e6);

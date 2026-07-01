@@ -19,8 +19,9 @@
  *   ARC_RPC_URL            — https://rpc.testnet.arc.network
  */
 
-import { createWalletClient, createPublicClient, http, encodeFunctionData } from 'viem';
+import { createWalletClient, createPublicClient, http, keccak256, encodePacked } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
+import { createHash } from 'crypto';
 
 // ─── Arc Testnet chain config ───────────────────────────────────────────────
 const arcTestnet = {
@@ -136,12 +137,10 @@ export default async function handler(req, res) {
         });
       }
 
-      // contributionId = keccak256(locationHash + userAddress + blockNumber)
-      const contributionId = `0x${Buffer.from(
-        require('crypto').createHash('sha256')
-          .update(`${locationHash}${userAddress}${Date.now()}`)
-          .digest()
-      ).toString('hex')}`;
+      // contributionId = keccak256(locationHash + userAddress + timestamp)
+      const contributionId = `0x${createHash('sha256')
+        .update(`${locationHash}${userAddress}${Date.now()}`)
+        .digest('hex')}`;
 
       txHash = await walletClient.writeContract({
         address: oracleAddress,
@@ -158,13 +157,22 @@ export default async function handler(req, res) {
 
     // ── registerLocation ──────────────────────────────────────────────
     if (action === 'registerLocation') {
-      const { locationHash, latPacked, lngPacked, dataHash } = submissionData;
+      const { locationHash, latPacked, lngPacked } = submissionData;
+      let { dataHash } = submissionData;
 
-      if (!locationHash || !latPacked || !lngPacked || !dataHash) {
+      if (!locationHash || latPacked == null || lngPacked == null) {
         return res.status(400).json({
           success: false,
-          error: 'registerLocation requires: locationHash, latPacked, lngPacked, dataHash',
+          error: 'registerLocation requires: locationHash, latPacked, lngPacked',
         });
+      }
+
+      // dataHash é opcional — se não vier (sem foto), gera hash determinístico
+      if (!dataHash) {
+        dataHash = keccak256(encodePacked(
+          ['bytes32', 'int256', 'int256'],
+          [locationHash, BigInt(latPacked), BigInt(lngPacked)]
+        ));
       }
 
       txHash = await walletClient.writeContract({
