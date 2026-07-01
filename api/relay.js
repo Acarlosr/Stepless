@@ -62,6 +62,27 @@ const ORACLE_ABI = [
   },
 ];
 
+// ─── ABI para auto-autorização do relayer ───────────────────────────────────
+const AUTH_ABI = [
+  {
+    name: 'setAuthorizedCaller',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'caller',     type: 'address' },
+      { name: 'authorized', type: 'bool'    },
+    ],
+    outputs: [],
+  },
+  {
+    name: 'authorizedCallers',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: '', type: 'address' }],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+];
+
 // ─── Haversine distance (km) ─────────────────────────────────────────────────
 function haversineKm(lat1, lng1, lat2, lng2) {
   const R = 6371;
@@ -150,6 +171,31 @@ export default async function handler(req, res) {
     const publicClient = createPublicClient({ chain: arcTestnet, transport: http() });
     const walletClient = createWalletClient({ account, chain: arcTestnet, transport: http() });
     const oracleAddress = process.env.ORACLE_ADDRESS;
+
+    // ── Auto-autorização: verifica e autoriza o relayer se necessário ─────
+    try {
+      const isAuthorized = await publicClient.readContract({
+        address: oracleAddress,
+        abi: AUTH_ABI,
+        functionName: 'authorizedCallers',
+        args: [account.address],
+      });
+      if (!isAuthorized) {
+        console.log('[relay] Not authorized — calling setAuthorizedCaller...');
+        const authTx = await walletClient.writeContract({
+          address: oracleAddress,
+          abi: AUTH_ABI,
+          functionName: 'setAuthorizedCaller',
+          args: [account.address, true],
+        });
+        await publicClient.waitForTransactionReceipt({ hash: authTx });
+        console.log('[relay] Self-authorized successfully:', authTx);
+      }
+    } catch (authErr) {
+      // Se falhar (relayer não é admin), loga e continua — o writeContract vai revelar o erro real
+      console.warn('[relay] Auto-auth skipped:', authErr?.shortMessage || authErr?.message);
+    }
+
     let txHash;
 
     // ── submitContribution ────────────────────────────────────────────────
