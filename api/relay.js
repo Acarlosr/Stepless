@@ -36,31 +36,31 @@ const arcTestnet = {
 };
 
 // ─── SteplessOracle ABI (funções de escrita) ────────────────────────────────
+// ABI real do SteplessOracle (onlyAuthorized — relayer chama em nome do usuário)
 const ORACLE_ABI = [
   {
     name: 'registerLocation',
     type: 'function',
     stateMutability: 'nonpayable',
     inputs: [
-      { name: 'contributor', type: 'address' },
-      { name: 'latPacked',   type: 'uint256' },
-      { name: 'lngPacked',   type: 'uint256' },
-      { name: 'category',    type: 'uint8'   },
-      { name: 'dataHash',    type: 'bytes32' },
+      { name: 'locationHash', type: 'bytes32' },
+      { name: 'latPacked',    type: 'uint256' },
+      { name: 'lngPacked',    type: 'uint256' },
+      { name: 'dataHash',     type: 'bytes32' },
     ],
-    outputs: [{ name: 'locationHash', type: 'bytes32' }],
+    outputs: [],
   },
   {
     name: 'submitContribution',
     type: 'function',
     stateMutability: 'nonpayable',
     inputs: [
-      { name: 'contributor',       type: 'address' },
-      { name: 'locationHash',      type: 'bytes32' },
-      { name: 'contributionType',  type: 'uint8'   },
-      { name: 'dataHash',          type: 'bytes32' },
+      { name: 'contributionId',   type: 'bytes32' },
+      { name: 'locationHash',     type: 'bytes32' },
+      { name: 'contributionType', type: 'uint8'   },
+      { name: 'dataHash',         type: 'bytes32' },
     ],
-    outputs: [{ name: 'contributionId', type: 'bytes32' }],
+    outputs: [],
   },
 ];
 
@@ -136,12 +136,19 @@ export default async function handler(req, res) {
         });
       }
 
+      // contributionId = keccak256(locationHash + userAddress + blockNumber)
+      const contributionId = `0x${Buffer.from(
+        require('crypto').createHash('sha256')
+          .update(`${locationHash}${userAddress}${Date.now()}`)
+          .digest()
+      ).toString('hex')}`;
+
       txHash = await walletClient.writeContract({
         address: oracleAddress,
         abi: ORACLE_ABI,
         functionName: 'submitContribution',
         args: [
-          userAddress,
+          contributionId,
           locationHash,
           Number(contributionType),
           dataHash,
@@ -151,12 +158,12 @@ export default async function handler(req, res) {
 
     // ── registerLocation ──────────────────────────────────────────────
     if (action === 'registerLocation') {
-      const { latPacked, lngPacked, category, dataHash } = submissionData;
+      const { locationHash, latPacked, lngPacked, dataHash } = submissionData;
 
-      if (!latPacked || !lngPacked || category === undefined || !dataHash) {
+      if (!locationHash || !latPacked || !lngPacked || !dataHash) {
         return res.status(400).json({
           success: false,
-          error: 'registerLocation requires: latPacked, lngPacked, category, dataHash',
+          error: 'registerLocation requires: locationHash, latPacked, lngPacked, dataHash',
         });
       }
 
@@ -165,10 +172,9 @@ export default async function handler(req, res) {
         abi: ORACLE_ABI,
         functionName: 'registerLocation',
         args: [
-          userAddress,
+          locationHash,
           BigInt(latPacked),
           BigInt(lngPacked),
-          Number(category),
           dataHash,
         ],
       });

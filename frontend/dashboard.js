@@ -296,7 +296,7 @@ async function checkVerifierStatus() {
     const isVerifier = await publicClient.readContract({
       address: cfg.contracts.RewardDistributor,
       abi: cfg.abis.RewardDistributor,
-      functionName: 'isVerifier',
+      functionName: 'verifiers',
       args: [walletAddress],
     });
 
@@ -346,6 +346,12 @@ async function loadRewardHistory() {
     }
   `;
 
+  // Subgraph ainda não deployado — mostra mensagem amigável
+  if (!cfg.subgraphEndpoint || cfg.subgraphEndpoint.includes('YOUR_') || cfg.subgraphEndpoint.includes('stepless/v1.0')) {
+    tbody.innerHTML = `<tr><td colspan="5" class="table-empty">${s.rewards_empty || 'Subgraph em configuração. Histórico disponível em breve.'}</td></tr>`;
+    return;
+  }
+
   try {
     const resp = await fetch(cfg.subgraphEndpoint, {
       method: 'POST',
@@ -355,6 +361,11 @@ async function loadRewardHistory() {
         variables: { contributor: walletAddress },
       }),
     });
+
+    if (!resp.ok) {
+      tbody.innerHTML = `<tr><td colspan="5" class="table-empty">${s.rewards_empty || 'Histórico indisponível no momento.'}</td></tr>`;
+      return;
+    }
 
     const json = await resp.json();
 
@@ -423,57 +434,51 @@ async function handleRegisterLocation(e) {
   try {
     const viem = window.viem;
 
-    // Hash the photo file → bytes32
+    // Hash do arquivo de foto → bytes32
     const photoFile = photoInput.files[0];
     const photoBuffer = await photoFile.arrayBuffer();
-    const photoHash = viem.keccak256(new Uint8Array(photoBuffer));
+    const dataHash = viem.keccak256(new Uint8Array(photoBuffer));
 
-    // Convert lat/lng to int256 (multiply by 1e6 for precision)
-    const latInt = BigInt(Math.round(lat * 1e6));
-    const lngInt = BigInt(Math.round(lng * 1e6));
+    // lat/lng em inteiros (multiplicar por 1e6)
+    const latPacked = Math.round(lat * 1e6);
+    const lngPacked = Math.round(lng * 1e6);
 
-    // Estimate gas
-    const gasEstimate = await publicClient.estimateContractGas({
-      address: cfg.contracts.SteplessOracle,
-      abi: cfg.abis.SteplessOracle,
-      functionName: 'registerLocation',
-      args: [latInt, lngInt, name, category, photoHash],
-      account: walletAddress,
+    // locationHash = keccak256(latPacked, lngPacked, name)
+    const locationHash = viem.keccak256(
+      viem.encodePacked(
+        ['int256', 'int256', 'string'],
+        [BigInt(latPacked), BigInt(lngPacked), name]
+      )
+    );
+
+    // Chama o relayer — ele é authorized no Oracle e paga o gas
+    const resp = await fetch('/api/relay', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'registerLocation',
+        userAddress: walletAddress,
+        submissionData: { locationHash, latPacked, lngPacked, dataHash },
+      }),
     });
 
-    // On Arc, gas is paid in USDC (6 decimals). Estimate cost.
-    // Gas price on Arc is in USDC wei (1e6 = 1 USDC)
-    const gasPrice = await publicClient.getGasPrice();
-    const gasCostUsdc = (gasEstimate * gasPrice) / 10n ** 6n;
-    if (gasEl) gasEl.textContent = `${s.gas_estimate || 'Estimated gas: '}${formatUsdc(gasCostUsdc)} USDC`;
+    const result = await resp.json();
 
-    // Send transaction
-    const txHash = await walletClient.writeContract({
-      address: cfg.contracts.SteplessOracle,
-      abi: cfg.abis.SteplessOracle,
-      functionName: 'registerLocation',
-      args: [latInt, lngInt, name, category, photoHash],
-      account: walletAddress,
-      chain: cfg.chain,
-    });
-
-    // Wait for receipt
-    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-
-    if (receipt.status === 'success') {
-      showAlert('register-alert', 'success', `✓ ${s.success_registered || 'Location registered!'} TX: ${shortHash(txHash)}`);
-      document.getElementById('register-form').reset();
-      logEvent('LocationRegistered', `by ${shortAddr(walletAddress)}`);
-      await refreshAll();
-    } else {
-      throw new Error('Transaction reverted');
+    if (!result.success) {
+      throw new Error(result.error || 'Relayer error');
     }
+
+    showAlert('register-alert', 'success', `✓ ${s.success_registered || 'Local registrado!'} TX: ${shortHash(result.txHash)}`);
+    document.getElementById('register-form')?.reset();
+    logEvent('LocationRegistered', `by ${shortAddr(walletAddress)}`);
+    await refreshAll();
+
   } catch (err) {
     console.error('Register location error:', err);
     showAlert('register-alert', 'danger', `✗ ${handleArcError(err)}`);
   } finally {
     submitBtn.disabled = false;
-    submitBtn.textContent = s.reg_submit || 'Register Location';
+    submitBtn.textContent = s.reg_submit || 'Registrar Local';
   }
 }
 
