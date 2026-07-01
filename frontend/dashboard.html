@@ -173,9 +173,10 @@
 
       <!-- ── Admin Setup Panel ── -->
       <div id="admin-setup-panel" style="display:none; margin-bottom:1rem; padding:1rem; border-radius:8px; border:2px solid var(--warning,#b45309); background:var(--surface);">
-        <strong>⚠️ Setup necessário:</strong> O relayer ainda não está autorizado no Oracle.
-        <button id="btn-setup-relay" class="btn btn-primary" style="margin-left:1rem;" onclick="window.setupRelayer()">🔐 Autorizar Relayer</button>
-        <span id="setup-status" style="margin-left:1rem; font-size:0.85rem;"></span>
+        <p style="margin:0 0 0.5rem"><strong>⚠️ Ação única necessária:</strong> O relayer precisa ser autorizado no Oracle para poder registrar locais.</p>
+        <p style="margin:0 0 0.75rem; font-size:0.85rem; color:var(--text-muted);">Conecte a wallet que fez o deploy dos contratos no Remix (wallet admin) e clique no botão abaixo.</p>
+        <button id="btn-setup-relay" class="btn btn-primary" onclick="window.setupRelayer()">🔐 Autorizar Relayer no Oracle</button>
+        <span id="setup-status" style="display:block; margin-top:0.5rem; font-size:0.85rem;"></span>
       </div>
 
       <!-- ── Register Location ── -->
@@ -319,7 +320,7 @@
        Scripts
        ════════════════════════════════════════════════ -->
   <!-- exifr: extração de metadados EXIF (GPS, timestamp) da foto -->
-  <script src="https://cdn.jsdelivr.net/npm/exifr@7/dist/lite.umd.cjs" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/exifr@7/dist/lite.umd.js"></script>
   <script type="module" src="dashboard.js"></script>
   <script type="module">
     /* Theme + nav + language init (shared with landing page) */

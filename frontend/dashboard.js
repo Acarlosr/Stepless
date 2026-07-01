@@ -207,17 +207,16 @@ const RELAYER_ADDRESS = '0xDEA4841D45F44deC58eB246Ac985693cc562aEc5';
 
 // Verifica se relayer está autorizado e mostra banner de setup se não estiver
 async function checkRelayerSetup() {
+  const panel = document.getElementById('admin-setup-panel');
+  if (!panel) return;
   try {
     const resp = await fetch('/api/setup');
+    if (!resp.ok) { panel.style.display = 'block'; return; }
     const data = await resp.json();
-    const panel = document.getElementById('admin-setup-panel');
-    if (!panel) return;
-    if (data.isAuthorized) {
-      panel.style.display = 'none';
-    } else {
-      panel.style.display = 'block';
-    }
-  } catch (_) {}
+    panel.style.display = data.isAuthorized ? 'none' : 'block';
+  } catch (_) {
+    panel.style.display = 'block'; // mostra se não conseguir verificar
+  }
 }
 
 // Botão de autorizar relayer (chama /api/setup POST)
