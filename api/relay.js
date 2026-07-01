@@ -42,8 +42,8 @@ const ORACLE_ABI = [
     stateMutability: 'nonpayable',
     inputs: [
       { name: 'locationHash', type: 'bytes32' },
-      { name: 'latPacked',    type: 'uint256' },
-      { name: 'lngPacked',    type: 'uint256' },
+      { name: 'latPacked',    type: 'int256'  },
+      { name: 'lngPacked',    type: 'int256'  },
       { name: 'dataHash',     type: 'bytes32' },
     ],
     outputs: [],
