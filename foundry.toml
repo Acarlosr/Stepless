@@ -1,0 +1,30 @@
+[profile.default]
+src = "src"
+out = "out"
+test = "test"
+script = "script"
+libs = ["lib"]
+solc_version = "0.8.24"
+evm_version = "osaka"
+optimizer = true
+optimizer_runs = 200
+
+# Arc Testnet configuration
+# Chain ID: 5042002
+# RPC: https://rpc.testnet.arc.network
+# Gas token: USDC (native, 18 decimals; ERC-20 at 0x3600... uses 6 decimals)
+# Block time: ~0.48s
+# Finality: deterministic, sub-second
+# EVM baseline: Osaka
+
+[profile.default.fuzz]
+runs = 256
+
+[profile.default.invariant]
+runs = 64
+depth = 128
+
+# Fork Arc Testnet for integration tests:
+# forge test --fork-url https://rpc.testnet.arc.network
+[profile.arc-testnet]
+fork_url = "https://rpc.testnet.arc.network"

@@ -1,0 +1,77 @@
+[
+  {
+    "type": "event",
+    "name": "RewardPaid",
+    "inputs": [
+      { "name": "contributionId", "type": "bytes32", "indexed": true },
+      { "name": "recipient",      "type": "address", "indexed": true },
+      { "name": "amount",         "type": "uint256", "indexed": false },
+      { "name": "rewardType",     "type": "uint8",   "indexed": false },
+      { "name": "blockNumber",    "type": "uint256", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "RewardFailed",
+    "inputs": [
+      { "name": "contributionId", "type": "bytes32", "indexed": true },
+      { "name": "recipient",      "type": "address", "indexed": true },
+      { "name": "amount",         "type": "uint256", "indexed": false },
+      { "name": "reason",         "type": "bytes",   "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "TreasuryFunded",
+    "inputs": [
+      { "name": "funder",     "type": "address", "indexed": true },
+      { "name": "amount",     "type": "uint256", "indexed": false },
+      { "name": "newBalance", "type": "uint256", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "TreasuryWithdrawn",
+    "inputs": [
+      { "name": "admin",      "type": "address", "indexed": true },
+      { "name": "amount",     "type": "uint256", "indexed": false },
+      { "name": "newBalance", "type": "uint256", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "VerifierRegistered",
+    "inputs": [
+      { "name": "verifier",    "type": "address", "indexed": true },
+      { "name": "blockNumber", "type": "uint256", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "VerifierSlashed",
+    "inputs": [
+      { "name": "verifier",      "type": "address", "indexed": true },
+      { "name": "slashedAmount", "type": "uint256", "indexed": false },
+      { "name": "reason",        "type": "string",  "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "RewardAmountUpdated",
+    "inputs": [
+      { "name": "rewardType", "type": "uint8",   "indexed": true },
+      { "name": "oldAmount",  "type": "uint256", "indexed": false },
+      { "name": "newAmount",  "type": "uint256", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "PausedEvent",
+    "inputs": [{ "name": "admin", "type": "address", "indexed": true }]
+  },
+  {
+    "type": "event",
+    "name": "UnpausedEvent",
+    "inputs": [{ "name": "admin", "type": "address", "indexed": true }]
+  }
+]

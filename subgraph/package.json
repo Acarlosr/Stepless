@@ -1,0 +1,16 @@
+{
+  "name": "stepless-subgraph",
+  "version": "1.0.0",
+  "scripts": {
+    "codegen": "graph codegen",
+    "build":   "graph build",
+    "deploy":  "goldsky subgraph deploy stepless/v1.0 --path ."
+  },
+  "dependencies": {
+    "@graphprotocol/graph-cli":  "^0.79.0",
+    "@graphprotocol/graph-ts":   "^0.35.0"
+  },
+  "devDependencies": {
+    "goldsky": "^1.0.0"
+  }
+}

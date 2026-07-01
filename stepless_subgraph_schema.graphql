@@ -1,0 +1,88 @@
+# ♿ Stepless — Goldsky Subgraph
+
+Indexes all events from the 3 Stepless contracts on Arc Testnet.
+
+## Schema
+
+```graphql
+type Location @entity {
+  id: Bytes!           # locationHash
+  firstContributor: Bytes!
+  registeredBlock: BigInt!
+  verificationCount: BigInt!
+  contributions: [Contribution!]! @derivedFrom(field: "location")
+}
+
+type Contribution @entity {
+  id: Bytes!           # contributionId
+  location: Location!
+  contributor: Bytes!
+  contributionType: Int!
+  dataHash: Bytes!
+  verified: Boolean!
+  verifier: Bytes
+  verifiedBlock: BigInt
+  rejected: Boolean!
+  rejectReason: String
+  rewardClaimed: Boolean!
+  rewardAmount: BigInt
+  rewardType: Int
+  rewardPaidBlock: BigInt
+}
+
+type Contributor @entity {
+  id: Bytes!           # contributor address
+  totalEarned: BigInt! # 6-dec USDC
+  contributionCount: BigInt!
+  verificationCount: BigInt!
+  isVerifier: Boolean!
+  rewards: [RewardPayment!]! @derivedFrom(field: "recipient")
+}
+
+type RewardPayment @entity {
+  id: Bytes!           # contributionId
+  recipient: Contributor!
+  amount: BigInt!
+  rewardType: Int!
+  blockNumber: BigInt!
+  txHash: Bytes!
+  failed: Boolean!
+  failReason: String
+}
+
+type TreasuryEvent @entity {
+  id: Bytes!           # txHash + logIndex
+  type: String!        # "Funded" | "Withdrawn"
+  amount: BigInt!
+  actor: Bytes!
+  newBalance: BigInt!
+  blockNumber: BigInt!
+}
+
+type APIQuery @entity {
+  id: Bytes!           # txHash + logIndex
+  consumer: Bytes!
+  queryType: Int!
+  feePaid: BigInt!
+  locationHash: Bytes
+  blockNumber: BigInt!
+}
+
+type Subscription @entity {
+  id: Bytes!           # txHash + logIndex
+  consumer: Bytes!
+  planId: BigInt!
+  startBlock: BigInt!
+  endBlock: BigInt!
+  feePaid: BigInt!
+}
+
+type VerifierEvent @entity {
+  id: Bytes!           # txHash + logIndex
+  verifier: Bytes!
+  eventType: String!   # "Registered" | "Slashed"
+  blockNumber: BigInt!
+  slashedAmount: BigInt
+  reason: String
+}
+```

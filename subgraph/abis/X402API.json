@@ -1,0 +1,41 @@
+[
+  {
+    "type": "event",
+    "name": "QueryExecuted",
+    "inputs": [
+      { "name": "consumer",      "type": "address", "indexed": true },
+      { "name": "queryType",     "type": "uint8",   "indexed": true },
+      { "name": "feePaid",       "type": "uint256", "indexed": false },
+      { "name": "locationHash",  "type": "bytes32", "indexed": true },
+      { "name": "blockNumber",   "type": "uint256", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "SubscriptionPurchased",
+    "inputs": [
+      { "name": "consumer",    "type": "address", "indexed": true },
+      { "name": "planId",      "type": "uint256", "indexed": false },
+      { "name": "startBlock",  "type": "uint256", "indexed": false },
+      { "name": "endBlock",    "type": "uint256", "indexed": false },
+      { "name": "feePaid",     "type": "uint256", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "FeeUpdated",
+    "inputs": [
+      { "name": "queryType", "type": "uint8",   "indexed": true },
+      { "name": "oldFee",    "type": "uint256", "indexed": false },
+      { "name": "newFee",    "type": "uint256", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "RevenueWithdrawn",
+    "inputs": [
+      { "name": "admin",  "type": "address", "indexed": true },
+      { "name": "amount", "type": "uint256", "indexed": false }
+    ]
+  }
+]

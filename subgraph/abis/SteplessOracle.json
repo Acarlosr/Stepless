@@ -1,0 +1,45 @@
+[
+  {
+    "type": "event",
+    "name": "LocationRegistered",
+    "inputs": [
+      { "name": "locationHash",  "type": "bytes32", "indexed": true },
+      { "name": "contributor",   "type": "address", "indexed": true },
+      { "name": "latPacked",     "type": "uint256", "indexed": false },
+      { "name": "lngPacked",     "type": "uint256", "indexed": false },
+      { "name": "blockNumber",   "type": "uint256", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "ContributionSubmitted",
+    "inputs": [
+      { "name": "contributionId",   "type": "bytes32", "indexed": true },
+      { "name": "locationHash",     "type": "bytes32", "indexed": true },
+      { "name": "contributor",      "type": "address", "indexed": true },
+      { "name": "contributionType", "type": "uint8",   "indexed": false },
+      { "name": "dataHash",         "type": "bytes32", "indexed": false },
+      { "name": "blockNumber",      "type": "uint256", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "ContributionVerified",
+    "inputs": [
+      { "name": "contributionId", "type": "bytes32", "indexed": true },
+      { "name": "verifier",       "type": "address", "indexed": true },
+      { "name": "contributor",    "type": "address", "indexed": true },
+      { "name": "blockNumber",    "type": "uint256", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "ContributionRejected",
+    "inputs": [
+      { "name": "contributionId", "type": "bytes32", "indexed": true },
+      { "name": "verifier",       "type": "address", "indexed": true },
+      { "name": "reason",         "type": "string",  "indexed": false },
+      { "name": "blockNumber",    "type": "uint256", "indexed": false }
+    ]
+  }
+]

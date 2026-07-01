@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Stepless Dashboard — Painel do contribuidor. Mapeie locais acessíveis, verifique contribuições e receba recompensas em USDC na Arc Testnet." />
+  <meta name="theme-color" content="#1a56c4" />
+  <title>Stepless Dashboard — Arc Testnet</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦿</text></svg>" />
+</head>
+<body>
+  <a href="#main" class="skip-link">Pular para o conteúdo / Skip to content / Saltar al contenido</a>
+
+  <!-- ════════════════════════════════════════════════
+       Header
+       ════════════════════════════════════════════════ -->
+  <header class="header" role="banner">
+    <div class="container">
+      <a href="index.html" class="logo" aria-label="Stepless home">
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="20" cy="20" r="18" fill="var(--primary)" />
+          <path d="M12 26 L20 14 L28 26" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="20" cy="20" r="3" fill="#fff"/>
+        </svg>
+        <span>Stepless</span>
+      </a>
+
+      <nav class="nav" role="navigation" aria-label="Dashboard navigation">
+        <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="dash-nav-links">
+          <span></span><span></span><span></span>
+        </button>
+        <ul class="nav-links" id="dash-nav-links">
+          <li><a href="#stats" data-i18n="nav_stats">Estatísticas</a></li>
+          <li><a href="#map" data-i18n="nav_map">Mapa</a></li>
+          <li><a href="#register" data-i18n="nav_register">Mapear Local</a></li>
+          <li><a href="#verify" data-i18n="nav_verify">Verificar</a></li>
+          <li><a href="#rewards" data-i18n="nav_rewards">Recompensas</a></li>
+          <li><a href="index.html" data-i18n="nav_home">Início</a></li>
+        </ul>
+        <div class="lang-selector" role="group" aria-label="Language selection">
+          <button class="lang-btn" data-lang="pt" aria-label="Português">PT</button>
+          <button class="lang-btn" data-lang="en" aria-label="English">EN</button>
+          <button class="lang-btn" data-lang="es" aria-label="Español">ES</button>
+        </div>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Dark mode">
+          <span id="theme-icon">🌙</span>
+        </button>
+        <button class="btn btn-primary btn-sm" id="connect-wallet-btn" data-i18n="connect_wallet">Conectar Wallet</button>
+        <div class="wallet-info" id="wallet-info">
+          <span class="status-dot connected" aria-hidden="true"></span>
+          <span class="wallet-address" id="wallet-address">—</span>
+          <span class="wallet-balance" id="wallet-balance">—</span>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ════════════════════════════════════════════════
+       Connection Banner (hidden until needed)
+       ════════════════════════════════════════════════ -->
+  <div id="connection-banner" class="alert alert-warning hidden" role="alert" style="margin:0; border-radius:0;">
+    <span id="connection-banner-text"></span>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       Main
+       ════════════════════════════════════════════════ -->
+  <main id="main" role="main" class="container" style="padding-top:24px; padding-bottom:48px;">
+
+    <!-- ── Not Connected Overlay ── -->
+    <div id="not-connected" class="card text-center" style="padding:48px 24px;">
+      <div class="mascot-container" role="img" aria-label="Stepless mascot" style="margin-bottom:16px;">
+        <svg class="mascot" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse class="mascot-shadow" cx="100" cy="185" rx="50" ry="8" fill="var(--text)" opacity="0.2"/>
+          <g class="mascot-body-group">
+            <line x1="100" y1="30" x2="100" y2="48" stroke="var(--primary)" stroke-width="3" stroke-linecap="round"/>
+            <circle class="mascot-antenna-dot" cx="100" cy="26" r="6" fill="var(--primary)"/>
+            <rect x="60" y="48" width="80" height="60" rx="20" fill="var(--primary)" stroke="var(--border)" stroke-width="2"/>
+            <circle class="mascot-eye" cx="82" cy="75" r="8" fill="#ffffff"/>
+            <circle class="mascot-eye mascot-eye-right" cx="118" cy="75" r="8" fill="#ffffff"/>
+            <circle cx="82" cy="75" r="4" fill="var(--bg)"/>
+            <circle cx="118" cy="75" r="4" fill="var(--bg)"/>
+            <path d="M85 92 Q100 100 115 92" stroke="#ffffff" stroke-width="3" stroke-linecap="round" fill="none"/>
+            <rect x="65" y="112" width="70" height="55" rx="16" fill="var(--bg-card)" stroke="var(--primary)" stroke-width="2.5"/>
+            <rect x="78" y="122" width="44" height="28" rx="6" fill="var(--accent-bg)"/>
+            <text x="100" y="140" text-anchor="middle" font-size="10" fill="var(--primary)" font-family="monospace" font-weight="bold">USDC</text>
+            <g class="mascot-arm">
+              <rect x="48" y="120" width="14" height="35" rx="7" fill="var(--primary)"/>
+              <circle cx="55" cy="158" r="8" fill="var(--primary)"/>
+            </g>
+            <rect x="138" y="120" width="14" height="35" rx="7" fill="var(--primary)"/>
+            <circle cx="145" cy="158" r="8" fill="var(--primary)"/>
+            <rect x="78" y="168" width="16" height="14" rx="6" fill="var(--primary)"/>
+            <rect x="106" y="168" width="16" height="14" rx="6" fill="var(--primary)"/>
+          </g>
+        </svg>
+      </div>
+      <h2 class="section-title" data-i18n="not_connected_title">Conecte sua Wallet</h2>
+      <p class="section-subtitle" data-i18n="not_connected_desc">Conecte sua wallet para acessar o dashboard do contribuidor, mapear locais e receber recompensas em USDC.</p>
+      <button class="btn btn-primary btn-lg" id="connect-wallet-btn-large" data-i18n="connect_wallet">Conectar Wallet</button>
+    </div>
+
+    <!-- ── Dashboard Content (hidden until connected) ── -->
+    <div id="dashboard-content" class="hidden">
+
+      <!-- ── Stats Section ── -->
+      <section id="stats" aria-labelledby="stats-title" class="mb-3">
+        <h2 class="section-title" id="stats-title" data-i18n="stats_title">Estatísticas do Contribuidor</h2>
+        <p class="section-subtitle" data-i18n="stats_subtitle">Seu desempenho na rede Stepless.</p>
+
+        <div class="stat-grid mb-3">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-total-earned">—</div>
+            <div class="stat-label" data-i18n="stat_total_earned">Total Ganho (USDC)</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-contributions">—</div>
+            <div class="stat-label" data-i18n="stat_contributions">Contribuições</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-verifications">—</div>
+            <div class="stat-label" data-i18n="stat_verifications">Verificações</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-treasury">—</div>
+            <div class="stat-label" data-i18n="stat_treasury">Treasury (USDC)</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-locations">—</div>
+            <div class="stat-label" data-i18n="stat_locations">Locais Mapeados</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-usdc-balance">—</div>
+            <div class="stat-label" data-i18n="stat_usdc_balance">Seu Saldo USDC</div>
+          </div>
+        </div>
+
+        <!-- Verifier badge -->
+        <div id="verifier-badge" class="hidden">
+          <span class="badge badge-success" data-i18n="verifier_badge">✓ Verificador Aprovado</span>
+        </div>
+      </section>
+
+      <!-- ── Map + Event Log ── -->
+      <section id="map" aria-labelledby="map-title" class="mb-3">
+        <h2 class="section-title" id="map-title" data-i18n="map_title">Mapa de Locais Acessíveis</h2>
+        <div class="dashboard-grid">
+          <div>
+            <div class="map-placeholder" role="img" aria-label="Map placeholder showing accessible locations">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              <span data-i18n="map_placeholder">Mapa interativo em desenvolvimento</span>
+              <span style="font-size:0.8rem;" data-i18n="map_placeholder_sub">Locais aparecem aqui após conexão</span>
+            </div>
+          </div>
+
+          <!-- Real-time event log -->
+          <div class="card">
+            <h3 class="card-title flex items-center gap-1">
+              <span class="status-dot connecting" id="ws-status-dot" aria-hidden="true"></span>
+              <span data-i18n="event_log_title">Eventos em Tempo Real</span>
+            </h3>
+            <p class="card-text mb-2" data-i18n="event_log_desc">Atualizações ao vivo da Arc Testnet via WebSocket.</p>
+            <div class="event-log" id="event-log" aria-live="polite" aria-atomic="false">
+              <div class="event-entry text-center" data-i18n="event_log_empty">Aguardando eventos...</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Register Location ── -->
+      <section id="register" aria-labelledby="register-title" class="mb-3">
+        <h2 class="section-title" id="register-title" data-i18n="register_title">Mapear Novo Local</h2>
+        <p class="section-subtitle" data-i18n="register_subtitle">Registre um local acessível na Arc Testnet. Você será recompensado em USDC após verificação.</p>
+
+        <div class="card">
+          <form id="register-form" novalidate>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="reg-lat" data-i18n="reg_lat">Latitude</label>
+                <input type="number" id="reg-lat" name="lat" step="0.000001" min="-90" max="90" required placeholder="-23.5505" />
+              </div>
+              <div class="form-group">
+                <label for="reg-lng" data-i18n="reg_lng">Longitude</label>
+                <input type="number" id="reg-lng" name="lng" step="0.000001" min="-180" max="180" required placeholder="-46.6333" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="reg-name" data-i18n="reg_name">Nome do Local</label>
+              <input type="text" id="reg-name" name="name" required maxlength="100" placeholder="Ex: Praça da Sé, entrada norte" />
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="reg-category" data-i18n="reg_category">Categoria</label>
+                <select id="reg-category" name="category" required>
+                  <!-- Populated by JS -->
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="reg-photo" data-i18n="reg_photo">Foto do Local</label>
+                <input type="file" id="reg-photo" name="photo" accept="image/*" required />
+              </div>
+            </div>
+
+            <div id="register-alert"></div>
+
+            <div class="flex items-center gap-2 wrap">
+              <button type="submit" class="btn btn-primary" id="register-submit" data-i18n="reg_submit">Registrar Local</button>
+              <span class="text-muted" id="register-gas-estimate"></span>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ── Verify Contribution ── -->
+      <section id="verify" aria-labelledby="verify-title" class="mb-3">
+        <h2 class="section-title" id="verify-title" data-i18n="verify_title">Verificar Contribuição</h2>
+        <p class="section-subtitle" data-i18n="verify_subtitle">Apenas verificadores aprovados podem validar contribuições.</p>
+
+        <div id="verify-access-denied" class="alert alert-warning">
+          <span data-i18n="verify_denied">Você não é um verificador aprovado. Apenas verificadores podem validar contribuições.</span>
+        </div>
+
+        <div id="verify-content" class="hidden">
+          <div class="card mb-2">
+            <form id="verify-form" class="flex items-center gap-2 wrap" style="margin-bottom:0;">
+              <div class="form-group" style="flex:1; margin-bottom:0;">
+                <label for="verify-id" class="sr-only" data-i18n="verify_id_label">ID da Contribuição (hex)</label>
+                <input type="text" id="verify-id" name="contributionId" required pattern="0x[a-fA-F0-9]{64}" placeholder="0x... (bytes32)" style="font-family:monospace; font-size:0.9rem;" />
+              </div>
+              <button type="submit" class="btn btn-success" id="verify-approve" data-i18n="verify_approve" style="background:var(--success); color:#fff; border-color:var(--success);">Aprovar</button>
+              <button type="button" class="btn btn-danger" id="verify-reject" data-i18n="verify_reject">Rejeitar</button>
+            </form>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="verify_col_id">ID da Contribuição</th>
+                  <th data-i18n="verify_col_contributor">Contribuidor</th>
+                  <th data-i18n="verify_col_type">Tipo</th>
+                  <th data-i18n="verify_col_status">Status</th>
+                  <th data-i18n="verify_col_action">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="verify-table-body">
+                <tr><td colspan="5" class="table-empty" data-i18n="verify_empty">Nenhuma contribuição pendente</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Reward History ── -->
+      <section id="rewards" aria-labelledby="rewards-title" class="mb-3">
+        <h2 class="section-title" id="rewards-title" data-i18n="rewards_title">Histórico de Recompensas</h2>
+        <p class="section-subtitle" data-i18n="rewards_subtitle">Recompensas recebidas via Goldsky subgraph.</p>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="rewards_col_tx">Transação</th>
+                <th data-i18n="rewards_col_amount">Valor (USDC)</th>
+                <th data-i18n="rewards_col_tier">Nível</th>
+                <th data-i18n="rewards_col_contrib">Contribuição</th>
+                <th data-i18n="rewards_col_time">Data/Hora</th>
+              </tr>
+            </thead>
+            <tbody id="rewards-table-body">
+              <tr><td colspan="5" class="table-empty" data-i18n="rewards_empty">Carregando recompensas...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ════════════════════════════════════════════════
+       Footer
+       ════════════════════════════════════════════════ -->
+  <footer class="footer" role="contentinfo">
+    <div class="container">
+      <div class="footer-links">
+        <a href="https://testnet.arcscan.app" target="_blank" rel="noopener" data-i18n="footer_explorer">ArcScan</a>
+        <a href="https://faucet.circle.com" target="_blank" rel="noopener" data-i18n="footer_faucet">Faucet</a>
+        <a href="index.html" data-i18n="footer_home">Início</a>
+      </div>
+      <p data-i18n="footer_text">Stepless Dashboard — Arc Testnet. Recompensas em USDC.</p>
+    </div>
+  </footer>
+
+  <!-- ════════════════════════════════════════════════
+       Scripts
+       ════════════════════════════════════════════════ -->
+  <script type="module" src="dashboard.js"></script>
+  <script type="module">
+    /* Theme + nav + language init (shared with landing page) */
+    const I18N = {
+      pt: {
+        nav_stats:"Estatísticas", nav_map:"Mapa", nav_register:"Mapear Local", nav_verify:"Verificar", nav_rewards:"Recompensas", nav_home:"Início",
+        connect_wallet:"Conectar Wallet",
+        not_connected_title:"Conecte sua Wallet", not_connected_desc:"Conecte sua wallet para acessar o dashboard do contribuidor, mapear locais e receber recompensas em USDC.",
+        stats_title:"Estatísticas do Contribuidor", stats_subtitle:"Seu desempenho na rede Stepless.",
+        stat_total_earned:"Total Ganho (USDC)", stat_contributions:"Contribuições", stat_verifications:"Verificações",
+        stat_treasury:"Treasury (USDC)", stat_locations:"Locais Mapeados", stat_usdc_balance:"Seu Saldo USDC",
+        verifier_badge:"✓ Verificador Aprovado",
+        map_title:"Mapa de Locais Acessíveis", map_placeholder:"Mapa interativo em desenvolvimento", map_placeholder_sub:"Locais aparecem aqui após conexão",
+        event_log_title:"Eventos em Tempo Real", event_log_desc:"Atualizações ao vivo da Arc Testnet via WebSocket.", event_log_empty:"Aguardando eventos...",
+        register_title:"Mapear Novo Local", register_subtitle:"Registre um local acessível na Arc Testnet. Você será recompensado em USDC após verificação.",
+        reg_lat:"Latitude", reg_lng:"Longitude", reg_name:"Nome do Local", reg_category:"Categoria", reg_photo:"Foto do Local", reg_submit:"Registrar Local",
+        verify_title:"Verificar Contribuição", verify_subtitle:"Apenas verificadores aprovados podem validar contribuições.",
+        verify_denied:"Você não é um verificador aprovado. Apenas verificadores podem validar contribuições.",
+        verify_id_label:"ID da Contribuição (hex)", verify_approve:"Aprovar", verify_reject:"Rejeitar",
+        verify_col_id:"ID da Contribuição", verify_col_contributor:"Contribuidor", verify_col_type:"Tipo", verify_col_status:"Status", verify_col_action:"Ação",
+        verify_empty:"Nenhuma contribuição pendente",
+        rewards_title:"Histórico de Recompensas", rewards_subtitle:"Recompensas recebidas via Goldsky subgraph.",
+        rewards_col_tx:"Transação", rewards_col_amount:"Valor (USDC)", rewards_col_tier:"Nível", rewards_col_contrib:"Contribuição", rewards_col_time:"Data/Hora",
+        rewards_empty:"Carregando recompensas...",
+        footer_explorer:"ArcScan", footer_faucet:"Faucet", footer_home:"Início",
+        footer_text:"Stepless Dashboard — Arc Testnet. Recompensas em USDC.",
+        cat_ramp:"Rampa", cat_elevator:"Elevador", cat_restroom:"Banheiro Acessível", cat_parking:"Vaga PCD", cat_signage:"Sinalização", cat_audio:"Áudio Descrição", cat_braille:"Braile", cat_other:"Outro",
+        err_no_wallet:"Nenhuma wallet detectada. Instale MetaMask ou outra wallet compatível.",
+        err_wrong_chain:"Rede incorreta. Conecte-se à Arc Testnet (Chain ID: 5042002).",
+        err_tx_failed:"Transação falhou",
+        err_blocklist:"Endereço bloqueado pelo sistema anti-drenagem da Arc.",
+        err_drain:"Tentativa de drenagem detectada. Transação bloqueada.",
+        err_decimal:"Erro de decimais: USDC usa 6 decimais na Arc.",
+        success_registered:"Local registrado com sucesso!",
+        success_verified:"Contribuição verificada!",
+        gas_estimate:"Custo estimado de gas: ",
+        loading:"Carregando...",
+      },
+      en: {
+        nav_stats:"Stats", nav_map:"Map", nav_register:"Map Location", nav_verify:"Verify", nav_rewards:"Rewards", nav_home:"Home",
+        connect_wallet:"Connect Wallet",
+        not_connected_title:"Connect Your Wallet", not_connected_desc:"Connect your wallet to access the contributor dashboard, map locations, and receive USDC rewards.",
+        stats_title:"Contributor Statistics", stats_subtitle:"Your performance on the Stepless network.",
+        stat_total_earned:"Total Earned (USDC)", stat_contributions:"Contributions", stat_verifications:"Verifications",
+        stat_treasury:"Treasury (USDC)", stat_locations:"Locations Mapped", stat_usdc_balance:"Your USDC Balance",
+        verifier_badge:"✓ Approved Verifier",
+        map_title:"Accessible Locations Map", map_placeholder:"Interactive map in development", map_placeholder_sub:"Locations appear here after connection",
+        event_log_title:"Real-time Events", event_log_desc:"Live updates from Arc Testnet via WebSocket.", event_log_empty:"Waiting for events...",
+        register_title:"Map New Location", register_subtitle:"Register an accessible location on Arc Testnet. You'll be rewarded in USDC after verification.",
+        reg_lat:"Latitude", reg_lng:"Longitude", reg_name:"Location Name", reg_category:"Category", reg_photo:"Location Photo", reg_submit:"Register Location",
+        verify_title:"Verify Contribution", verify_subtitle:"Only approved verifiers can validate contributions.",
+        verify_denied:"You are not an approved verifier. Only verifiers can validate contributions.",
+        verify_id_label:"Contribution ID (hex)", verify_approve:"Approve", verify_reject:"Reject",
+        verify_col_id:"Contribution ID", verify_col_contributor:"Contributor", verify_col_type:"Type", verify_col_status:"Status", verify_col_action:"Action",
+        verify_empty:"No pending contributions",
+        rewards_title:"Reward History", rewards_subtitle:"Rewards received via Goldsky subgraph.",
+        rewards_col_tx:"Transaction", rewards_col_amount:"Amount (USDC)", rewards_col_tier:"Tier", rewards_col_contrib:"Contribution", rewards_col_time:"Date/Time",
+        rewards_empty:"Loading rewards...",
+        footer_explorer:"ArcScan", footer_faucet:"Faucet", footer_home:"Home",
+        footer_text:"Stepless Dashboard — Arc Testnet. Rewards in USDC.",
+        cat_ramp:"Ramp", cat_elevator:"Elevator", cat_restroom:"Accessible Restroom", cat_parking:"Accessible Parking", cat_signage:"Signage", cat_audio:"Audio Description", cat_braille:"Braille", cat_other:"Other",
+        err_no_wallet:"No wallet detected. Install MetaMask or another compatible wallet.",
+        err_wrong_chain:"Wrong network. Connect to Arc Testnet (Chain ID: 5042002).",
+        err_tx_failed:"Transaction failed",
+        err_blocklist:"Address blocked by Arc anti-drain system.",
+        err_drain:"Drain attempt detected. Transaction blocked.",
+        err_decimal:"Decimal error: USDC uses 6 decimals on Arc.",
+        success_registered:"Location registered successfully!",
+        success_verified:"Contribution verified!",
+        gas_estimate:"Estimated gas cost: ",
+        loading:"Loading...",
+      },
+      es: {
+        nav_stats:"Estadísticas", nav_map:"Mapa", nav_register:"Mapear Lugar", nav_verify:"Verificar", nav_rewards:"Recompensas", nav_home:"Inicio",
+        connect_wallet:"Conectar Wallet",
+        not_connected_title:"Conecta tu Wallet", not_connected_desc:"Conecta tu wallet para acceder al dashboard del contribuidor, mapear lugares y recibir recompensas en USDC.",
+        stats_title:"Estadísticas del Contribuidor", stats_subtitle:"Tu desempeño en la red Stepless.",
+        stat_total_earned:"Total Ganado (USDC)", stat_contributions:"Contribuciones", stat_verifications:"Verificaciones",
+        stat_treasury:"Treasury (USDC)", stat_locations:"Lugares Mapeados", stat_usdc_balance:"Tu Saldo USDC",
+        verifier_badge:"✓ Verificador Aprobado",
+        map_title:"Mapa de Lugares Accesibles", map_placeholder:"Mapa interactivo en desarrollo", map_placeholder_sub:"Los lugares aparecen aquí después de conectar",
+        event_log_title:"Eventos en Tiempo Real", event_log_desc:"Actualizaciones en vivo de Arc Testnet vía WebSocket.", event_log_empty:"Esperando eventos...",
+        register_title:"Mapear Nuevo Lugar", register_subtitle:"Registra un lugar accesible en Arc Testnet. Serás recompensado en USDC después de la verificación.",
+        reg_lat:"Latitud", reg_lng:"Longitud", reg_name:"Nombre del Lugar", reg_category:"Categoría", reg_photo:"Foto del Lugar", reg_submit:"Registrar Lugar",
+        verify_title:"Verificar Contribución", verify_subtitle:"Solo verificadores aprobados pueden validar contribuciones.",
+        verify_denied:"No eres un verificador aprobado. Solo verificadores pueden validar contribuciones.",
+        verify_id_label:"ID de Contribución (hex)", verify_approve:"Aprobar", verify_reject:"Rechazar",
+        verify_col_id:"ID de Contribución", verify_col_contributor:"Contribuidor", verify_col_type:"Tipo", verify_col_status:"Estado", verify_col_action:"Acción",
+        verify_empty:"Sin contribuciones pendientes",
+        rewards_title:"Historial de Recompensas", rewards_subtitle:"Recompensas recibidas vía Goldsky subgraph.",
+        rewards_col_tx:"Transacción", rewards_col_amount:"Valor (USDC)", rewards_col_tier:"Nivel", rewards_col_contrib:"Contribución", rewards_col_time:"Fecha/Hora",
+        rewards_empty:"Cargando recompensas...",
+        footer_explorer:"ArcScan", footer_faucet:"Faucet", footer_home:"Inicio",
+        footer_text:"Stepless Dashboard — Arc Testnet. Recompensas en USDC.",
+        cat_ramp:"Rampa", cat_elevator:"Ascensor", cat_restroom:"Baño Accesible", cat_parking:"Estacionamiento Accesible", cat_signage:"Señalización", cat_audio:"Audiodescripción", cat_braille:"Braille", cat_other:"Otro",
+        err_no_wallet:"No se detectó wallet. Instala MetaMask u otra wallet compatible.",
+        err_wrong_chain:"Red incorrecta. Conéctate a Arc Testnet (Chain ID: 5042002).",
+        err_tx_failed:"Transacción falló",
+        err_blocklist:"Dirección bloqueada por el sistema anti-drenaje de Arc.",
+        err_drain:"Intento de drenaje detectado. Transacción bloqueada.",
+        err_decimal:"Error de decimales: USDC usa 6 decimales en Arc.",
+        success_registered:"¡Lugar registrado con éxito!",
+        success_verified:"¡Contribución verificada!",
+        gas_estimate:"Costo estimado de gas: ",
+        loading:"Cargando...",
+      }
+    };
+
+    let currentLang = 'pt';
+
+    function detectLanguage() {
+      const bl = (navigator.language || 'pt-BR').toLowerCase();
+      if (bl.startsWith('en')) return 'en';
+      if (bl.startsWith('es')) return 'es';
+      return 'pt';
+    }
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      document.documentElement.lang = lang === 'pt' ? 'pt-BR' : lang;
+      const strings = I18N[lang];
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (strings[key]) el.textContent = strings[key];
+      });
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === lang);
+        btn.setAttribute('aria-pressed', btn.dataset.lang === lang);
+      });
+      // Populate category select
+      const sel = document.getElementById('reg-category');
+      if (sel) {
+        const cats = [
+          {id:0, label:strings.cat_ramp}, {id:1, label:strings.cat_elevator},
+          {id:2, label:strings.cat_restroom}, {id:3, label:strings.cat_parking},
+          {id:4, label:strings.cat_signage}, {id:5, label:strings.cat_audio},
+          {id:6, label:strings.cat_braille}, {id:7, label:strings.cat_other},
+        ];
+        sel.innerHTML = cats.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
+      }
+      // Notify dashboard.js
+      window.dispatchEvent(new CustomEvent('langchange', { detail: { lang, strings } }));
+    }
+
+    function initTheme() {
+      const saved = localStorage.getItem('stepless-theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const theme = saved || (prefersDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+      document.getElementById('theme-icon').textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
+
+    function toggleTheme() {
+      const cur = document.documentElement.getAttribute('data-theme');
+      const next = cur === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('stepless-theme', next);
+      document.getElementById('theme-icon').textContent = next === 'dark' ? '☀️' : '🌙';
+    }
+
+    function initNav() {
+      const toggle = document.querySelector('.nav-toggle');
+      const links = document.getElementById('dash-nav-links');
+      if (toggle) {
+        toggle.addEventListener('click', () => {
+          const open = links.classList.toggle('open');
+          toggle.setAttribute('aria-expanded', open);
+        });
+      }
+    }
+
+    // Expose for dashboard.js
+    window.SteplessI18n = { I18N, get currentLang() { return currentLang; }, setLanguage, get strings() { return I18N[currentLang]; } };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      initNav();
+      setLanguage(detectLanguage());
+      document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
+      });
+      // Connect wallet buttons
+      document.getElementById('connect-wallet-btn').addEventListener('click', () => window.SteplessDashboard?.connect());
+      document.getElementById('connect-wallet-btn-large').addEventListener('click', () => window.SteplessDashboard?.connect());
+    });
+  </script>
+</body>
+</html>

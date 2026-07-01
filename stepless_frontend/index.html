@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Stepless — Infraestrutura de acessibilidade descentralizada na Arc Testnet. Mapas acessíveis alimentados por comunidade, recompensados em USDC." />
+  <meta name="theme-color" content="#1a56c4" />
+  <title>Stepless — Decentralized Accessibility Infrastructure</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦿</text></svg>" />
+</head>
+<body>
+  <a href="#main" class="skip-link">Pular para o conteúdo / Skip to content / Saltar al contenido</a>
+
+  <!-- ════════════════════════════════════════════════
+       Header
+       ════════════════════════════════════════════════ -->
+  <header class="header" role="banner">
+    <div class="container">
+      <a href="/" class="logo" aria-label="Stepless home">
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="20" cy="20" r="18" fill="var(--primary)" />
+          <path d="M12 26 L20 14 L28 26" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="20" cy="20" r="3" fill="#fff"/>
+        </svg>
+        <span>Stepless</span>
+      </a>
+
+      <nav class="nav" role="navigation" aria-label="Main navigation">
+        <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="nav-links">
+          <span></span><span></span><span></span>
+        </button>
+        <ul class="nav-links" id="nav-links">
+          <li><a href="#problem" data-i18n="nav_problem">Problema</a></li>
+          <li><a href="#solution" data-i18n="nav_solution">Solução</a></li>
+          <li><a href="#how" data-i18n="nav_how">Como Funciona</a></li>
+          <li><a href="#rewards" data-i18n="nav_rewards">Recompensas</a></li>
+          <li><a href="#tech" data-i18n="nav_tech">Tecnologia</a></li>
+          <li><a href="#roadmap" data-i18n="nav_roadmap">Roadmap</a></li>
+          <li><a href="dashboard.html" data-i18n="nav_dashboard">Dashboard</a></li>
+        </ul>
+        <div class="lang-selector" role="group" aria-label="Language selection">
+          <button class="lang-btn" data-lang="pt" aria-label="Português">PT</button>
+          <button class="lang-btn" data-lang="en" aria-label="English">EN</button>
+          <button class="lang-btn" data-lang="es" aria-label="Español">ES</button>
+        </div>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Dark mode">
+          <span id="theme-icon">🌙</span>
+        </button>
+        <button class="btn btn-primary btn-sm" id="connect-wallet-btn" data-i18n="connect_wallet">Conectar Wallet</button>
+        <div class="wallet-info" id="wallet-info">
+          <span class="status-dot connected" aria-hidden="true"></span>
+          <span class="wallet-address" id="wallet-address">—</span>
+          <span class="wallet-balance" id="wallet-balance">—</span>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ════════════════════════════════════════════════
+       Main
+       ════════════════════════════════════════════════ -->
+  <main id="main" role="main">
+
+    <!-- ── Hero ── -->
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container">
+        <!-- Animated SVG Mascot Robot -->
+        <div class="mascot-container" role="img" aria-label="Stepless mascot robot">
+          <svg class="mascot" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Shadow -->
+            <ellipse class="mascot-shadow" cx="100" cy="185" rx="50" ry="8" fill="var(--text)" opacity="0.2"/>
+
+            <g class="mascot-body-group">
+              <!-- Antenna -->
+              <line x1="100" y1="30" x2="100" y2="48" stroke="var(--primary)" stroke-width="3" stroke-linecap="round"/>
+              <circle class="mascot-antenna-dot" cx="100" cy="26" r="6" fill="var(--primary)"/>
+
+              <!-- Head -->
+              <rect x="60" y="48" width="80" height="60" rx="20" fill="var(--primary)" stroke="var(--border)" stroke-width="2"/>
+
+              <!-- Eyes -->
+              <circle class="mascot-eye" cx="82" cy="75" r="8" fill="#ffffff"/>
+              <circle class="mascot-eye mascot-eye-right" cx="118" cy="75" r="8" fill="#ffffff"/>
+              <circle cx="82" cy="75" r="4" fill="var(--bg)"/>
+              <circle cx="118" cy="75" r="4" fill="var(--bg)"/>
+
+              <!-- Mouth -->
+              <path d="M85 92 Q100 100 115 92" stroke="#ffffff" stroke-width="3" stroke-linecap="round" fill="none"/>
+
+              <!-- Body -->
+              <rect x="65" y="112" width="70" height="55" rx="16" fill="var(--bg-card)" stroke="var(--primary)" stroke-width="2.5"/>
+
+              <!-- Body screen -->
+              <rect x="78" y="122" width="44" height="28" rx="6" fill="var(--accent-bg)"/>
+              <text x="100" y="140" text-anchor="middle" font-size="10" fill="var(--primary)" font-family="monospace" font-weight="bold">USDC</text>
+
+              <!-- Left arm -->
+              <g class="mascot-arm">
+                <rect x="48" y="120" width="14" height="35" rx="7" fill="var(--primary)"/>
+                <circle cx="55" cy="158" r="8" fill="var(--primary)"/>
+              </g>
+
+              <!-- Right arm -->
+              <rect x="138" y="120" width="14" height="35" rx="7" fill="var(--primary)"/>
+              <circle cx="145" cy="158" r="8" fill="var(--primary)"/>
+
+              <!-- Legs -->
+              <rect x="78" y="168" width="16" height="14" rx="6" fill="var(--primary)"/>
+              <rect x="106" y="168" width="16" height="14" rx="6" fill="var(--primary)"/>
+            </g>
+          </svg>
+        </div>
+
+        <h1 class="hero-title" id="hero-title" data-i18n="hero_title">
+          Acessibilidade descentralizada para todos
+        </h1>
+        <p class="hero-subtitle" data-i18n="hero_subtitle">
+          Stepless é uma infraestrutura de mapeamento de acessibilidade na Arc Testnet,
+          onde contribuidores são recompensados em USDC por mapear e verificar locais acessíveis.
+        </p>
+        <div class="hero-actions">
+          <a href="dashboard.html" class="btn btn-primary btn-lg" data-i18n="hero_cta_dashboard">Abrir Dashboard</a>
+          <a href="#how" class="btn btn-secondary btn-lg" data-i18n="hero_cta_learn">Saiba Como Funciona</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Problem ── -->
+    <section class="section" id="problem" aria-labelledby="problem-title">
+      <div class="container">
+        <h2 class="section-title" id="problem-title" data-i18n="problem_title">O Problema</h2>
+        <p class="section-subtitle" data-i18n="problem_subtitle">Mais de 1 bilhão de pessoas vivem com alguma deficiência. A informação sobre acessibilidade é escassa, desatualizada e centralizada.</p>
+        <div class="problem-grid">
+          <div class="card">
+            <div class="card-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            </div>
+            <h3 class="card-title" data-i18n="problem_1_title">Dados Inexistentes</h3>
+            <p class="card-text" data-i18n="problem_1_desc">A maioria dos locais não tem informação de acessibilidade disponível. Pessoas com deficiência não sabem se podem acessar um local antes de chegar lá.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <h3 class="card-title" data-i18n="problem_2_title">Informação Desatualizada</h3>
+            <p class="card-text" data-i18n="problem_2_desc">Mapas centralizados ficam rapidamente desatualizados. Uma rampa removida ou elevador quebrado não é refletido em tempo hábil.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+            </div>
+            <h3 class="card-title" data-i18n="problem_3_title">Falta de Incentivo</h3>
+            <p class="card-text" data-i18n="problem_3_desc">Não há recompensa para quem mapeia ou verifica acessibilidade. A comunidade não tem motivação para contribuir com dados de qualidade.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <h3 class="card-title" data-i18n="problem_4_title">Plataformas Centralizadas</h3>
+            <p class="card-text" data-i18n="problem_4_desc">Dados de acessibilidade ficam presos em plataformas centralizadas que podem ser descontinuadas, censuradas ou monetizadas sem beneficiar a comunidade.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Solution ── -->
+    <section class="section" id="solution" aria-labelledby="solution-title">
+      <div class="container">
+        <h2 class="section-title" id="solution-title" data-i18n="solution_title">A Solução</h2>
+        <p class="section-subtitle" data-i18n="solution_subtitle">Stepless combina blockchain, incentivos econômicos e comunidade para criar um mapa de acessibilidade global, descentralizado e sempre atualizado.</p>
+        <div class="solution-grid">
+          <div class="card">
+            <div class="card-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </div>
+            <h3 class="card-title" data-i18n="solution_1_title">Recompensas em USDC</h3>
+            <p class="card-text" data-i18n="solution_1_desc">Contribuidores recebem USDC diretamente na Arc Testnet por mapear locais, verificar acessibilidade e reportar problemas. Pagamentos instantâneos, sem intermediários.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg>
+            </div>
+            <h3 class="card-title" data-i18n="solution_2_title">Oracle On-Chain</h3>
+            <p class="card-text" data-i18n="solution_2_desc">O contrato SteplessOracle registra locais e contribuições on-chain. Cada local tem coordenadas, categoria, foto (IPFS/Arweave) e status de verificação imutável.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <h3 class="card-title" data-i18n="solution_3_title">Verificação Descentralizada</h3>
+            <p class="card-text" data-i18n="solution_3_desc">Verificadores aprovados validam contribuições. O sistema de reputação on-chain garante qualidade e previne spam, com recompensas escalonadas por tipo de contribuição.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            </div>
+            <h3 class="card-title" data-i18n="solution_4_title">API x402</h3>
+            <p class="card-text" data-i18n="solution_4_desc">API de consulta via protocolo HTTP 402. Aplicativos podem buscar locais acessíveis e pagar por assinatura em USDC — micropagamentos nativos na Arc.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── How It Works ── -->
+    <section class="section" id="how" aria-labelledby="how-title">
+      <div class="container">
+        <h2 class="section-title" id="how-title" data-i18n="how_title">Como Funciona</h2>
+        <p class="section-subtitle" data-i18n="how_subtitle">Do mapeamento à recompensa em 4 passos simples.</p>
+        <div class="steps">
+          <div class="step card">
+            <h3 class="card-title" data-i18n="step_1_title">Mapear Local</h3>
+            <p class="card-text" data-i18n="step_1_desc">O contribuidor encontra um local acessível (rampa, elevador, banheiro), tira uma foto e registra as coordenadas GPS no SteplessOracle.</p>
+          </div>
+          <div class="step card">
+            <h3 class="card-title" data-i18n="step_2_title">Registrar On-Chain</h3>
+            <p class="card-text" data-i18n="step_2_desc">A contribuição é registrada na Arc Testnet com foto armazenada em IPFS/Arweave. O hash da foto fica imutável on-chain.</p>
+          </div>
+          <div class="step card">
+            <h3 class="card-title" data-i18n="step_3_title">Verificar</h3>
+            <p class="card-text" data-i18n="step_3_desc">Verificadores aprovados confirmam que a contribuição é válida. Contribuições verificadas qualificam-se para recompensa.</p>
+          </div>
+          <div class="step card">
+            <h3 class="card-title" data-i18n="step_4_title">Receber USDC</h3>
+            <p class="card-text" data-i18n="step_4_desc">O RewardDistributor paga USDC automaticamente ao contribuidor, baseado no tipo e qualidade da contribuição. Gas pago em USDC na Arc.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Reward Table ── -->
+    <section class="section" id="rewards" aria-labelledby="rewards-title">
+      <div class="container">
+        <h2 class="section-title" id="rewards-title" data-i18n="rewards_title">Tabela de Recompensas</h2>
+        <p class="section-subtitle" data-i18n="rewards_subtitle">Recompensas em USDC por tipo de contribuição, pagas automaticamente pelo contrato RewardDistributor.</p>
+        <div class="table-wrapper">
+          <table class="reward-table">
+            <thead>
+              <tr>
+                <th scope="col" data-i18n="reward_col_tier">Nível</th>
+                <th scope="col" data-i18n="reward_col_type">Tipo de Contribuição</th>
+                <th scope="col" data-i18n="reward_col_reward">Recompensa (USDC)</th>
+                <th scope="col" data-i18n="reward_col_desc">Descrição</th>
+              </tr>
+            </thead>
+            <tbody id="reward-table-body">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Tech Stack ── -->
+    <section class="section" id="tech" aria-labelledby="tech-title">
+      <div class="container">
+        <h2 class="section-title" id="tech-title" data-i18n="tech_title">Stack Tecnológico</h2>
+        <p class="section-subtitle" data-i18n="tech_subtitle">Tecnologias descentralizadas e open-source.</p>
+        <div class="tech-grid">
+          <div class="tech-item">Arc Testnet <small>Circle L1</small></div>
+          <div class="tech-item">USDC <small>Stablecoin nativo</small></div>
+          <div class="tech-item">Viem <small>TypeScript ETH lib</small></div>
+          <div class="tech-item">Solidity <small>Smart contracts</small></div>
+          <div class="tech-item">IPFS <small>Armazenamento de fotos</small></div>
+          <div class="tech-item">Arweave <small>Storage permanente</small></div>
+          <div class="tech-item">Goldsky <small>Subgraph indexing</small></div>
+          <div class="tech-item">x402 <small>HTTP payment protocol</small></div>
+          <div class="tech-item">Multicall3 <small>Batch reads</small></div>
+          <div class="tech-item">WCAG AA <small>Acessibilidade web</small></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Roadmap ── -->
+    <section class="section" id="roadmap" aria-labelledby="roadmap-title">
+      <div class="container">
+        <h2 class="section-title" id="roadmap-title" data-i18n="roadmap_title">Roadmap</h2>
+        <p class="section-subtitle" data-i18n="roadmap_subtitle">Caminho para um mapa de acessibilidade global.</p>
+        <div class="timeline">
+          <div class="timeline-item">
+            <div class="timeline-phase" data-i18n="roadmap_1_phase">Fase 1 — Q1 2026</div>
+            <h3 class="timeline-title" data-i18n="roadmap_1_title">Mainnet na Arc</h3>
+            <p class="timeline-desc" data-i18n="roadmap_1_desc">Deploy dos contratos na Arc mainnet. Integração completa com USDC nativo e faucet para onboarding de contribuidores.</p>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-phase" data-i18n="roadmap_2_phase">Fase 2 — Q2 2026</div>
+            <h3 class="timeline-title" data-i18n="roadmap_2_title">App Mobile</h3>
+            <p class="timeline-desc" data-i18n="roadmap_2_desc">App React Native com GPS, câmera e login social (Crossmint). Mapeamento offline-first com sync on-chain.</p>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-phase" data-i18n="roadmap_3_phase">Fase 3 — Q3 2026</div>
+            <h3 class="timeline-title" data-i18n="roadmap_3_title">API x402 Pública</h3>
+            <p class="timeline-desc" data-i18n="roadmap_3_desc">API pública com pagamento HTTP 402. Integração com Google Maps, Waze e aplicativos de mobilidade urbana.</p>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-phase" data-i18n="roadmap_4_phase">Fase 4 — Q4 2026</div>
+            <h3 class="timeline-title" data-i18n="roadmap_4_title">Governança DAO</h3>
+            <p class="timeline-desc" data-i18n="roadmap_4_desc">DAO para governança do treasury, eleição de verificadores e ajustes de recompensa. Votação on-chain em USDC.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Contributing ── -->
+    <section class="section" id="contributing" aria-labelledby="contributing-title">
+      <div class="container">
+        <h2 class="section-title" id="contributing-title" data-i18n="contributing_title">Contribuindo</h2>
+        <p class="section-subtitle" data-i18n="contributing_subtitle">Stepless é open-source. Toda contribuição é bem-vinda.</p>
+        <div class="card-grid">
+          <div class="card">
+            <h3 class="card-title" data-i18n="contrib_1_title">Desenvolvedores</h3>
+            <p class="card-text mb-2" data-i18n="contrib_1_desc">Contribua com smart contracts, frontend, mobile app ou API. Issues e PRs são bem-vindos no GitHub.</p>
+            <a href="https://github.com" class="btn btn-secondary btn-sm" data-i18n="contrib_1_btn">Ver no GitHub</a>
+          </div>
+          <div class="card">
+            <h3 class="card-title" data-i18n="contrib_2_title">Mapeadores</h3>
+            <p class="card-text mb-2" data-i18n="contrib_2_desc">Mapeie locais acessíveis na sua cidade e ganhe USDC. Use o dashboard para registrar contribuições.</p>
+            <a href="dashboard.html" class="btn btn-secondary btn-sm" data-i18n="contrib_2_btn">Abrir Dashboard</a>
+          </div>
+          <div class="card">
+            <h3 class="card-title" data-i18n="contrib_3_title">Verificadores</h3>
+            <p class="card-text mb-2" data-i18n="contrib_3_desc">Torne-se um verificador aprovado para validar contribuições e ganhar recompensas adicionais.</p>
+            <a href="dashboard.html" class="btn btn-secondary btn-sm" data-i18n="contrib_3_btn">Saber Mais</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ════════════════════════════════════════════════
+       Footer
+       ════════════════════════════════════════════════ -->
+  <footer class="footer" role="contentinfo">
+    <div class="container">
+      <div class="footer-links">
+        <a href="https://testnet.arcscan.app" target="_blank" rel="noopener" data-i18n="footer_explorer">ArcScan</a>
+        <a href="https://faucet.circle.com" target="_blank" rel="noopener" data-i18n="footer_faucet">Faucet</a>
+        <a href="https://github.com" target="_blank" rel="noopener" data-i18n="footer_github">GitHub</a>
+        <a href="dashboard.html" data-i18n="footer_dashboard">Dashboard</a>
+      </div>
+      <p data-i18n="footer_text">Stepless — Infraestrutura de acessibilidade descentralizada na Arc Testnet. Open-source, sem tokens de governança, recompensas em USDC.</p>
+      <p class="mt-1" style="font-size:0.8rem; color:var(--text-light);" data-i18n="footer_disclaimer">Projeto para Circle Developer Grants. Não é aconselhamento financeiro.</p>
+    </div>
+  </footer>
+
+  <!-- ════════════════════════════════════════════════
+       Scripts
+       ════════════════════════════════════════════════ -->
+  <script type="module">
+    /* ── Arc Config ── */
+    import { SteplessConfig } from './arc-config.js';
+    window.SteplessConfig = SteplessConfig;
+
+    /* ── i18n ── */
+    const I18N = {
+      pt: {
+        nav_problem: "Problema", nav_solution: "Solução", nav_how: "Como Funciona",
+        nav_rewards: "Recompensas", nav_tech: "Tecnologia", nav_roadmap: "Roadmap",
+        nav_dashboard: "Dashboard", connect_wallet: "Conectar Wallet",
+        hero_title: "Acessibilidade descentralizada para todos",
+        hero_subtitle: "Stepless é uma infraestrutura de mapeamento de acessibilidade na Arc Testnet, onde contribuidores são recompensados em USDC por mapear e verificar locais acessíveis.",
+        hero_cta_dashboard: "Abrir Dashboard", hero_cta_learn: "Saiba Como Funciona",
+        problem_title: "O Problema",
+        problem_subtitle: "Mais de 1 bilhão de pessoas vivem com alguma deficiência. A informação sobre acessibilidade é escassa, desatualizada e centralizada.",
+        problem_1_title: "Dados Inexistentes", problem_1_desc: "A maioria dos locais não tem informação de acessibilidade disponível. Pessoas com deficiência não sabem se podem acessar um local antes de chegar lá.",
+        problem_2_title: "Informação Desatualizada", problem_2_desc: "Mapas centralizados ficam rapidamente desatualizados. Uma rampa removida ou elevador quebrado não é refletido em tempo hábil.",
+        problem_3_title: "Falta de Incentivo", problem_3_desc: "Não há recompensa para quem mapeia ou verifica acessibilidade. A comunidade não tem motivação para contribuir com dados de qualidade.",
+        problem_4_title: "Plataformas Centralizadas", problem_4_desc: "Dados de acessibilidade ficam presos em plataformas centralizadas que podem ser descontinuadas, censuradas ou monetizadas sem beneficiar a comunidade.",
+        solution_title: "A Solução",
+        solution_subtitle: "Stepless combina blockchain, incentivos econômicos e comunidade para criar um mapa de acessibilidade global, descentralizado e sempre atualizado.",
+        solution_1_title: "Recompensas em USDC", solution_1_desc: "Contribuidores recebem USDC diretamente na Arc Testnet por mapear locais, verificar acessibilidade e reportar problemas. Pagamentos instantâneos, sem intermediários.",
+        solution_2_title: "Oracle On-Chain", solution_2_desc: "O contrato SteplessOracle registra locais e contribuições on-chain. Cada local tem coordenadas, categoria, foto (IPFS/Arweave) e status de verificação imutável.",
+        solution_3_title: "Verificação Descentralizada", solution_3_desc: "Verificadores aprovados validam contribuições. O sistema de reputação on-chain garante qualidade e previne spam, com recompensas escalonadas por tipo de contribuição.",
+        solution_4_title: "API x402", solution_4_desc: "API de consulta via protocolo HTTP 402. Aplicativos podem buscar locais acessíveis e pagar por assinatura em USDC — micropagamentos nativos na Arc.",
+        how_title: "Como Funciona", how_subtitle: "Do mapeamento à recompensa em 4 passos simples.",
+        step_1_title: "Mapear Local", step_1_desc: "O contribuidor encontra um local acessível (rampa, elevador, banheiro), tira uma foto e registra as coordenadas GPS no SteplessOracle.",
+        step_2_title: "Registrar On-Chain", step_2_desc: "A contribuição é registrada na Arc Testnet com foto armazenada em IPFS/Arweave. O hash da foto fica imutável on-chain.",
+        step_3_title: "Verificar", step_3_desc: "Verificadores aprovados confirmam que a contribuição é válida. Contribuições verificadas qualificam-se para recompensa.",
+        step_4_title: "Receber USDC", step_4_desc: "O RewardDistributor paga USDC automaticamente ao contribuidor, baseado no tipo e qualidade da contribuição. Gas pago em USDC na Arc.",
+        rewards_title: "Tabela de Recompensas", rewards_subtitle: "Recompensas em USDC por tipo de contribuição, pagas automaticamente pelo contrato RewardDistributor.",
+        reward_col_tier: "Nível", reward_col_type: "Tipo de Contribuição", reward_col_reward: "Recompensa (USDC)", reward_col_desc: "Descrição",
+        tech_title: "Stack Tecnológico", tech_subtitle: "Tecnologias descentralizadas e open-source.",
+        roadmap_title: "Roadmap", roadmap_subtitle: "Caminho para um mapa de acessibilidade global.",
+        roadmap_1_phase: "Fase 1 — Q1 2026", roadmap_1_title: "Mainnet na Arc", roadmap_1_desc: "Deploy dos contratos na Arc mainnet. Integração completa com USDC nativo e faucet para onboarding de contribuidores.",
+        roadmap_2_phase: "Fase 2 — Q2 2026", roadmap_2_title: "App Mobile", roadmap_2_desc: "App React Native com GPS, câmera e login social (Crossmint). Mapeamento offline-first com sync on-chain.",
+        roadmap_3_phase: "Fase 3 — Q3 2026", roadmap_3_title: "API x402 Pública", roadmap_3_desc: "API pública com pagamento HTTP 402. Integração com Google Maps, Waze e aplicativos de mobilidade urbana.",
+        roadmap_4_phase: "Fase 4 — Q4 2026", roadmap_4_title: "Governança DAO", roadmap_4_desc: "DAO para governança do treasury, eleição de verificadores e ajustes de recompensa. Votação on-chain em USDC.",
+        contributing_title: "Contribuindo", contributing_subtitle: "Stepless é open-source. Toda contribuição é bem-vinda.",
+        contrib_1_title: "Desenvolvedores", contrib_1_desc: "Contribua com smart contracts, frontend, mobile app ou API. Issues e PRs são bem-vindos no GitHub.", contrib_1_btn: "Ver no GitHub",
+        contrib_2_title: "Mapeadores", contrib_2_desc: "Mapeie locais acessíveis na sua cidade e ganhe USDC. Use o dashboard para registrar contribuições.", contrib_2_btn: "Abrir Dashboard",
+        contrib_3_title: "Verificadores", contrib_3_desc: "Torne-se um verificador aprovado para validar contribuições e ganhar recompensas adicionais.", contrib_3_btn: "Saber Mais",
+        footer_explorer: "ArcScan", footer_faucet: "Faucet", footer_github: "GitHub", footer_dashboard: "Dashboard",
+        footer_text: "Stepless — Infraestrutura de acessibilidade descentralizada na Arc Testnet. Open-source, sem tokens de governança, recompensas em USDC.",
+        footer_disclaimer: "Projeto para Circle Developer Grants. Não é aconselhamento financeiro.",
+        wallet_connected: "Conectado", wallet_disconnected: "Desconectado", wallet_connecting: "Conectando...",
+        wallet_no_provider: "Nenhuma wallet detectada. Instale MetaMask ou outra wallet compatível.",
+        wallet_wrong_chain: "Rede incorreta. Conecte-se à Arc Testnet (Chain ID: 5042002).",
+        wallet_balance: "Saldo USDC",
+        reward_basic: "Básico — Mapear local", reward_standard: "Padrão — Verificar acesso", reward_premium: "Premium — Reportar problema", reward_critical: "Crítico — Atualização urgente",
+        reward_basic_desc: "Mapear um novo local acessível com foto e coordenadas", reward_standard_desc: "Verificar e confirmar acessibilidade de um local existente",
+        reward_premium_desc: "Reportar problema de acessibilidade (rampa quebrada, etc.)", reward_critical_desc: "Atualização urgente de informação crítica desatualizada",
+      },
+      en: {
+        nav_problem: "Problem", nav_solution: "Solution", nav_how: "How It Works",
+        nav_rewards: "Rewards", nav_tech: "Tech", nav_roadmap: "Roadmap",
+        nav_dashboard: "Dashboard", connect_wallet: "Connect Wallet",
+        hero_title: "Decentralized accessibility for everyone",
+        hero_subtitle: "Stepless is an accessibility mapping infrastructure on Arc Testnet, where contributors are rewarded in USDC for mapping and verifying accessible locations.",
+        hero_cta_dashboard: "Open Dashboard", hero_cta_learn: "Learn How It Works",
+        problem_title: "The Problem",
+        problem_subtitle: "Over 1 billion people live with some form of disability. Accessibility information is scarce, outdated, and centralized.",
+        problem_1_title: "Missing Data", problem_1_desc: "Most places have no accessibility information available. People with disabilities don't know if they can access a location before arriving.",
+        problem_2_title: "Outdated Information", problem_2_desc: "Centralized maps quickly become outdated. A removed ramp or broken elevator isn't reflected in time.",
+        problem_3_title: "Lack of Incentive", problem_3_desc: "There's no reward for mapping or verifying accessibility. The community has no motivation to contribute quality data.",
+        problem_4_title: "Centralized Platforms", problem_4_desc: "Accessibility data is locked in centralized platforms that can be discontinued, censored, or monetized without benefiting the community.",
+        solution_title: "The Solution",
+        solution_subtitle: "Stepless combines blockchain, economic incentives, and community to create a global, decentralized, always-updated accessibility map.",
+        solution_1_title: "USDC Rewards", solution_1_desc: "Contributors receive USDC directly on Arc Testnet for mapping locations, verifying accessibility, and reporting issues. Instant payments, no intermediaries.",
+        solution_2_title: "On-Chain Oracle", solution_2_desc: "The SteplessOracle contract records locations and contributions on-chain. Each location has coordinates, category, photo (IPFS/Arweave), and immutable verification status.",
+        solution_3_title: "Decentralized Verification", solution_3_desc: "Approved verifiers validate contributions. The on-chain reputation system ensures quality and prevents spam, with tiered rewards by contribution type.",
+        solution_4_title: "x402 API", solution_4_desc: "Query API via HTTP 402 protocol. Apps can search accessible locations and pay for subscriptions in USDC — native micropayments on Arc.",
+        how_title: "How It Works", how_subtitle: "From mapping to reward in 4 simple steps.",
+        step_1_title: "Map Location", step_1_desc: "The contributor finds an accessible location (ramp, elevator, restroom), takes a photo, and records GPS coordinates in SteplessOracle.",
+        step_2_title: "Register On-Chain", step_2_desc: "The contribution is registered on Arc Testnet with photo stored on IPFS/Arweave. The photo hash is immutable on-chain.",
+        step_3_title: "Verify", step_3_desc: "Approved verifiers confirm the contribution is valid. Verified contributions qualify for rewards.",
+        step_4_title: "Receive USDC", step_4_desc: "The RewardDistributor pays USDC automatically to the contributor, based on contribution type and quality. Gas paid in USDC on Arc.",
+        rewards_title: "Reward Table", rewards_subtitle: "USDC rewards by contribution type, paid automatically by the RewardDistributor contract.",
+        reward_col_tier: "Tier", reward_col_type: "Contribution Type", reward_col_reward: "Reward (USDC)", reward_col_desc: "Description",
+        tech_title: "Tech Stack", tech_subtitle: "Decentralized and open-source technologies.",
+        roadmap_title: "Roadmap", roadmap_subtitle: "Path to a global accessibility map.",
+        roadmap_1_phase: "Phase 1 — Q1 2026", roadmap_1_title: "Arc Mainnet", roadmap_1_desc: "Deploy contracts on Arc mainnet. Full integration with native USDC and faucet for contributor onboarding.",
+        roadmap_2_phase: "Phase 2 — Q2 2026", roadmap_2_title: "Mobile App", roadmap_2_desc: "React Native app with GPS, camera, and social login (Crossmint). Offline-first mapping with on-chain sync.",
+        roadmap_3_phase: "Phase 3 — Q3 2026", roadmap_3_title: "Public x402 API", roadmap_3_desc: "Public API with HTTP 402 payment. Integration with Google Maps, Waze, and urban mobility apps.",
+        roadmap_4_phase: "Phase 4 — Q4 2026", roadmap_4_title: "DAO Governance", roadmap_4_desc: "DAO for treasury governance, verifier elections, and reward adjustments. On-chain voting in USDC.",
+        contributing_title: "Contributing", contributing_subtitle: "Stepless is open-source. All contributions are welcome.",
+        contrib_1_title: "Developers", contrib_1_desc: "Contribute to smart contracts, frontend, mobile app, or API. Issues and PRs are welcome on GitHub.", contrib_1_btn: "View on GitHub",
+        contrib_2_title: "Mappers", contrib_2_desc: "Map accessible locations in your city and earn USDC. Use the dashboard to register contributions.", contrib_2_btn: "Open Dashboard",
+        contrib_3_title: "Verifiers", contrib_3_desc: "Become an approved verifier to validate contributions and earn additional rewards.", contrib_3_btn: "Learn More",
+        footer_explorer: "ArcScan", footer_faucet: "Faucet", footer_github: "GitHub", footer_dashboard: "Dashboard",
+        footer_text: "Stepless — Decentralized accessibility infrastructure on Arc Testnet. Open-source, no governance tokens, rewards in USDC.",
+        footer_disclaimer: "Project for Circle Developer Grants. Not financial advice.",
+        wallet_connected: "Connected", wallet_disconnected: "Disconnected", wallet_connecting: "Connecting...",
+        wallet_no_provider: "No wallet detected. Install MetaMask or another compatible wallet.",
+        wallet_wrong_chain: "Wrong network. Connect to Arc Testnet (Chain ID: 5042002).",
+        wallet_balance: "USDC Balance",
+        reward_basic: "Basic — Map location", reward_standard: "Standard — Verify access", reward_premium: "Premium — Report issue", reward_critical: "Critical — Urgent update",
+        reward_basic_desc: "Map a new accessible location with photo and coordinates", reward_standard_desc: "Verify and confirm accessibility of an existing location",
+        reward_premium_desc: "Report accessibility issue (broken ramp, etc.)", reward_critical_desc: "Urgent update of critical outdated information",
+      },
+      es: {
+        nav_problem: "Problema", nav_solution: "Solución", nav_how: "Cómo Funciona",
+        nav_rewards: "Recompensas", nav_tech: "Tecnología", nav_roadmap: "Roadmap",
+        nav_dashboard: "Dashboard", connect_wallet: "Conectar Wallet",
+        hero_title: "Accesibilidad descentralizada para todos",
+        hero_subtitle: "Stepless es una infraestructura de mapeo de accesibilidad en Arc Testnet, donde los contribuidores son recompensados en USDC por mapear y verificar lugares accesibles.",
+        hero_cta_dashboard: "Abrir Dashboard", hero_cta_learn: "Cómo Funciona",
+        problem_title: "El Problema",
+        problem_subtitle: "Más de 1 mil millones de personas viven con alguna discapacidad. La información sobre accesibilidad es escasa, desactualizada y centralizada.",
+        problem_1_title: "Datos Inexistentes", problem_1_desc: "La mayoría de los lugares no tienen información de accesibilidad disponible. Las personas con discapacidad no saben si pueden acceder a un lugar antes de llegar.",
+        problem_2_title: "Información Desactualizada", problem_2_desc: "Los mapas centralizados quedan rápidamente desactualizados. Una rampa removida o ascensor roto no se refleja a tiempo.",
+        problem_3_title: "Falta de Incentivo", problem_3_desc: "No hay recompensa para quien mapea o verifica accesibilidad. La comunidad no tiene motivación para contribuir con datos de calidad.",
+        problem_4_title: "Plataformas Centralizadas", problem_4_desc: "Los datos de accesibilidad están atrapados en plataformas centralizadas que pueden ser descontinuadas, censuradas o monetizadas sin beneficiar a la comunidad.",
+        solution_title: "La Solución",
+        solution_subtitle: "Stepless combina blockchain, incentivos económicos y comunidad para crear un mapa de accesibilidad global, descentralizado y siempre actualizado.",
+        solution_1_title: "Recompensas en USDC", solution_1_desc: "Los contribuidores reciben USDC directamente en Arc Testnet por mapear lugares, verificar accesibilidad y reportar problemas. Pagos instantáneos, sin intermediarios.",
+        solution_2_title: "Oracle On-Chain", solution_2_desc: "El contrato SteplessOracle registra lugares y contribuciones on-chain. Cada lugar tiene coordenadas, categoría, foto (IPFS/Arweave) y estado de verificación inmutable.",
+        solution_3_title: "Verificación Descentralizada", solution_3_desc: "Verificadores aprobados validan contribuciones. El sistema de reputación on-chain garantiza calidad y previene spam, con recompensas escalonadas por tipo de contribución.",
+        solution_4_title: "API x402", solution_4_desc: "API de consulta vía protocolo HTTP 402. Las apps pueden buscar lugares accesibles y pagar suscripción en USDC — micropagos nativos en Arc.",
+        how_title: "Cómo Funciona", how_subtitle: "Del mapeo a la recompensa en 4 pasos simples.",
+        step_1_title: "Mapear Lugar", step_1_desc: "El contribuidor encuentra un lugar accesible (rampa, ascensor, baño), toma una foto y registra las coordenadas GPS en SteplessOracle.",
+        step_2_title: "Registrar On-Chain", step_2_desc: "La contribución se registra en Arc Testnet con foto almacenada en IPFS/Arweave. El hash de la foto es inmutable on-chain.",
+        step_3_title: "Verificar", step_3_desc: "Verificadores aprobados confirman que la contribución es válida. Las contribuciones verificadas califican para recompensa.",
+        step_4_title: "Recibir USDC", step_4_desc: "El RewardDistributor paga USDC automáticamente al contribuidor, según tipo y calidad de contribución. Gas pagado en USDC en Arc.",
+        rewards_title: "Tabla de Recompensas", rewards_subtitle: "Recompensas en USDC por tipo de contribución, pagadas automáticamente por el contrato RewardDistributor.",
+        reward_col_tier: "Nivel", reward_col_type: "Tipo de Contribución", reward_col_reward: "Recompensa (USDC)", reward_col_desc: "Descripción",
+        tech_title: "Stack Tecnológico", tech_subtitle: "Tecnologías descentralizadas y open-source.",
+        roadmap_title: "Roadmap", roadmap_subtitle: "Camino hacia un mapa de accesibilidad global.",
+        roadmap_1_phase: "Fase 1 — Q1 2026", roadmap_1_title: "Mainnet en Arc", roadmap_1_desc: "Deploy de contratos en Arc mainnet. Integración completa con USDC nativo y faucet para onboarding de contribuidores.",
+        roadmap_2_phase: "Fase 2 — Q2 2026", roadmap_2_title: "App Móvil", roadmap_2_desc: "App React Native con GPS, cámara y login social (Crossmint). Mapeo offline-first con sync on-chain.",
+        roadmap_3_phase: "Fase 3 — Q3 2026", roadmap_3_title: "API x402 Pública", roadmap_3_desc: "API pública con pago HTTP 402. Integración con Google Maps, Waze y apps de movilidad urbana.",
+        roadmap_4_phase: "Fase 4 — Q4 2026", roadmap_4_title: "Gobernanza DAO", roadmap_4_desc: "DAO para gobernanza del treasury, elección de verificadores y ajustes de recompensa. Votación on-chain en USDC.",
+        contributing_title: "Contribuyendo", contributing_subtitle: "Stepless es open-source. Todas las contribuciones son bienvenidas.",
+        contrib_1_title: "Desarrolladores", contrib_1_desc: "Contribuye con smart contracts, frontend, app móvil o API. Issues y PRs son bienvenidos en GitHub.", contrib_1_btn: "Ver en GitHub",
+        contrib_2_title: "Mapeadores", contrib_2_desc: "Mapea lugares accesibles en tu ciudad y gana USDC. Usa el dashboard para registrar contribuciones.", contrib_2_btn: "Abrir Dashboard",
+        contrib_3_title: "Verificadores", contrib_3_desc: "Conviértete en verificador aprobado para validar contribuciones y ganar recompensas adicionales.", contrib_3_btn: "Saber Más",
+        footer_explorer: "ArcScan", footer_faucet: "Faucet", footer_github: "GitHub", footer_dashboard: "Dashboard",
+        footer_text: "Stepless — Infraestructura de accesibilidad descentralizada en Arc Testnet. Open-source, sin tokens de gobernanza, recompensas en USDC.",
+        footer_disclaimer: "Proyecto para Circle Developer Grants. No es asesoramiento financiero.",
+        wallet_connected: "Conectado", wallet_disconnected: "Desconectado", wallet_connecting: "Conectando...",
+        wallet_no_provider: "No se detectó wallet. Instala MetaMask u otra wallet compatible.",
+        wallet_wrong_chain: "Red incorrecta. Conéctate a Arc Testnet (Chain ID: 5042002).",
+        wallet_balance: "Saldo USDC",
+        reward_basic: "Básico — Mapear lugar", reward_standard: "Estándar — Verificar acceso", reward_premium: "Premium — Reportar problema", reward_critical: "Crítico — Actualización urgente",
+        reward_basic_desc: "Mapear un nuevo lugar accesible con foto y coordenadas", reward_standard_desc: "Verificar y confirmar accesibilidad de un lugar existente",
+        reward_premium_desc: "Reportar problema de accesibilidad (rampa rota, etc.)", reward_critical_desc: "Actualización urgente de información crítica desactualizada",
+      }
+    };
+
+    let currentLang = 'pt';
+
+    /* ── Language detection ── */
+    function detectLanguage() {
+      const browserLang = (navigator.language || 'pt-BR').toLowerCase();
+      if (browserLang.startsWith('en')) return 'en';
+      if (browserLang.startsWith('es')) return 'es';
+      return 'pt';
+    }
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      document.documentElement.lang = lang === 'pt' ? 'pt-BR' : lang;
+      const strings = I18N[lang];
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (strings[key]) el.textContent = strings[key];
+      });
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === lang);
+        btn.setAttribute('aria-pressed', btn.dataset.lang === lang);
+      });
+      renderRewardTable();
+    }
+
+    /* ── Reward table ── */
+    function renderRewardTable() {
+      const tbody = document.getElementById('reward-table-body');
+      if (!tbody) return;
+      const strings = I18N[currentLang];
+      const tiers = [
+        { tier: 0, label: strings.reward_basic, amount: '0.50', desc: strings.reward_basic_desc },
+        { tier: 1, label: strings.reward_standard, amount: '1.00', desc: strings.reward_standard_desc },
+        { tier: 2, label: strings.reward_premium, amount: '2.50', desc: strings.reward_premium_desc },
+        { tier: 3, label: strings.reward_critical, amount: '5.00', desc: strings.reward_critical_desc },
+      ];
+      tbody.innerHTML = tiers.map(t => `
+        <tr>
+          <td><span class="badge badge-info">T${t.tier}</span></td>
+          <td style="text-align:left; color:var(--text); font-weight:600;">${t.label}</td>
+          <td><span class="reward-amount">${t.amount}</span></td>
+          <td style="text-align:left;">${t.desc}</td>
+        </tr>
+      `).join('');
+    }
+
+    /* ── Theme ── */
+    function initTheme() {
+      const saved = localStorage.getItem('stepless-theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const theme = saved || (prefersDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+      document.getElementById('theme-icon').textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('stepless-theme', next);
+      document.getElementById('theme-icon').textContent = next === 'dark' ? '☀️' : '🌙';
+    }
+
+    /* ── Mobile nav ── */
+    function initNav() {
+      const toggle = document.querySelector('.nav-toggle');
+      const links = document.getElementById('nav-links');
+      if (toggle) {
+        toggle.addEventListener('click', () => {
+          const open = links.classList.toggle('open');
+          toggle.setAttribute('aria-expanded', open);
+        });
+      }
+    }
+
+    /* ── Wallet connection via Viem (CDN esm.sh) ── */
+    let viemClient = null;
+    let walletAddress = null;
+
+    async function loadViem() {
+      if (window.viem) return window.viem;
+      try {
+        const viem = await import('https://esm.sh/viem@2.21.0');
+        window.viem = viem;
+        return viem;
+      } catch (e) {
+        console.error('Failed to load Viem:', e);
+        return null;
+      }
+    }
+
+    async function connectWallet() {
+      const btn = document.getElementById('connect-wallet-btn');
+      const info = document.getElementById('wallet-info');
+      const addrEl = document.getElementById('wallet-address');
+      const balEl = document.getElementById('wallet-balance');
+      const strings = I18N[currentLang];
+
+      if (!window.ethereum) {
+        alert(strings.wallet_no_provider);
+        return;
+      }
+
+      btn.textContent = strings.wallet_connecting;
+      btn.disabled = true;
+
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        walletAddress = accounts[0];
+
+        // Check / switch to Arc Testnet
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+        const arcChainId = '0x' + (5042002).toString(16);
+
+        if (chainId !== arcChainId) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: arcChainId }],
+            });
+          } catch (switchError) {
+            // Chain not added — add it
+            if (switchError.code === 4902) {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: arcChainId,
+                  chainName: 'Arc Testnet',
+                  nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 6 },
+                  rpcUrls: ['https://rpc.testnet.arc.network'],
+                  blockExplorerUrls: ['https://testnet.arcscan.app'],
+                  faucets: ['https://faucet.circle.com'],
+                }],
+              });
+            } else {
+              throw switchError;
+            }
+          }
+        }
+
+        // Load Viem and create client
+        const viem = await loadViem();
+        if (viem) {
+          const { createPublicClient, http, formatUnits, getContract } = viem;
+          const cfg = window.SteplessConfig;
+          viemClient = createPublicClient({
+            chain: cfg.chain,
+            transport: http(),
+          });
+
+          // Read USDC balance
+          const usdcContract = getContract({
+            address: cfg.tokens.USDC.address,
+            abi: cfg.abis.ERC20,
+            client: viemClient,
+          });
+
+          const balance = await usdcContract.read.balanceOf([walletAddress]);
+          const formatted = formatUnits(balance, 6);
+          balEl.textContent = `${formatted} USDC`;
+        }
+
+        btn.style.display = 'none';
+        info.classList.add('connected');
+        addrEl.textContent = `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
+
+      } catch (err) {
+        console.error('Wallet connection failed:', err);
+        alert(err.message || strings.wallet_wrong_chain);
+        btn.textContent = strings.connect_wallet;
+        btn.disabled = false;
+      }
+    }
+
+    /* ── Init ── */
+    document.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      initNav();
+      setLanguage(detectLanguage());
+
+      document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+      document.getElementById('connect-wallet-btn').addEventListener('click', connectWallet);
+
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
+      });
+
+      // Listen for account/chain changes
+      if (window.ethereum) {
+        window.ethereum.on('accountsChanged', () => location.reload());
+        window.ethereum.on('chainChanged', () => location.reload());
+      }
+    });
+  </script>
+</body>
+</html>

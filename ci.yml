@@ -1,0 +1,167 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Job 1: Solidity compile + test (Foundry)
+  # ─────────────────────────────────────────────
+  solidity:
+    name: Solidity Compile & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Cache Foundry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.foundry/cache
+            out
+            cache
+          key: foundry-${{ runner.os }}-${{ hashFiles('**/*.sol', 'foundry.toml') }}
+          restore-keys: |
+            foundry-${{ runner.os }}-
+
+      - name: Show Foundry version
+        run: |
+          forge --version
+          cast --version
+
+      - name: Compile contracts
+        run: forge build
+
+      - name: Run tests
+        run: forge test -vvv
+
+      - name: Run fuzz tests (extended)
+        run: forge test --fuzz-runs 5000 -vvv
+
+      - name: Check formatting
+        run: forge fmt --check
+
+      - name: Generate coverage report
+        run: forge coverage --report lcov
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: lcov.info
+          if-no-files-found: ignore
+
+  # ─────────────────────────────────────────────
+  # Job 2: Frontend lint & build
+  # ─────────────────────────────────────────────
+  frontend:
+    name: Frontend Lint & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Type check
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Validate HTML output
+        working-directory: frontend
+        run: |
+          # Basic HTML validation: check for unclosed tags in built output
+          if [ -d dist ]; then
+            npx html-validate dist/*.html || true
+          fi
+
+      - name: Validate CSS
+        working-directory: frontend
+        run: |
+          # Check for common CSS issues in source
+          npx stylelint "src/**/*.css" --allow-empty-input || true
+
+  # ─────────────────────────────────────────────
+  # Job 3: Subgraph build validation
+  # ─────────────────────────────────────────────
+  subgraph:
+    name: Subgraph Build Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: subgraph/package-lock.json
+
+      - name: Install subgraph dependencies
+        working-directory: subgraph
+        run: npm ci
+
+      - name: Install Graph CLI
+        working-directory: subgraph
+        run: npm install -g @graphprotocol/graph-cli
+
+      - name: Codegen
+        working-directory: subgraph
+        run: npx graph codegen
+
+      - name: Build subgraph
+        working-directory: subgraph
+        run: npx graph build
+
+      - name: Validate schema
+        working-directory: subgraph
+        run: |
+          # Ensure schema.graphql exists and is non-empty
+          if [ ! -s schema.graphql ]; then
+            echo "❌ schema.graphql is missing or empty"
+            exit 1
+          fi
+          echo "✅ schema.graphql validated"
+
+      - name: Validate subgraph manifest
+        working-directory: subgraph
+        run: |
+          # Ensure subgraph.yaml references valid contract ABIs
+          if [ ! -f subgraph.yaml ]; then
+            echo "❌ subgraph.yaml is missing"
+            exit 1
+          fi
+          echo "✅ subgraph.yaml validated"

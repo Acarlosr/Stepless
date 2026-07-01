@@ -1,0 +1,108 @@
+# Stepless Subgraph Configuration (Goldsky)
+# Goldsky supports Arc Testnet — confirmed via Arc House feed (May 2026).
+# Deploy: goldsky subgraph deploy stepless-v1
+# Docs: https://docs.goldsky.com
+
+specVersion: 1.0.0
+schema:
+  file: ./schema.graphql
+dataSources:
+  # ── RewardDistributor ──────────────────────────────────────────────────
+  - kind: ethereum/contract
+    name: RewardDistributor
+    network: arc-testnet
+    source:
+      # Replace with actual deployed address
+      address: "0x_REWARD_DISTRIBUTOR_ADDRESS"
+      abi: RewardDistributor
+      startBlock: 0  # Set to deploy block
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - RewardPayment
+        - Contributor
+        - TreasuryEvent
+        - VerifierEvent
+      abis:
+        - name: RewardDistributor
+          file: ./abis/RewardDistributor.json
+      eventHandlers:
+        - event: RewardPaid(bytes32,indexed address,uint256,uint8,uint256)
+          handler: handleRewardPaid
+        - event: RewardFailed(bytes32,indexed address,uint256,bytes)
+          handler: handleRewardFailed
+        - event: TreasuryFunded(indexed address,uint256,uint256)
+          handler: handleTreasuryFunded
+        - event: TreasuryWithdrawn(indexed address,uint256,uint256)
+          handler: handleTreasuryWithdrawn
+        - event: VerifierRegistered(indexed address,uint256)
+          handler: handleVerifierRegistered
+        - event: VerifierSlashed(indexed address,uint256,string)
+          handler: handleVerifierSlashed
+        - event: RewardAmountUpdated(uint8,uint256,uint256)
+          handler: handleRewardAmountUpdated
+        - event: PausedEvent(indexed address)
+          handler: handlePaused
+        - event: UnpausedEvent(indexed address)
+          handler: handleUnpaused
+      file: ./src/mapping.ts
+
+  # ── SteplessOracle ─────────────────────────────────────────────────────
+  - kind: ethereum/contract
+    name: SteplessOracle
+    network: arc-testnet
+    source:
+      address: "0x_ORACLE_ADDRESS"
+      abi: SteplessOracle
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Location
+        - Contribution
+      abis:
+        - name: SteplessOracle
+          file: ./abis/SteplessOracle.json
+      eventHandlers:
+        - event: LocationRegistered(bytes32,indexed address,uint256,uint256,uint256)
+          handler: handleLocationRegistered
+        - event: ContributionSubmitted(bytes32,indexed bytes32,indexed address,uint8,bytes32,uint256)
+          handler: handleContributionSubmitted
+        - event: ContributionVerified(bytes32,indexed address,indexed address,uint256)
+          handler: handleContributionVerified
+        - event: ContributionRejected(bytes32,indexed address,string,uint256)
+          handler: handleContributionRejected
+      file: ./src/mapping.ts
+
+  # ── X402API ───────────────────────────────────────────────────────────
+  - kind: ethereum/contract
+    name: X402API
+    network: arc-testnet
+    source:
+      address: "0x_X402API_ADDRESS"
+      abi: X402API
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - APIQuery
+        - Subscription
+      abis:
+        - name: X402API
+          file: ./abis/X402API.json
+      eventHandlers:
+        - event: QueryExecuted(indexed address,indexed uint8,uint256,bytes32,uint256)
+          handler: handleQueryExecuted
+        - event: SubscriptionPurchased(indexed address,uint256,uint256,uint256,uint256)
+          handler: handleSubscriptionPurchased
+        - event: FeeUpdated(uint8,uint256,uint256)
+          handler: handleFeeUpdated
+        - event: RevenueWithdrawn(indexed address,uint256)
+          handler: handleRevenueWithdrawn
+      file: ./src/mapping.ts
