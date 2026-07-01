@@ -429,19 +429,33 @@ async function handleRegisterLocation(e) {
     showAlert('register-alert', 'danger', s.err_tx_failed || 'Preencha todos os campos.');
     return;
   }
+  if (!photoInput.files || photoInput.files.length === 0) {
+    showAlert('register-alert', 'danger', s.reg_photo_no_gps || 'Foto obrigatória para verificar localização.');
+    return;
+  }
 
   submitBtn.disabled = true;
   submitBtn.textContent = s.loading || 'Loading...';
 
   try {
     const viem = window.viem;
+    const photoFile = photoInput.files[0];
 
-    // Hash do arquivo de foto → bytes32 (opcional)
-    let dataHash = null;
-    if (photoInput.files && photoInput.files.length > 0) {
-      const photoBuffer = await photoInput.files[0].arrayBuffer();
-      dataHash = viem.keccak256(new Uint8Array(photoBuffer));
+    // ── Extrai EXIF GPS da foto ──────────────────────────────────────────
+    let exifLat = null, exifLng = null, exifTimestamp = null;
+    if (window.exifr) {
+      try {
+        const exif = await window.exifr.gps(photoFile);
+        if (exif) { exifLat = exif.latitude; exifLng = exif.longitude; }
+        const tags = await window.exifr.parse(photoFile, ['DateTimeOriginal', 'CreateDate']);
+        if (tags?.DateTimeOriginal) exifTimestamp = tags.DateTimeOriginal.toISOString();
+        else if (tags?.CreateDate) exifTimestamp = tags.CreateDate.toISOString();
+      } catch (_) { /* EXIF parse falhou silenciosamente — relay vai rejeitar sem GPS */ }
     }
+
+    // Hash da foto
+    const photoBuffer = await photoFile.arrayBuffer();
+    const dataHash = viem.keccak256(new Uint8Array(photoBuffer));
 
     // lat/lng em inteiros (multiplicar por 1e6)
     const latPacked = Math.round(lat * 1e6);
@@ -455,14 +469,14 @@ async function handleRegisterLocation(e) {
       )
     );
 
-    // Chama o relayer — ele é authorized no Oracle e paga o gas
+    // Chama o relayer — ele valida EXIF server-side e paga o gas
     const resp = await fetch('/api/relay', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'registerLocation',
         userAddress: walletAddress,
-        submissionData: { locationHash, latPacked, lngPacked, dataHash },
+        submissionData: { locationHash, latPacked, lngPacked, dataHash, exifLat, exifLng, exifTimestamp },
       }),
     });
 
@@ -737,6 +751,72 @@ function initEventListeners() {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', estimateRegisterGas);
   });
+
+  // EXIF GPS feedback ao selecionar foto
+  const photoInput = document.getElementById('reg-photo');
+  if (photoInput) {
+    photoInput.addEventListener('change', async () => {
+      const statusEl = document.getElementById('reg-photo-status');
+      const file = photoInput.files?.[0];
+      if (!file || !statusEl) return;
+
+      const s = getStrings();
+      statusEl.textContent = s.reg_photo_checking || '🔍 Verificando GPS da foto...';
+      statusEl.style.color = 'var(--text-muted)';
+
+      if (!window.exifr) {
+        statusEl.textContent = '';
+        return;
+      }
+
+      try {
+        const gps = await window.exifr.gps(file);
+        const tags = await window.exifr.parse(file, ['DateTimeOriginal', 'CreateDate']);
+
+        if (!gps) {
+          statusEl.style.color = 'var(--warning, #b45309)';
+          statusEl.textContent = s.reg_photo_no_gps || '⚠️ Foto sem GPS. Ative a localização na câmera.';
+          return;
+        }
+
+        // Verifica idade
+        const dateTag = tags?.DateTimeOriginal || tags?.CreateDate;
+        if (dateTag) {
+          const ageDays = (Date.now() - new Date(dateTag).getTime()) / 86400000;
+          if (ageDays > 7) {
+            statusEl.style.color = 'var(--danger, #dc2626)';
+            statusEl.textContent = (s.reg_photo_old || '❌ Foto muito antiga ({days} dias).').replace('{days}', Math.round(ageDays));
+            return;
+          }
+        }
+
+        // Verifica distância
+        const lat = parseFloat(document.getElementById('reg-lat').value);
+        const lng = parseFloat(document.getElementById('reg-lng').value);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          const R = 6371000;
+          const dLat = (gps.latitude - lat) * Math.PI / 180;
+          const dLng = (gps.longitude - lng) * Math.PI / 180;
+          const a = Math.sin(dLat/2)**2 + Math.cos(lat*Math.PI/180) * Math.cos(gps.latitude*Math.PI/180) * Math.sin(dLng/2)**2;
+          const distM = 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+          if (distM > 500) {
+            statusEl.style.color = 'var(--danger, #dc2626)';
+            statusEl.textContent = (s.reg_photo_far || '❌ Foto a {dist}km do local.').replace('{dist}', (distM/1000).toFixed(1));
+          } else {
+            statusEl.style.color = 'var(--success, #16a34a)';
+            statusEl.textContent = (s.reg_photo_ok || '✅ GPS verificado — {dist}m do local.').replace('{dist}', Math.round(distM));
+          }
+        } else {
+          statusEl.style.color = 'var(--success, #16a34a)';
+          statusEl.textContent = `✅ GPS detectado: ${gps.latitude.toFixed(5)}, ${gps.longitude.toFixed(5)}`;
+        }
+      } catch (_) {
+        statusEl.style.color = 'var(--text-muted)';
+        statusEl.textContent = '';
+      }
+    });
+  }
 
   // Verify buttons
   const verifyApprove = document.getElementById('verify-approve');

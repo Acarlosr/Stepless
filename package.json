@@ -1,0 +1,13 @@
+{
+  "name": "stepless",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Stepless — Decentralized accessibility mapping on Arc Testnet",
+  "dependencies": {
+    "viem": "^2.21.0",
+    "exifr": "^7.1.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

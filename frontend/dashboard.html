@@ -208,7 +208,8 @@
               </div>
               <div class="form-group">
                 <label for="reg-photo" data-i18n="reg_photo">Foto do Local</label>
-                <input type="file" id="reg-photo" name="photo" accept="image/*" />
+                <input type="file" id="reg-photo" name="photo" accept="image/*,image/heic,image/heif" required />
+                <div id="reg-photo-status" style="margin-top:0.4rem; font-size:0.82rem; min-height:1.1em;"></div>
               </div>
             </div>
 
@@ -310,6 +311,8 @@
   <!-- ════════════════════════════════════════════════
        Scripts
        ════════════════════════════════════════════════ -->
+  <!-- exifr: extração de metadados EXIF (GPS, timestamp) da foto -->
+  <script src="https://cdn.jsdelivr.net/npm/exifr@7/dist/lite.umd.cjs" defer></script>
   <script type="module" src="dashboard.js"></script>
   <script type="module">
     /* Theme + nav + language init (shared with landing page) */
@@ -329,6 +332,11 @@
         reg_name:"Nome do Local", reg_category:"Categoria", reg_photo:"Foto do Local", reg_submit:"Registrar Local",
         reg_gps_detecting:"Detectando sua localização...", reg_gps_ok:"📍 Localização detectada!", reg_gps_error:"Não foi possível obter localização. Busque pelo endereço.",
         reg_other_desc:"Descreva o recurso de acessibilidade",
+        reg_photo_checking:"🔍 Verificando GPS da foto...",
+        reg_photo_ok:"✅ GPS verificado — foto a {dist}m do local.",
+        reg_photo_no_gps:"⚠️ Foto sem GPS. Ative a localização na câmera.",
+        reg_photo_far:"❌ Foto tirada a {dist}km do local. Tire a foto no local.",
+        reg_photo_old:"❌ Foto muito antiga ({days} dias). Tire uma foto recente.",
         verify_title:"Verificar Contribuição", verify_subtitle:"Apenas verificadores aprovados podem validar contribuições.",
         verify_denied:"Você não é um verificador aprovado. Apenas verificadores podem validar contribuições.",
         verify_id_label:"ID da Contribuição (hex)", verify_approve:"Aprovar", verify_reject:"Rejeitar",
@@ -366,6 +374,11 @@
         reg_name:"Location Name", reg_category:"Category", reg_photo:"Location Photo", reg_submit:"Register Location",
         reg_gps_detecting:"Detecting your location...", reg_gps_ok:"📍 Location detected!", reg_gps_error:"Could not get location. Search by address instead.",
         reg_other_desc:"Describe the accessibility feature",
+        reg_photo_checking:"🔍 Checking photo GPS...",
+        reg_photo_ok:"✅ GPS verified — photo taken {dist}m from location.",
+        reg_photo_no_gps:"⚠️ No GPS in photo. Enable location on your camera.",
+        reg_photo_far:"❌ Photo taken {dist}km away. Take the photo at the location.",
+        reg_photo_old:"❌ Photo too old ({days} days). Take a recent photo.",
         verify_title:"Verify Contribution", verify_subtitle:"Only approved verifiers can validate contributions.",
         verify_denied:"You are not an approved verifier. Only verifiers can validate contributions.",
         verify_id_label:"Contribution ID (hex)", verify_approve:"Approve", verify_reject:"Reject",
