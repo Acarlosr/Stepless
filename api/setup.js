@@ -61,11 +61,16 @@ export default async function handler(req, res) {
 
   const publicClient = createPublicClient({ chain: arcTestnet, transport: http() });
 
-  // GET → só mostra status
-  const [isAuthorized, adminAddr] = await Promise.all([
-    publicClient.readContract({ address: oracleAddress, abi: ORACLE_ABI, functionName: 'authorizedCallers', args: [account.address] }),
-    publicClient.readContract({ address: oracleAddress, abi: ORACLE_ABI, functionName: 'admin' }),
-  ]);
+  // Lê estado atual do contrato
+  let isAuthorized, adminAddr;
+  try {
+    [isAuthorized, adminAddr] = await Promise.all([
+      publicClient.readContract({ address: oracleAddress, abi: ORACLE_ABI, functionName: 'authorizedCallers', args: [account.address] }),
+      publicClient.readContract({ address: oracleAddress, abi: ORACLE_ABI, functionName: 'admin' }),
+    ]);
+  } catch (readErr) {
+    return res.status(500).json({ success: false, error: `Erro ao ler contrato: ${readErr?.shortMessage || readErr?.message}` });
+  }
 
   if (req.method === 'GET') {
     return res.status(200).json({
