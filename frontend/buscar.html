@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Stepless — Busque locais acessíveis perto de você. Rampas, elevadores, banheiros adaptados e muito mais, registrados on-chain na Arc Testnet." />
+  <meta name="theme-color" content="#1a56c4" />
+  <title>Stepless — Buscar Locais Acessíveis</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♿</text></svg>" />
+
+  <style>
+    /* ── Busca ── */
+    .search-hero {
+      background: linear-gradient(135deg, var(--primary) 0%, #1e40af 100%);
+      color: #fff;
+      padding: 48px 0 40px;
+      text-align: center;
+    }
+    .search-hero h1 { font-size: clamp(1.6rem, 4vw, 2.4rem); margin: 0 0 8px; color: #fff; }
+    .search-hero p  { opacity: .85; margin: 0 0 28px; font-size: 1.05rem; }
+
+    .search-box {
+      display: flex;
+      gap: 8px;
+      max-width: 640px;
+      margin: 0 auto;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .search-box input {
+      flex: 1;
+      min-width: 200px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: none;
+      font-size: 1rem;
+      color: var(--text);
+      background: #fff;
+    }
+    .search-box input:focus { outline: 3px solid rgba(255,255,255,.5); }
+    .search-box .btn { white-space: nowrap; }
+    .btn-white {
+      background: #fff;
+      color: var(--primary);
+      border: 2px solid #fff;
+      font-weight: 600;
+    }
+    .btn-white:hover { background: #f0f4ff; }
+
+    /* ── Filtros ── */
+    .filters {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+    .filter-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1.5px solid var(--border);
+      background: var(--bg-card);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all .15s;
+      color: var(--text);
+    }
+    .filter-chip:hover,
+    .filter-chip.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    /* ── Result cards ── */
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .results-count {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    .location-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: box-shadow .2s, transform .2s;
+    }
+    .location-card:hover {
+      box-shadow: 0 4px 20px rgba(0,0,0,.1);
+      transform: translateY(-2px);
+    }
+    .location-card-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .location-icon {
+      font-size: 2rem;
+      line-height: 1;
+      flex-shrink: 0;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent-bg, #eff6ff);
+      border-radius: 10px;
+    }
+    .location-name {
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--text);
+      line-height: 1.3;
+      margin: 0;
+    }
+    .location-cat {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin: 2px 0 0;
+    }
+    .location-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .location-dist {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+    .location-contrib {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+    .location-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+    .location-actions a {
+      font-size: 0.82rem;
+      text-decoration: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1.5px solid var(--border);
+      color: var(--primary);
+      transition: all .15s;
+    }
+    .location-actions a:hover {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    /* ── Empty / loading ── */
+    .state-box {
+      text-align: center;
+      padding: 64px 24px;
+      color: var(--text-muted);
+    }
+    .state-box .state-icon { font-size: 3rem; margin-bottom: 12px; }
+    .state-box p { max-width: 400px; margin: 8px auto 0; }
+
+    /* ── Radius selector ── */
+    .radius-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+    .radius-row select {
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+
+    /* ── On-chain badge ── */
+    .onchain-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #16a34a;
+      background: #dcfce7;
+      border-radius: 4px;
+      padding: 2px 7px;
+    }
+    [data-theme="dark"] .onchain-badge {
+      background: #14532d;
+      color: #86efac;
+    }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip-link">Pular para o conteúdo</a>
+
+  <!-- ════════════════════ Header ════════════════════ -->
+  <header class="header" role="banner">
+    <div class="container">
+      <a href="index.html" class="logo" aria-label="Stepless home">
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="20" cy="20" r="18" fill="var(--primary)" />
+          <path d="M12 26 L20 14 L28 26" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="20" cy="20" r="3" fill="#fff"/>
+        </svg>
+        <span>Stepless</span>
+      </a>
+      <nav class="nav" role="navigation" aria-label="Navegação principal">
+        <button class="nav-toggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="main-nav-links">
+          <span></span><span></span><span></span>
+        </button>
+        <ul class="nav-links" id="main-nav-links">
+          <li><a href="buscar.html" aria-current="page">🔍 Buscar</a></li>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="index.html">Início</a></li>
+        </ul>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Alternar modo escuro">
+          <span id="theme-icon">🌙</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ════════════════════ Hero de Busca ════════════════════ -->
+  <section class="search-hero" role="search" aria-label="Buscar locais acessíveis">
+    <div class="container">
+      <h1>♿ Encontre locais acessíveis perto de você</h1>
+      <p>Rampas, elevadores, banheiros adaptados e mais — registrados on-chain pela comunidade.</p>
+
+      <div class="search-box">
+        <input
+          type="text"
+          id="address-input"
+          placeholder="Digite um endereço, bairro ou cidade..."
+          aria-label="Buscar por endereço"
+          autocomplete="off"
+        />
+        <button class="btn btn-white" id="btn-search-addr" aria-label="Buscar por endereço">
+          🔍 Buscar
+        </button>
+        <button class="btn btn-white" id="btn-gps" aria-label="Usar minha localização GPS">
+          📍 Perto de mim
+        </button>
+      </div>
+
+      <div id="search-status" style="margin-top:14px; font-size:0.9rem; opacity:.85; min-height:1.4em;" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- ════════════════════ Main ════════════════════ -->
+  <main id="main" class="container" style="padding-top:28px; padding-bottom:60px;">
+
+    <!-- Filtros + raio -->
+    <div class="filters" id="filter-bar" role="group" aria-label="Filtrar por categoria">
+      <span style="font-size:.85rem; font-weight:600; color:var(--text-muted);">Filtrar:</span>
+      <button class="filter-chip active" data-cat="all">Todos</button>
+      <button class="filter-chip" data-cat="0">♿ Rampa</button>
+      <button class="filter-chip" data-cat="1">🛗 Elevador</button>
+      <button class="filter-chip" data-cat="2">🚻 Banheiro</button>
+      <button class="filter-chip" data-cat="3">🅿️ Vaga PCD</button>
+      <button class="filter-chip" data-cat="4">🔔 Sinalização</button>
+      <button class="filter-chip" data-cat="5">🔊 Áudio</button>
+      <button class="filter-chip" data-cat="6">✋ Braile</button>
+      <button class="filter-chip" data-cat="7">✨ Outro</button>
+
+      <div class="radius-row" style="margin-left:auto;">
+        <label for="radius-select">Raio:</label>
+        <select id="radius-select" aria-label="Raio de busca">
+          <option value="1">1 km</option>
+          <option value="5" selected>5 km</option>
+          <option value="10">10 km</option>
+          <option value="50">50 km</option>
+          <option value="9999">Todos</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Estado inicial -->
+    <div id="state-initial" class="state-box">
+      <div class="state-icon">🗺️</div>
+      <h2 style="font-size:1.2rem; color:var(--text);">Onde você está?</h2>
+      <p>Use "Perto de mim" para detectar sua localização automaticamente, ou busque por um endereço acima.</p>
+      <button class="btn btn-primary" style="margin-top:20px;" id="btn-gps-main">📍 Usar minha localização</button>
+    </div>
+
+    <!-- Loading -->
+    <div id="state-loading" class="state-box hidden">
+      <div class="state-icon" aria-hidden="true">⏳</div>
+      <h2 style="font-size:1.1rem; color:var(--text);" id="loading-msg">Buscando locais...</h2>
+      <p>Consultando a blockchain Arc Testnet...</p>
+    </div>
+
+    <!-- Sem resultados -->
+    <div id="state-empty" class="state-box hidden">
+      <div class="state-icon" aria-hidden="true">🔎</div>
+      <h2 style="font-size:1.1rem; color:var(--text);">Nenhum local encontrado</h2>
+      <p>Nenhum local acessível registrado nessa área ainda. <a href="dashboard.html">Seja o primeiro a mapear!</a></p>
+    </div>
+
+    <!-- Resultados -->
+    <div id="state-results" class="hidden">
+      <div class="results-header">
+        <div>
+          <span id="results-count" class="results-count"></span>
+          <span class="onchain-badge" style="margin-left:8px;">✅ On-chain</span>
+        </div>
+        <a href="dashboard.html" class="btn btn-primary btn-sm">+ Registrar novo local</a>
+      </div>
+      <div class="results-grid" id="results-grid" role="list" aria-label="Locais acessíveis encontrados"></div>
+    </div>
+
+  </main>
+
+  <!-- ════════════════════ Footer ════════════════════ -->
+  <footer class="footer" role="contentinfo">
+    <div class="container">
+      <div class="footer-links">
+        <a href="dashboard.html">Dashboard do Contribuidor</a>
+        <a href="https://testnet.arcscan.app" target="_blank" rel="noopener">ArcScan</a>
+        <a href="index.html">Início</a>
+      </div>
+      <p>Stepless — Dados de acessibilidade on-chain na Arc Testnet.</p>
+    </div>
+  </footer>
+
+  <!-- ════════════════════ Scripts ════════════════════ -->
+  <script type="module">
+    import { createPublicClient, http } from 'https://esm.sh/viem@2.21.0';
+
+    // ── Config ──────────────────────────────────────────
+    const ORACLE_ADDRESS = '0x220a3A4CAb8A5894C0926E9Ff700168F32F8192e';
+    const EXPLORER      = 'https://testnet.arcscan.app';
+
+    const ARC_CHAIN = {
+      id: 5042002,
+      name: 'Arc Testnet',
+      nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 6 },
+      rpcUrls: { default: { http: ['https://rpc.testnet.arc.network'] } },
+    };
+
+    const ORACLE_ABI = [
+      { type:'function', name:'locationCount',    inputs:[], outputs:[{type:'uint256'}], stateMutability:'view' },
+      { type:'function', name:'locationIdByIndex', inputs:[{name:'index',type:'uint256'}], outputs:[{type:'bytes32'}], stateMutability:'view' },
+      { type:'function', name:'getLocation',
+        inputs:[{name:'locationId',type:'bytes32'}],
+        outputs:[
+          {name:'lat',type:'int256'}, {name:'lng',type:'int256'},
+          {name:'name',type:'string'}, {name:'category',type:'uint8'},
+          {name:'photoHash',type:'bytes32'}, {name:'contributor',type:'address'},
+          {name:'timestamp',type:'uint256'},
+        ],
+        stateMutability:'view'
+      },
+    ];
+
+    const CATEGORIES = [
+      { id:0, label:'Rampa',              icon:'♿' },
+      { id:1, label:'Elevador',           icon:'🛗' },
+      { id:2, label:'Banheiro Acessível', icon:'🚻' },
+      { id:3, label:'Vaga PCD',           icon:'🅿️' },
+      { id:4, label:'Sinalização',        icon:'🔔' },
+      { id:5, label:'Áudio Descrição',    icon:'🔊' },
+      { id:6, label:'Braile',             icon:'✋' },
+      { id:7, label:'Outro',              icon:'✨' },
+    ];
+
+    // ── State ────────────────────────────────────────────
+    let allLocations  = [];   // todos os locais lidos da chain
+    let userLat       = null;
+    let userLng       = null;
+    let activeCat     = 'all';
+    let searchDone    = false;
+
+    const publicClient = createPublicClient({ chain: ARC_CHAIN, transport: http() });
+
+    // ── Helpers ──────────────────────────────────────────
+    function haversineKm(lat1, lng1, lat2, lng2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const a = Math.sin(dLat/2)**2
+              + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+      return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function decodeCoord(raw) {
+      // lat: offset +90 → realLat = raw/1e6 - 90
+      // lng: offset +180 → realLng = raw/1e6 - 180
+      return { lat: Number(raw) / 1e6 - 90, lng: Number(raw) / 1e6 - 180 };
+    }
+
+    function shortAddr(addr) {
+      return addr ? `${addr.slice(0,6)}...${addr.slice(-4)}` : '—';
+    }
+
+    function setStatus(msg) {
+      document.getElementById('search-status').textContent = msg;
+    }
+
+    function showState(name) {
+      ['initial','loading','empty','results'].forEach(s => {
+        document.getElementById(`state-${s}`)?.classList.toggle('hidden', s !== name);
+      });
+    }
+
+    // ── Ler locais da blockchain ──────────────────────────
+    async function fetchAllLocations() {
+      const count = await publicClient.readContract({
+        address: ORACLE_ADDRESS,
+        abi: ORACLE_ABI,
+        functionName: 'locationCount',
+      });
+
+      const total = Number(count);
+      if (total === 0) return [];
+
+      document.getElementById('loading-msg').textContent = `Lendo ${total} local(is) da blockchain...`;
+
+      const locations = [];
+      for (let i = 0; i < total; i++) {
+        const locationId = await publicClient.readContract({
+          address: ORACLE_ADDRESS,
+          abi: ORACLE_ABI,
+          functionName: 'locationIdByIndex',
+          args: [BigInt(i)],
+        });
+
+        const data = await publicClient.readContract({
+          address: ORACLE_ADDRESS,
+          abi: ORACLE_ABI,
+          functionName: 'getLocation',
+          args: [locationId],
+        });
+
+        // data = [lat, lng, name, category, photoHash, contributor, timestamp]
+        const latRaw = Number(data[0]);
+        const lngRaw = Number(data[1]);
+
+        locations.push({
+          locationId,
+          lat:         latRaw / 1e6 - 90,
+          lng:         lngRaw / 1e6 - 180,
+          name:        data[2],
+          category:    Number(data[3]),
+          contributor: data[5],
+          timestamp:   Number(data[6]),
+        });
+      }
+
+      return locations;
+    }
+
+    // ── Renderizar resultados ─────────────────────────────
+    function renderResults() {
+      const radiusKm  = Number(document.getElementById('radius-select').value);
+      const grid      = document.getElementById('results-grid');
+      const countEl   = document.getElementById('results-count');
+
+      let filtered = allLocations.filter(loc => {
+        if (activeCat !== 'all' && loc.category !== Number(activeCat)) return false;
+        if (userLat !== null && radiusKm < 9999) {
+          const dist = haversineKm(userLat, userLng, loc.lat, loc.lng);
+          if (dist > radiusKm) return false;
+          loc._dist = dist;
+        }
+        return true;
+      });
+
+      // Ordena por distância se disponível
+      if (userLat !== null) {
+        filtered.sort((a, b) => (a._dist ?? 0) - (b._dist ?? 0));
+      }
+
+      if (filtered.length === 0) {
+        showState('empty');
+        return;
+      }
+
+      showState('results');
+      countEl.textContent = `${filtered.length} local${filtered.length !== 1 ? 'is' : ''} encontrado${filtered.length !== 1 ? 's' : ''}`;
+
+      grid.innerHTML = filtered.map(loc => {
+        const cat = CATEGORIES.find(c => c.id === loc.category) || { icon: '📍', label: 'Local' };
+        const distLabel = loc._dist != null
+          ? `<span class="location-dist">📍 ${loc._dist < 1 ? Math.round(loc._dist*1000)+'m' : loc._dist.toFixed(1)+'km'}</span>`
+          : '';
+        const explorerUrl = `${EXPLORER}/address/${ORACLE_ADDRESS}`;
+        const mapsUrl = `https://www.google.com/maps?q=${loc.lat},${loc.lng}`;
+
+        return `
+          <article class="location-card" role="listitem">
+            <div class="location-card-top">
+              <div class="location-icon" aria-hidden="true">${cat.icon}</div>
+              <div>
+                <p class="location-name">${loc.name || 'Local sem nome'}</p>
+                <p class="location-cat">${cat.label}</p>
+              </div>
+            </div>
+            <div class="location-meta">
+              ${distLabel}
+              <span class="location-contrib" title="${loc.contributor}">👤 ${shortAddr(loc.contributor)}</span>
+            </div>
+            <div class="location-actions">
+              <a href="${mapsUrl}" target="_blank" rel="noopener" aria-label="Ver no Google Maps">🗺️ Ver no mapa</a>
+              <a href="${explorerUrl}" target="_blank" rel="noopener" aria-label="Ver on-chain no ArcScan">🔗 On-chain</a>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    // ── Buscar com localização ────────────────────────────
+    async function searchNear(lat, lng, label) {
+      userLat = lat;
+      userLng = lng;
+      setStatus(`📍 ${label}`);
+      showState('loading');
+
+      try {
+        if (!searchDone) {
+          allLocations = await fetchAllLocations();
+          searchDone = true;
+        }
+        renderResults();
+      } catch (err) {
+        console.error(err);
+        setStatus(`❌ Erro: ${err.message}`);
+        showState('initial');
+      }
+    }
+
+    // ── Geocoding (Nominatim) ─────────────────────────────
+    async function geocodeAddress(query) {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&accept-language=pt`;
+      const r = await fetch(url, { headers: { 'User-Agent': 'Stepless-dApp/1.0' } });
+      const data = await r.json();
+      if (!data.length) throw new Error('Endereço não encontrado');
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), label: data[0].display_name };
+    }
+
+    // ── GPS ───────────────────────────────────────────────
+    function detectGPS() {
+      if (!navigator.geolocation) {
+        setStatus('❌ GPS não disponível neste dispositivo.');
+        return;
+      }
+      setStatus('🔍 Detectando localização...');
+      navigator.geolocation.getCurrentPosition(
+        async pos => {
+          const { latitude: lat, longitude: lng } = pos.coords;
+          await searchNear(lat, lng, `${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+        },
+        () => setStatus('❌ Não foi possível obter localização. Busque por endereço.'),
+        { timeout: 10000, enableHighAccuracy: true }
+      );
+    }
+
+    // ── Carregar TODOS os locais sem filtro de localização ──
+    async function searchAll() {
+      userLat = null; userLng = null;
+      showState('loading');
+      document.getElementById('loading-msg').textContent = 'Carregando todos os locais...';
+      try {
+        if (!searchDone) {
+          allLocations = await fetchAllLocations();
+          searchDone = true;
+        }
+        renderResults();
+      } catch (err) {
+        setStatus(`❌ ${err.message}`);
+        showState('initial');
+      }
+    }
+
+    // ── Event listeners ───────────────────────────────────
+    document.getElementById('btn-gps').addEventListener('click', detectGPS);
+    document.getElementById('btn-gps-main').addEventListener('click', detectGPS);
+
+    document.getElementById('btn-search-addr').addEventListener('click', async () => {
+      const query = document.getElementById('address-input').value.trim();
+      if (!query) { searchAll(); return; }
+      setStatus('🔍 Buscando endereço...');
+      try {
+        const { lat, lng, label } = await geocodeAddress(query);
+        await searchNear(lat, lng, label);
+      } catch (err) {
+        setStatus(`❌ ${err.message}`);
+      }
+    });
+
+    document.getElementById('address-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('btn-search-addr').click();
+    });
+
+    document.getElementById('radius-select').addEventListener('change', () => {
+      if (searchDone) renderResults();
+    });
+
+    // Filtros de categoria
+    document.querySelectorAll('.filter-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeCat = btn.dataset.cat;
+        if (searchDone) renderResults();
+        else searchAll();
+      });
+    });
+
+    // ── Theme + nav ───────────────────────────────────────
+    (function initTheme() {
+      const saved = localStorage.getItem('stepless-theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const theme = saved || (prefersDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+      document.getElementById('theme-icon').textContent = theme === 'dark' ? '☀️' : '🌙';
+    })();
+
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      const cur = document.documentElement.getAttribute('data-theme');
+      const next = cur === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('stepless-theme', next);
+      document.getElementById('theme-icon').textContent = next === 'dark' ? '☀️' : '🌙';
+    });
+
+    const navToggle = document.querySelector('.nav-toggle');
+    const navLinks  = document.getElementById('main-nav-links');
+    if (navToggle) {
+      navToggle.addEventListener('click', () => {
+        const open = navLinks.classList.toggle('open');
+        navToggle.setAttribute('aria-expanded', open);
+      });
+    }
+  </script>
+</body>
+</html>
