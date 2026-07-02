@@ -1128,7 +1128,7 @@ input[type="file"]::file-selector-button {
  * ────────────────────────────────────────────────────────────── */
 
 .lang-select {
-  padding: 5px 8px;
+  padding: 5px 6px;
   border-radius: 6px;
   border: 1.5px solid var(--border);
   background: var(--bg-card);
@@ -1139,6 +1139,8 @@ input[type="file"]::file-selector-button {
   cursor: pointer;
   transition: var(--transition);
   flex-shrink: 0;
+  width: 78px;
+  min-width: 0;
 }
 .lang-select:focus {
   outline: 2px solid var(--primary);
