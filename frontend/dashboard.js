@@ -438,11 +438,8 @@ async function checkVerifierStatus() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
- *  Reward history (direto da blockchain via getLogs)
+ *  Reward history — leitura direta do contrato (sem subgraph)
  * ═══════════════════════════════════════════════════════════════ */
-
-// Bloco aproximado do deploy do Oracle (49720668) — busca a partir daqui
-const ORACLE_DEPLOY_BLOCK = BigInt(49700000);
 
 async function loadRewardHistory() {
   const tbody = document.getElementById('rewards-table-body');
@@ -452,103 +449,128 @@ async function loadRewardHistory() {
   tbody.innerHTML = `<tr><td colspan="5" class="table-empty">⏳ Buscando na blockchain...</td></tr>`;
 
   try {
-    // Tenta buscar do bloco de deploy; se o RPC limitar o range, cai para últimos 50k blocos
-    let fromBlock = ORACLE_DEPLOY_BLOCK;
-    let locationLogs = [], rewardLogs = [];
+    const rows = [];
+    const explorerBase = cfg.chain.blockExplorers.default.url;
 
-    async function fetchLogs(fb) {
-      const [loc, rew] = await Promise.all([
+    // ── 1. Tenta getLogs (últimos 2000 blocos — range pequeno, mais provável de funcionar) ──
+    let usedLogs = false;
+    try {
+      const latestBlock = await publicClient.getBlockNumber();
+      const fromBlock = latestBlock > 2000n ? latestBlock - 2000n : 0n;
+
+      const [locationLogs, rewardLogs] = await Promise.all([
         publicClient.getContractEvents({
           address: cfg.contracts.SteplessOracle,
           abi: cfg.abis.SteplessOracle,
           eventName: 'LocationRegistered',
-          args: { contributor: walletAddress },
-          fromBlock: fb,
+          fromBlock,
           toBlock: 'latest',
         }),
         publicClient.getContractEvents({
           address: cfg.contracts.RewardDistributor,
           abi: cfg.abis.RewardDistributor,
           eventName: 'RewardPaid',
-          args: { contributor: walletAddress },
-          fromBlock: fb,
+          fromBlock,
           toBlock: 'latest',
         }),
       ]);
-      return [loc, rew];
+
+      const myLocations = locationLogs.filter(
+        l => l.args.contributor?.toLowerCase() === walletAddress.toLowerCase()
+      );
+      const myRewards = rewardLogs.filter(
+        l => l.args.contributor?.toLowerCase() === walletAddress.toLowerCase()
+      );
+
+      const allLogs = [
+        ...myLocations.map(l => ({ type: 'location', blockNumber: l.blockNumber, txHash: l.transactionHash, ...l.args })),
+        ...myRewards.map(l => ({ type: 'reward', blockNumber: l.blockNumber, txHash: l.transactionHash, ...l.args })),
+      ].sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber));
+
+      for (const ev of allLogs) {
+        const txUrl = `${explorerBase}/tx/${ev.txHash}`;
+        if (ev.type === 'location') {
+          const cat = cfg.locationCategories.find(c => c.id === Number(ev.category))?.label?.[getLang()] || `Cat.${ev.category}`;
+          rows.push(`<tr>
+            <td><a href="${txUrl}" target="_blank" rel="noopener">${shortHash(ev.txHash)}</a></td>
+            <td style="color:var(--text-muted)">—</td>
+            <td><span class="badge badge-info">📍 ${cat}</span></td>
+            <td style="font-family:monospace;font-size:.85rem">${ev.name || shortHash(ev.locationId)}</td>
+            <td>#${ev.blockNumber}</td>
+          </tr>`);
+        } else {
+          const tier = cfg.rewardTiers.find(t => t.tier === Number(ev.tier))?.label || `T${ev.tier}`;
+          rows.push(`<tr>
+            <td><a href="${txUrl}" target="_blank" rel="noopener">${shortHash(ev.txHash)}</a></td>
+            <td><span class="reward-amount">${formatUsdc(ev.amount)} USDC</span></td>
+            <td><span class="badge badge-success">💰 ${tier}</span></td>
+            <td style="font-family:monospace;font-size:.85rem">${shortHash(ev.contributionId)}</td>
+            <td>#${ev.blockNumber}</td>
+          </tr>`);
+        }
+      }
+      usedLogs = true;
+    } catch (logsErr) {
+      console.warn('[history] getLogs não suportado, usando leitura de estado:', logsErr?.message);
     }
 
-    try {
-      [locationLogs, rewardLogs] = await fetchLogs(fromBlock);
-    } catch (rangeErr) {
-      // RPC limitou o range — tenta últimos 50k blocos
-      console.warn('[history] Range too large, trying last 50k blocks:', rangeErr?.message);
-      const latestBlock = await publicClient.getBlockNumber();
-      const fallbackFrom = latestBlock > 50000n ? latestBlock - 50000n : 0n;
-      [locationLogs, rewardLogs] = await fetchLogs(fallbackFrom);
+    // ── 2. Fallback: leitura direta via locationCount + locationIdByIndex + getLocation ──
+    //    Usa apenas eth_call — sempre funciona em qualquer RPC EVM
+    if (!usedLogs) {
+      const count = await publicClient.readContract({
+        address: cfg.contracts.SteplessOracle,
+        abi: cfg.abis.SteplessOracle,
+        functionName: 'locationCount',
+      });
+
+      const total = Number(count);
+      // Checa os últimos 50 (ou todos se < 50)
+      const start = Math.max(0, total - 50);
+
+      for (let i = total - 1; i >= start; i--) {
+        const locationId = await publicClient.readContract({
+          address: cfg.contracts.SteplessOracle,
+          abi: cfg.abis.SteplessOracle,
+          functionName: 'locationIdByIndex',
+          args: [BigInt(i)],
+        });
+
+        // getLocation retorna: [lat, lng, name, category, photoHash, contributor, timestamp]
+        const loc = await publicClient.readContract({
+          address: cfg.contracts.SteplessOracle,
+          abi: cfg.abis.SteplessOracle,
+          functionName: 'getLocation',
+          args: [locationId],
+        });
+
+        const contributor = loc[5];
+        if (contributor?.toLowerCase() !== walletAddress.toLowerCase()) continue;
+
+        const name = loc[2];
+        const category = Number(loc[3]);
+        const cat = cfg.locationCategories.find(c => c.id === category)?.label?.[getLang()] || `Cat.${category}`;
+        const addrUrl = `${explorerBase}/address/${cfg.contracts.SteplessOracle}`;
+
+        rows.push(`<tr>
+          <td><a href="${addrUrl}" target="_blank" rel="noopener">${shortHash(locationId)}</a></td>
+          <td style="color:var(--text-muted)">—</td>
+          <td><span class="badge badge-info">📍 ${cat}</span></td>
+          <td style="font-family:monospace;font-size:.85rem">${name || shortHash(locationId)}</td>
+          <td>✅ On-chain</td>
+        </tr>`);
+      }
     }
 
-    if (locationLogs.length === 0 && rewardLogs.length === 0) {
+    if (rows.length === 0) {
       tbody.innerHTML = `<tr><td colspan="5" class="table-empty">${s.rewards_empty || 'Nenhuma contribuição registrada ainda.'}</td></tr>`;
       return;
     }
 
-    // Combina e ordena por bloco decrescente
-    const allEvents = [
-      ...locationLogs.map(log => ({
-        type: 'location',
-        blockNumber: log.blockNumber,
-        txHash: log.transactionHash,
-        name: log.args.name,
-        category: log.args.category,
-        locationId: log.args.locationId,
-      })),
-      ...rewardLogs.map(log => ({
-        type: 'reward',
-        blockNumber: log.blockNumber,
-        txHash: log.transactionHash,
-        amount: log.args.amount,
-        tier: log.args.tier,
-        contributionId: log.args.contributionId,
-      })),
-    ].sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber));
-
-    const explorerBase = cfg.chain.blockExplorers.default.url;
-
-    tbody.innerHTML = allEvents.map(ev => {
-      const txUrl = `${explorerBase}/tx/${ev.txHash}`;
-      const blockUrl = `${explorerBase}/block/${ev.blockNumber}`;
-      const blockLabel = `<a href="${blockUrl}" target="_blank" rel="noopener">#${ev.blockNumber}</a>`;
-
-      if (ev.type === 'location') {
-        const catLabel = cfg.locationCategories.find(c => c.id === Number(ev.category))
-          ?.label?.[getLang()] || `Cat.${ev.category}`;
-        return `
-          <tr>
-            <td><a href="${txUrl}" target="_blank" rel="noopener">${shortHash(ev.txHash)}</a></td>
-            <td style="color:var(--text-muted)">—</td>
-            <td><span class="badge badge-info">📍 ${catLabel}</span></td>
-            <td style="font-family:monospace; font-size:0.85rem;" title="${ev.locationId}">${ev.name || shortHash(ev.locationId)}</td>
-            <td>${blockLabel}</td>
-          </tr>
-        `;
-      } else {
-        const tierLabel = cfg.rewardTiers.find(t => t.tier === Number(ev.tier))?.label || `T${ev.tier}`;
-        return `
-          <tr>
-            <td><a href="${txUrl}" target="_blank" rel="noopener">${shortHash(ev.txHash)}</a></td>
-            <td><span class="reward-amount">${formatUsdc(ev.amount)} USDC</span></td>
-            <td><span class="badge badge-success">💰 ${tierLabel}</span></td>
-            <td style="font-family:monospace; font-size:0.85rem;" title="${ev.contributionId}">${shortHash(ev.contributionId)}</td>
-            <td>${blockLabel}</td>
-          </tr>
-        `;
-      }
-    }).join('');
+    tbody.innerHTML = rows.join('');
 
   } catch (err) {
     console.error('Reward history error:', err);
-    tbody.innerHTML = `<tr><td colspan="5" class="table-empty">❌ Erro ao carregar histórico: ${err?.shortMessage || err?.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="table-empty">❌ ${err?.shortMessage || err?.message}</td></tr>`;
   }
 }
 
