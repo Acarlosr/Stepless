@@ -1,0 +1,30 @@
+<svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" width="160" height="160">
+  <!-- Shadow -->
+  <ellipse cx="100" cy="185" rx="50" ry="8" fill="#1e293b" opacity="0.15"/>
+  <!-- Antenna -->
+  <line x1="100" y1="30" x2="100" y2="48" stroke="#2563EB" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="100" cy="26" r="6" fill="#2563EB"/>
+  <!-- Head -->
+  <rect x="60" y="48" width="80" height="60" rx="20" fill="#2563EB"/>
+  <!-- Eyes -->
+  <circle cx="82" cy="75" r="8" fill="#ffffff"/>
+  <circle cx="118" cy="75" r="8" fill="#ffffff"/>
+  <circle cx="82" cy="75" r="4" fill="#1e40af"/>
+  <circle cx="118" cy="75" r="4" fill="#1e40af"/>
+  <!-- Mouth -->
+  <path d="M85 92 Q100 100 115 92" stroke="#ffffff" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <!-- Body -->
+  <rect x="65" y="112" width="70" height="55" rx="16" fill="#f8fafc" stroke="#2563EB" stroke-width="2.5"/>
+  <!-- Body screen -->
+  <rect x="78" y="122" width="44" height="28" rx="6" fill="#dbeafe"/>
+  <text x="100" y="140" text-anchor="middle" font-size="10" fill="#2563EB" font-family="monospace" font-weight="bold">USDC</text>
+  <!-- Left arm -->
+  <rect x="48" y="120" width="14" height="35" rx="7" fill="#2563EB"/>
+  <circle cx="55" cy="158" r="8" fill="#2563EB"/>
+  <!-- Right arm -->
+  <rect x="138" y="120" width="14" height="35" rx="7" fill="#2563EB"/>
+  <circle cx="145" cy="158" r="8" fill="#2563EB"/>
+  <!-- Legs -->
+  <rect x="78" y="168" width="16" height="14" rx="6" fill="#2563EB"/>
+  <rect x="106" y="168" width="16" height="14" rx="6" fill="#2563EB"/>
+</svg>
