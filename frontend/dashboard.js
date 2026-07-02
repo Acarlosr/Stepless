@@ -1017,9 +1017,61 @@ window.SteplessDashboard = {
   handleVerify,
 };
 
+/* ═══════════════════════════════════════════════════════════════
+ *  Auto-connect — reconecta silenciosamente se wallet já aprovada
+ * ═══════════════════════════════════════════════════════════════ */
+
+async function tryAutoConnect() {
+  if (!window.ethereum) return;
+  try {
+    // eth_accounts não abre prompt — só retorna se já aprovado
+    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+    if (!accounts || accounts.length === 0) return;
+
+    const viem = await loadViem();
+    walletAddress = viem.getAddress(accounts[0]);
+
+    publicClient = viem.createPublicClient({ chain: cfg.chain, transport: viem.http() });
+    walletClient = viem.createWalletClient({
+      account: walletAddress,
+      chain: cfg.chain,
+      transport: viem.custom(window.ethereum),
+    });
+
+    isConnected = true;
+
+    // Reage a logout/troca de conta
+    window.ethereum.on?.('accountsChanged', accs => {
+      if (!accs || accs.length === 0) location.reload();
+      else if (accs[0].toLowerCase() !== walletAddress.toLowerCase()) location.reload();
+    });
+
+    // Atualiza UI
+    document.getElementById('not-connected')?.classList.add('hidden');
+    document.getElementById('dashboard-content')?.classList.remove('hidden');
+    const btn = document.getElementById('connect-wallet-btn');
+    if (btn) btn.style.display = 'none';
+    const info = document.getElementById('wallet-info');
+    if (info) info.classList.add('connected');
+    const addrEl = document.getElementById('wallet-address');
+    if (addrEl) addrEl.textContent = shortAddr(walletAddress);
+
+    await refreshAll();
+    await checkRelayerSetup();
+    await checkAdminPanel();
+    startWebSocketSubscriptions(viem);
+
+    console.log('[autoConnect] Reconectado:', walletAddress);
+  } catch (err) {
+    // Falha silenciosa — usuário conecta manualmente
+    console.log('[autoConnect]', err.message);
+  }
+}
+
 // Initialize event listeners on DOM ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initEventListeners);
+  document.addEventListener('DOMContentLoaded', () => { initEventListeners(); tryAutoConnect(); });
 } else {
   initEventListeners();
+  tryAutoConnect();
 }

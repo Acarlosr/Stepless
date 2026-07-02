@@ -31,19 +31,17 @@
           <span></span><span></span><span></span>
         </button>
         <ul class="nav-links" id="dash-nav-links">
-          <li><a href="buscar.html">🔍 Buscar Locais</a></li>
-          <li><a href="#stats" data-i18n="nav_stats">Estatísticas</a></li>
-          <li><a href="#map" data-i18n="nav_map">Mapa</a></li>
-          <li><a href="#register" data-i18n="nav_register">Mapear Local</a></li>
-          <li><a href="#verify" data-i18n="nav_verify">Verificar</a></li>
+          <li><a href="buscar.html">🔍 Buscar</a></li>
+          <li><a href="#register" data-i18n="nav_register">Mapear</a></li>
           <li><a href="#rewards" data-i18n="nav_rewards">Recompensas</a></li>
+          <li><a href="#verify" data-i18n="nav_verify">Verificar</a></li>
           <li><a href="index.html" data-i18n="nav_home">Início</a></li>
         </ul>
-        <div class="lang-selector" role="group" aria-label="Language selection">
-          <button class="lang-btn" data-lang="pt" aria-label="Português">PT</button>
-          <button class="lang-btn" data-lang="en" aria-label="English">EN</button>
-          <button class="lang-btn" data-lang="es" aria-label="Español">ES</button>
-        </div>
+        <select class="lang-select" id="lang-select" aria-label="Selecionar idioma">
+          <option value="pt">PT/BR</option>
+          <option value="en">EN</option>
+          <option value="es">ES</option>
+        </select>
         <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Dark mode">
           <span id="theme-icon">🌙</span>
         </button>
@@ -463,10 +461,8 @@
         const key = el.getAttribute('data-i18n');
         if (strings[key]) el.textContent = strings[key];
       });
-      document.querySelectorAll('.lang-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.lang === lang);
-        btn.setAttribute('aria-pressed', btn.dataset.lang === lang);
-      });
+      const langSel = document.getElementById('lang-select');
+      if (langSel) langSel.value = lang;
       // Populate category select
       const sel = document.getElementById('reg-category');
       if (sel) {
@@ -522,9 +518,8 @@
       initNav();
       setLanguage(detectLanguage());
       document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
-      document.querySelectorAll('.lang-btn').forEach(btn => {
-        btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
-      });
+      const ls = document.getElementById('lang-select');
+      if (ls) ls.addEventListener('change', e => setLanguage(e.target.value));
       // Connect wallet buttons
       document.getElementById('connect-wallet-btn').addEventListener('click', () => window.SteplessDashboard?.connect());
       document.getElementById('connect-wallet-btn-large').addEventListener('click', () => window.SteplessDashboard?.connect());

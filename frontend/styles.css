@@ -1127,35 +1127,34 @@ input[type="file"]::file-selector-button {
  *  Language selector
  * ────────────────────────────────────────────────────────────── */
 
-.lang-selector {
-  display: flex;
-  gap: 4px;
-  background: var(--bg-alt);
-  border-radius: var(--radius-sm);
-  padding: 4px;
-}
-
-.lang-btn {
-  background: none;
-  border: none;
-  padding: 6px 12px;
+.lang-select {
+  padding: 5px 8px;
   border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.85rem;
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 0.82rem;
   font-weight: 600;
-  color: var(--text-muted);
-  transition: var(--transition);
   font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+  flex-shrink: 0;
 }
+.lang-select:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.lang-select:hover { border-color: var(--primary); }
 
-.lang-btn.active {
-  background: var(--primary);
-  color: #ffffff;
+/* legacy buttons kept for buscar.html */
+.lang-selector { display: flex; gap: 4px; }
+.lang-btn {
+  background: none; border: 1px solid var(--border);
+  border-radius: 6px; padding: 5px 10px; cursor: pointer;
+  font-size: 0.82rem; font-weight: 600; color: var(--text-muted);
+  transition: var(--transition); font-family: inherit;
 }
-
-[data-theme="dark"] .lang-btn.active {
-  color: var(--bg);
-}
+.lang-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
 /* ──────────────────────────────────────────────────────────────
  *  Wallet connection
