@@ -17,7 +17,7 @@
  *   RELAYER_PRIVATE_KEY, ORACLE_ADDRESS, ARC_RPC_URL
  */
 
-import { createWalletClient, createPublicClient, http, keccak256, encodePacked } from 'viem';
+import { createWalletClient, createPublicClient, http, keccak256, encodePacked, getAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { createHash } from 'crypto';
 
@@ -170,7 +170,7 @@ export default async function handler(req, res) {
     const account = privateKeyToAccount(pk);
     const publicClient = createPublicClient({ chain: arcTestnet, transport: http() });
     const walletClient = createWalletClient({ account, chain: arcTestnet, transport: http() });
-    const oracleAddress = process.env.ORACLE_ADDRESS;
+    const oracleAddress = getAddress(process.env.ORACLE_ADDRESS.toLowerCase());
 
     // ── Auto-autorização: verifica e autoriza o relayer se necessário ─────
     try {

@@ -5,7 +5,7 @@
  * POST /api/setup → executa setAuthorizedCaller se necessário
  */
 
-import { createWalletClient, createPublicClient, http } from 'viem';
+import { createWalletClient, createPublicClient, http, getAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
 const arcTestnet = {
@@ -57,7 +57,7 @@ export default async function handler(req, res) {
     : `0x${process.env.RELAYER_PRIVATE_KEY}`;
 
   const account = privateKeyToAccount(pk);
-  const oracleAddress = process.env.ORACLE_ADDRESS;
+  const oracleAddress = getAddress(process.env.ORACLE_ADDRESS.toLowerCase());
 
   const publicClient = createPublicClient({ chain: arcTestnet, transport: http() });
 
