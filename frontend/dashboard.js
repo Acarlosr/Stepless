@@ -514,7 +514,7 @@ async function loadRewardHistory() {
       console.warn('[history] getLogs não suportado, usando leitura de estado:', logsErr?.message);
     }
 
-    // ── 2. Fallback: leitura direta via locationCount + locationIdByIndex + getLocation ──
+    // ── 2. Fallback: leitura direta via locationCount + allLocationHashes + getLocation ──
     //    Usa apenas eth_call — sempre funciona em qualquer RPC EVM
     if (!usedLogs) {
       const count = await publicClient.readContract({
@@ -527,35 +527,51 @@ async function loadRewardHistory() {
       // Checa os últimos 50 (ou todos se < 50)
       const start = Math.max(0, total - 50);
 
+      // ABI mínima para o array público e getLocation real do contrato deployado
+      const ARRAY_ABI = [
+        { type:'function', name:'allLocationHashes',
+          inputs:[{name:'',type:'uint256'}], outputs:[{type:'bytes32'}], stateMutability:'view' },
+        { type:'function', name:'getLocation',
+          inputs:[{name:'locationHash',type:'bytes32'}],
+          outputs:[
+            {name:'locationHash',      type:'bytes32'},
+            {name:'firstContributor',  type:'address'},
+            {name:'registeredBlock',   type:'uint256'},
+            {name:'verificationCount', type:'uint256'},
+            {name:'exists',            type:'bool'},
+          ], stateMutability:'view' },
+      ];
+
       for (let i = total - 1; i >= start; i--) {
-        const locationId = await publicClient.readContract({
+        // allLocationHashes(uint256) — array público do Oracle
+        const locationHash = await publicClient.readContract({
           address: cfg.contracts.SteplessOracle,
-          abi: cfg.abis.SteplessOracle,
-          functionName: 'locationIdByIndex',
+          abi: ARRAY_ABI,
+          functionName: 'allLocationHashes',
           args: [BigInt(i)],
         });
 
-        // getLocation retorna: [lat, lng, name, category, photoHash, contributor, timestamp]
+        // getLocation retorna struct {locationHash, firstContributor, registeredBlock, verificationCount, exists}
         const loc = await publicClient.readContract({
           address: cfg.contracts.SteplessOracle,
-          abi: cfg.abis.SteplessOracle,
+          abi: ARRAY_ABI,
           functionName: 'getLocation',
-          args: [locationId],
+          args: [locationHash],
         });
 
-        const contributor = loc[5];
+        const contributor = loc.firstContributor;
         if (contributor?.toLowerCase() !== walletAddress.toLowerCase()) continue;
 
-        const name = loc[2];
-        const category = Number(loc[3]);
-        const cat = cfg.locationCategories.find(c => c.id === category)?.label?.[getLang()] || `Cat.${category}`;
         const addrUrl = `${explorerBase}/address/${cfg.contracts.SteplessOracle}`;
+        const verBadge = Number(loc.verificationCount) > 0
+          ? `<span class="badge badge-success">✅ ${loc.verificationCount} verif.</span>`
+          : `<span class="badge badge-info">⏳ Aguardando</span>`;
 
         rows.push(`<tr>
-          <td><a href="${addrUrl}" target="_blank" rel="noopener">${shortHash(locationId)}</a></td>
-          <td style="color:var(--text-muted)">—</td>
-          <td><span class="badge badge-info">📍 ${cat}</span></td>
-          <td style="font-family:monospace;font-size:.85rem">${name || shortHash(locationId)}</td>
+          <td><a href="${addrUrl}" target="_blank" rel="noopener">${shortHash(locationHash)}</a></td>
+          <td style="color:var(--text-muted)">Bloco #${loc.registeredBlock}</td>
+          <td>${verBadge}</td>
+          <td style="font-family:monospace;font-size:.85rem">${shortHash(locationHash)}</td>
           <td>✅ On-chain</td>
         </tr>`);
       }

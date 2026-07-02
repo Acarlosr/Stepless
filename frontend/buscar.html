@@ -362,7 +362,7 @@
 
     // ── Config ──────────────────────────────────────────
     const ORACLE_ADDRESS = '0x220a3A4CAb8A5894C0926E9Ff700168F32F8192e';
-    const EXPLORER      = 'https://testnet.arcscan.app';
+    const EXPLORER       = 'https://testnet.arcscan.app';
 
     const ARC_CHAIN = {
       id: 5042002,
@@ -371,38 +371,43 @@
       rpcUrls: { default: { http: ['https://rpc.testnet.arc.network'] } },
     };
 
+    // ABI baseado no contrato real deployado
     const ORACLE_ABI = [
-      { type:'function', name:'locationCount',    inputs:[], outputs:[{type:'uint256'}], stateMutability:'view' },
-      { type:'function', name:'locationIdByIndex', inputs:[{name:'index',type:'uint256'}], outputs:[{type:'bytes32'}], stateMutability:'view' },
-      { type:'function', name:'getLocation',
-        inputs:[{name:'locationId',type:'bytes32'}],
-        outputs:[
-          {name:'lat',type:'int256'}, {name:'lng',type:'int256'},
-          {name:'name',type:'string'}, {name:'category',type:'uint8'},
-          {name:'photoHash',type:'bytes32'}, {name:'contributor',type:'address'},
-          {name:'timestamp',type:'uint256'},
-        ],
-        stateMutability:'view'
-      },
-    ];
+      { type:'function', name:'locationCount',
+        inputs:[], outputs:[{type:'uint256'}], stateMutability:'view' },
 
-    const CATEGORIES = [
-      { id:0, label:'Rampa',              icon:'♿' },
-      { id:1, label:'Elevador',           icon:'🛗' },
-      { id:2, label:'Banheiro Acessível', icon:'🚻' },
-      { id:3, label:'Vaga PCD',           icon:'🅿️' },
-      { id:4, label:'Sinalização',        icon:'🔔' },
-      { id:5, label:'Áudio Descrição',    icon:'🔊' },
-      { id:6, label:'Braile',             icon:'✋' },
-      { id:7, label:'Outro',              icon:'✨' },
+      // allLocationHashes é o array público — acessível como allLocationHashes(uint256)
+      { type:'function', name:'allLocationHashes',
+        inputs:[{name:'',type:'uint256'}], outputs:[{type:'bytes32'}], stateMutability:'view' },
+
+      // getLocation retorna a struct Location real do contrato
+      { type:'function', name:'getLocation',
+        inputs:[{name:'locationHash',type:'bytes32'}],
+        outputs:[
+          {name:'locationHash',      type:'bytes32'},
+          {name:'firstContributor',  type:'address'},
+          {name:'registeredBlock',   type:'uint256'},
+          {name:'verificationCount', type:'uint256'},
+          {name:'exists',            type:'bool'},
+        ],
+        stateMutability:'view' },
+
+      // Evento emitido em registerLocation — tem latPacked e lngPacked
+      { type:'event', name:'LocationRegistered', inputs:[
+        {name:'locationHash', type:'bytes32', indexed:true},
+        {name:'contributor',  type:'address', indexed:true},
+        {name:'latPacked',    type:'uint256', indexed:false},
+        {name:'lngPacked',    type:'uint256', indexed:false},
+        {name:'blockNumber',  type:'uint256', indexed:false},
+      ]},
     ];
 
     // ── State ────────────────────────────────────────────
-    let allLocations  = [];   // todos os locais lidos da chain
-    let userLat       = null;
-    let userLng       = null;
-    let activeCat     = 'all';
-    let searchDone    = false;
+    let allLocations = [];
+    let userLat      = null;
+    let userLng      = null;
+    let searchDone   = false;
+    let activeCat    = 'all';
 
     const publicClient = createPublicClient({ chain: ARC_CHAIN, transport: http() });
 
@@ -416,14 +421,11 @@
       return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     }
 
-    function decodeCoord(raw) {
-      // lat: offset +90 → realLat = raw/1e6 - 90
-      // lng: offset +180 → realLng = raw/1e6 - 180
-      return { lat: Number(raw) / 1e6 - 90, lng: Number(raw) / 1e6 - 180 };
-    }
-
     function shortAddr(addr) {
       return addr ? `${addr.slice(0,6)}...${addr.slice(-4)}` : '—';
+    }
+    function shortHash(h) {
+      return h ? `${h.slice(0,10)}...${h.slice(-6)}` : '—';
     }
 
     function setStatus(msg) {
@@ -431,67 +433,88 @@
     }
 
     function showState(name) {
-      ['initial','loading','empty','results'].forEach(s => {
-        document.getElementById(`state-${s}`)?.classList.toggle('hidden', s !== name);
-      });
+      ['initial','loading','empty','results'].forEach(s =>
+        document.getElementById(`state-${s}`)?.classList.toggle('hidden', s !== name));
+    }
+
+    // ── Buscar lat/lng via eventos (melhor esforço) ───────
+    async function tryGetEventCoords() {
+      // Mapa: locationHash → {latPacked, lngPacked, txHash}
+      const map = {};
+      try {
+        const latest = await publicClient.getBlockNumber();
+        // Tenta últimos 5000 blocos (range pequeno para evitar limite do RPC)
+        const from = latest > 5000n ? latest - 5000n : 0n;
+        const logs = await publicClient.getContractEvents({
+          address: ORACLE_ADDRESS, abi: ORACLE_ABI,
+          eventName: 'LocationRegistered',
+          fromBlock: from, toBlock: 'latest',
+        });
+        for (const log of logs) {
+          map[log.args.locationHash] = {
+            lat: Number(log.args.latPacked) / 1e6 - 90,
+            lng: Number(log.args.lngPacked) / 1e6 - 180,
+            txHash: log.transactionHash,
+          };
+        }
+      } catch (e) {
+        console.warn('[buscar] getLogs indisponível:', e.message);
+      }
+      return map;
     }
 
     // ── Ler locais da blockchain ──────────────────────────
     async function fetchAllLocations() {
       const count = await publicClient.readContract({
-        address: ORACLE_ADDRESS,
-        abi: ORACLE_ABI,
-        functionName: 'locationCount',
+        address: ORACLE_ADDRESS, abi: ORACLE_ABI, functionName: 'locationCount',
       });
-
       const total = Number(count);
       if (total === 0) return [];
 
-      document.getElementById('loading-msg').textContent = `Lendo ${total} local(is) da blockchain...`;
+      document.getElementById('loading-msg').textContent =
+        `Lendo ${total} local(is) da blockchain...`;
+
+      // Tenta obter coords via eventos
+      const coordsMap = await tryGetEventCoords();
 
       const locations = [];
-      for (let i = 0; i < total; i++) {
-        const locationId = await publicClient.readContract({
-          address: ORACLE_ADDRESS,
-          abi: ORACLE_ABI,
-          functionName: 'locationIdByIndex',
-          args: [BigInt(i)],
+      for (let i = 0; i < Math.min(total, 100); i++) {
+        // allLocationHashes(uint256) — array público do contrato
+        const hash = await publicClient.readContract({
+          address: ORACLE_ADDRESS, abi: ORACLE_ABI,
+          functionName: 'allLocationHashes', args: [BigInt(i)],
         });
 
-        const data = await publicClient.readContract({
-          address: ORACLE_ADDRESS,
-          abi: ORACLE_ABI,
-          functionName: 'getLocation',
-          args: [locationId],
+        // getLocation retorna struct {locationHash, firstContributor, registeredBlock, verificationCount, exists}
+        const loc = await publicClient.readContract({
+          address: ORACLE_ADDRESS, abi: ORACLE_ABI,
+          functionName: 'getLocation', args: [hash],
         });
 
-        // data = [lat, lng, name, category, photoHash, contributor, timestamp]
-        const latRaw = Number(data[0]);
-        const lngRaw = Number(data[1]);
-
+        const eventData = coordsMap[hash] || {};
         locations.push({
-          locationId,
-          lat:         latRaw / 1e6 - 90,
-          lng:         lngRaw / 1e6 - 180,
-          name:        data[2],
-          category:    Number(data[3]),
-          contributor: data[5],
-          timestamp:   Number(data[6]),
+          index:             i + 1,
+          locationHash:      hash,
+          contributor:       loc.firstContributor,
+          blockNumber:       Number(loc.registeredBlock),
+          verifications:     Number(loc.verificationCount),
+          // coords — só disponíveis se evento foi indexado no range buscado
+          lat:   eventData.lat  ?? null,
+          lng:   eventData.lng  ?? null,
+          txHash: eventData.txHash ?? null,
         });
       }
-
       return locations;
     }
 
     // ── Renderizar resultados ─────────────────────────────
     function renderResults() {
-      const radiusKm  = Number(document.getElementById('radius-select').value);
-      const grid      = document.getElementById('results-grid');
-      const countEl   = document.getElementById('results-count');
+      const radiusKm = Number(document.getElementById('radius-select').value);
+      const grid     = document.getElementById('results-grid');
+      const countEl  = document.getElementById('results-count');
 
       let filtered = allLocations.filter(loc => {
-        if (activeCat !== 'all' && loc.category !== Number(activeCat)) return false;
-        if (userLat !== null && radiusKm < 9999) {
+        if (userLat !== null && loc.lat !== null && radiusKm < 9999) {
           const dist = haversineKm(userLat, userLng, loc.lat, loc.lng);
           if (dist > radiusKm) return false;
           loc._dist = dist;
@@ -499,44 +522,48 @@
         return true;
       });
 
-      // Ordena por distância se disponível
-      if (userLat !== null) {
-        filtered.sort((a, b) => (a._dist ?? 0) - (b._dist ?? 0));
+      if (userLat !== null && filtered.some(l => l.lat !== null)) {
+        filtered.sort((a, b) => (a._dist ?? 999) - (b._dist ?? 999));
       }
 
-      if (filtered.length === 0) {
-        showState('empty');
-        return;
-      }
+      if (filtered.length === 0) { showState('empty'); return; }
 
       showState('results');
-      countEl.textContent = `${filtered.length} local${filtered.length !== 1 ? 'is' : ''} encontrado${filtered.length !== 1 ? 's' : ''}`;
+      countEl.textContent =
+        `${filtered.length} local${filtered.length !== 1 ? 'is' : ''} encontrado${filtered.length !== 1 ? 's' : ''}`;
 
       grid.innerHTML = filtered.map(loc => {
-        const cat = CATEGORIES.find(c => c.id === loc.category) || { icon: '📍', label: 'Local' };
         const distLabel = loc._dist != null
           ? `<span class="location-dist">📍 ${loc._dist < 1 ? Math.round(loc._dist*1000)+'m' : loc._dist.toFixed(1)+'km'}</span>`
           : '';
-        const explorerUrl = `${EXPLORER}/address/${ORACLE_ADDRESS}`;
-        const mapsUrl = `https://www.google.com/maps?q=${loc.lat},${loc.lng}`;
+
+        const verBadge = loc.verifications > 0
+          ? `<span style="font-size:.75rem;color:var(--success);font-weight:600;">✅ ${loc.verifications} verif.</span>`
+          : `<span style="font-size:.75rem;color:var(--text-muted);">⏳ Aguard. verificação</span>`;
+
+        const mapsLink = loc.lat !== null
+          ? `<a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" rel="noopener">🗺️ Ver no mapa</a>`
+          : '';
+        const txLink = loc.txHash
+          ? `<a href="${EXPLORER}/tx/${loc.txHash}" target="_blank" rel="noopener">🔗 Ver TX</a>`
+          : `<a href="${EXPLORER}/address/${ORACLE_ADDRESS}" target="_blank" rel="noopener">🔗 On-chain</a>`;
 
         return `
           <article class="location-card" role="listitem">
             <div class="location-card-top">
-              <div class="location-icon" aria-hidden="true">${cat.icon}</div>
+              <div class="location-icon" aria-hidden="true">♿</div>
               <div>
-                <p class="location-name">${loc.name || 'Local sem nome'}</p>
-                <p class="location-cat">${cat.label}</p>
+                <p class="location-name">Local #${loc.index}</p>
+                <p class="location-cat" style="font-family:monospace;font-size:.75rem;">${shortHash(loc.locationHash)}</p>
               </div>
             </div>
             <div class="location-meta">
               ${distLabel}
+              ${verBadge}
               <span class="location-contrib" title="${loc.contributor}">👤 ${shortAddr(loc.contributor)}</span>
             </div>
-            <div class="location-actions">
-              <a href="${mapsUrl}" target="_blank" rel="noopener" aria-label="Ver no Google Maps">🗺️ Ver no mapa</a>
-              <a href="${explorerUrl}" target="_blank" rel="noopener" aria-label="Ver on-chain no ArcScan">🔗 On-chain</a>
-            </div>
+            <div style="font-size:.78rem;color:var(--text-muted);">Bloco #${loc.blockNumber}</div>
+            <div class="location-actions">${mapsLink}${txLink}</div>
           </article>
         `;
       }).join('');
