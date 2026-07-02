@@ -438,86 +438,117 @@ async function checkVerifierStatus() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
- *  Reward history (Goldsky subgraph)
+ *  Reward history (direto da blockchain via getLogs)
  * ═══════════════════════════════════════════════════════════════ */
+
+// Bloco aproximado do deploy do Oracle (49720668) — busca a partir daqui
+const ORACLE_DEPLOY_BLOCK = BigInt(49700000);
 
 async function loadRewardHistory() {
   const tbody = document.getElementById('rewards-table-body');
   if (!tbody) return;
   const s = getStrings();
 
-  const query = `
-    query RewardPaidEvents($contributor: Bytes!) {
-      rewardPaidEvents(
-        where: { contributor: $contributor }
-        orderBy: blockTimestamp
-        orderDirection: desc
-        first: 20
-      ) {
-        id
-        contributionId
-        contributor
-        amount
-        tier
-        blockTimestamp
-        transactionHash
-      }
-    }
-  `;
-
-  // Subgraph ainda não deployado — mostra mensagem amigável
-  if (!cfg.subgraphEndpoint || cfg.subgraphEndpoint.includes('YOUR_') || cfg.subgraphEndpoint.includes('stepless/v1.0')) {
-    tbody.innerHTML = `<tr><td colspan="5" class="table-empty">${s.rewards_empty || 'Subgraph em configuração. Histórico disponível em breve.'}</td></tr>`;
-    return;
-  }
+  tbody.innerHTML = `<tr><td colspan="5" class="table-empty">⏳ Buscando na blockchain...</td></tr>`;
 
   try {
-    const resp = await fetch(cfg.subgraphEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query,
-        variables: { contributor: walletAddress },
-      }),
-    });
+    // Tenta buscar do bloco de deploy; se o RPC limitar o range, cai para últimos 50k blocos
+    let fromBlock = ORACLE_DEPLOY_BLOCK;
+    let locationLogs = [], rewardLogs = [];
 
-    if (!resp.ok) {
-      tbody.innerHTML = `<tr><td colspan="5" class="table-empty">${s.rewards_empty || 'Histórico indisponível no momento.'}</td></tr>`;
+    async function fetchLogs(fb) {
+      const [loc, rew] = await Promise.all([
+        publicClient.getContractEvents({
+          address: cfg.contracts.SteplessOracle,
+          abi: cfg.abis.SteplessOracle,
+          eventName: 'LocationRegistered',
+          args: { contributor: walletAddress },
+          fromBlock: fb,
+          toBlock: 'latest',
+        }),
+        publicClient.getContractEvents({
+          address: cfg.contracts.RewardDistributor,
+          abi: cfg.abis.RewardDistributor,
+          eventName: 'RewardPaid',
+          args: { contributor: walletAddress },
+          fromBlock: fb,
+          toBlock: 'latest',
+        }),
+      ]);
+      return [loc, rew];
+    }
+
+    try {
+      [locationLogs, rewardLogs] = await fetchLogs(fromBlock);
+    } catch (rangeErr) {
+      // RPC limitou o range — tenta últimos 50k blocos
+      console.warn('[history] Range too large, trying last 50k blocks:', rangeErr?.message);
+      const latestBlock = await publicClient.getBlockNumber();
+      const fallbackFrom = latestBlock > 50000n ? latestBlock - 50000n : 0n;
+      [locationLogs, rewardLogs] = await fetchLogs(fallbackFrom);
+    }
+
+    if (locationLogs.length === 0 && rewardLogs.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" class="table-empty">${s.rewards_empty || 'Nenhuma contribuição registrada ainda.'}</td></tr>`;
       return;
     }
 
-    const json = await resp.json();
+    // Combina e ordena por bloco decrescente
+    const allEvents = [
+      ...locationLogs.map(log => ({
+        type: 'location',
+        blockNumber: log.blockNumber,
+        txHash: log.transactionHash,
+        name: log.args.name,
+        category: log.args.category,
+        locationId: log.args.locationId,
+      })),
+      ...rewardLogs.map(log => ({
+        type: 'reward',
+        blockNumber: log.blockNumber,
+        txHash: log.transactionHash,
+        amount: log.args.amount,
+        tier: log.args.tier,
+        contributionId: log.args.contributionId,
+      })),
+    ].sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber));
 
-    if (json.errors) {
-      throw new Error(json.errors[0]?.message || 'Subgraph error');
-    }
+    const explorerBase = cfg.chain.blockExplorers.default.url;
 
-    const events = json.data?.rewardPaidEvents || [];
+    tbody.innerHTML = allEvents.map(ev => {
+      const txUrl = `${explorerBase}/tx/${ev.txHash}`;
+      const blockUrl = `${explorerBase}/block/${ev.blockNumber}`;
+      const blockLabel = `<a href="${blockUrl}" target="_blank" rel="noopener">#${ev.blockNumber}</a>`;
 
-    if (events.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" class="table-empty">${s.rewards_empty || 'No rewards yet'}</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = events.map(e => {
-      const tierLabel = cfg.rewardTiers.find(t => t.tier === Number(e.tier))?.label || `T${e.tier}`;
-      const date = new Date(Number(e.blockTimestamp) * 1000).toLocaleString(
-        getLang() === 'pt' ? 'pt-BR' : getLang()
-      );
-      const txUrl = `${cfg.chain.blockExplorers.default.url}/tx/${e.transactionHash}`;
-      return `
-        <tr>
-          <td><a href="${txUrl}" target="_blank" rel="noopener">${shortHash(e.transactionHash)}</a></td>
-          <td><span class="reward-amount">${formatUsdc(e.amount)}</span></td>
-          <td><span class="badge badge-info">${tierLabel}</span></td>
-          <td style="font-family:monospace; font-size:0.85rem;">${shortHash(e.contributionId)}</td>
-          <td>${date}</td>
-        </tr>
-      `;
+      if (ev.type === 'location') {
+        const catLabel = cfg.locationCategories.find(c => c.id === Number(ev.category))
+          ?.label?.[getLang()] || `Cat.${ev.category}`;
+        return `
+          <tr>
+            <td><a href="${txUrl}" target="_blank" rel="noopener">${shortHash(ev.txHash)}</a></td>
+            <td style="color:var(--text-muted)">—</td>
+            <td><span class="badge badge-info">📍 ${catLabel}</span></td>
+            <td style="font-family:monospace; font-size:0.85rem;" title="${ev.locationId}">${ev.name || shortHash(ev.locationId)}</td>
+            <td>${blockLabel}</td>
+          </tr>
+        `;
+      } else {
+        const tierLabel = cfg.rewardTiers.find(t => t.tier === Number(ev.tier))?.label || `T${ev.tier}`;
+        return `
+          <tr>
+            <td><a href="${txUrl}" target="_blank" rel="noopener">${shortHash(ev.txHash)}</a></td>
+            <td><span class="reward-amount">${formatUsdc(ev.amount)} USDC</span></td>
+            <td><span class="badge badge-success">💰 ${tierLabel}</span></td>
+            <td style="font-family:monospace; font-size:0.85rem;" title="${ev.contributionId}">${shortHash(ev.contributionId)}</td>
+            <td>${blockLabel}</td>
+          </tr>
+        `;
+      }
     }).join('');
+
   } catch (err) {
     console.error('Reward history error:', err);
-    tbody.innerHTML = `<tr><td colspan="5" class="table-empty">${s.rewards_empty || 'Unable to load rewards'}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="table-empty">❌ Erro ao carregar histórico: ${err?.shortMessage || err?.message}</td></tr>`;
   }
 }
 
