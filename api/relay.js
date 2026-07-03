@@ -87,6 +87,16 @@ const ORACLE_ABI = [
     ],
     outputs: [],
   },
+  // Custom errors do contrato — sem isso, viem só mostra a assinatura em hex
+  // (ex: "0x06eaa269") em vez do nome legível ("LocationAlreadyRegistered").
+  { type: 'error', name: 'Unauthorized', inputs: [] },
+  { type: 'error', name: 'ZeroAddress', inputs: [] },
+  { type: 'error', name: 'LocationAlreadyRegistered', inputs: [{ name: 'locationHash', type: 'bytes32' }] },
+  { type: 'error', name: 'ContributionNotFound', inputs: [{ name: 'contributionId', type: 'bytes32' }] },
+  { type: 'error', name: 'AlreadyVerified', inputs: [{ name: 'contributionId', type: 'bytes32' }] },
+  { type: 'error', name: 'NotAVerifier', inputs: [{ name: 'addr', type: 'address' }] },
+  { type: 'error', name: 'SelfVerificationForbidden', inputs: [] },
+  { type: 'error', name: 'CooldownActive', inputs: [] },
 ];
 
 // ─── ABI para auto-autorização do relayer ───────────────────────────────────
@@ -310,6 +320,28 @@ export default async function handler(req, res) {
     }
     if (/insufficient|balance/i.test(msg)) {
       return res.status(402).json({ success: false, error: 'Relayer sem saldo USDC para gas.' });
+    }
+    // Custom errors do contrato — nomes legíveis (viem decodifica via ORACLE_ABI acima)
+    if (/LocationAlreadyRegistered|06eaa269/i.test(msg)) {
+      return res.status(409).json({ success: false, error: 'Esse local (mesma coordenada e nome) já foi registrado antes.' });
+    }
+    if (/AlreadyVerified/i.test(msg)) {
+      return res.status(409).json({ success: false, error: 'Essa contribuição já foi verificada.' });
+    }
+    if (/NotAVerifier/i.test(msg)) {
+      return res.status(403).json({ success: false, error: 'Esse endereço não é um verificador aprovado.' });
+    }
+    if (/SelfVerificationForbidden/i.test(msg)) {
+      return res.status(403).json({ success: false, error: 'Não é permitido verificar sua própria contribuição.' });
+    }
+    if (/CooldownActive/i.test(msg)) {
+      return res.status(429).json({ success: false, error: 'Aguarde o período de cooldown antes de tentar de novo.' });
+    }
+    if (/ContributionNotFound/i.test(msg)) {
+      return res.status(404).json({ success: false, error: 'Contribuição ou local não encontrado.' });
+    }
+    if (/Unauthorized/i.test(msg)) {
+      return res.status(403).json({ success: false, error: 'Relayer não autorizado para essa ação no contrato.' });
     }
     return res.status(500).json({ success: false, error: msg });
   }
