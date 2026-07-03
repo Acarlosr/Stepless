@@ -584,7 +584,7 @@ contract RewardDistributor {
     ///      ⚠️ If you need to recover native USDC sent by mistake, use
     ///         recoverNativeUSDC() below.
     receive() external payable {
-        revert("Use fundTreasury() — native USDC not accepted to avoid decimal mismatch");
+        revert("Use fundTreasury() - native USDC not accepted to avoid decimal mismatch");
     }
 
     // ════════════════════════════════════════════════════════════════════════

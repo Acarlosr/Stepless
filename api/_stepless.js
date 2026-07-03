@@ -190,6 +190,7 @@ export function clientIp(req) {
 export function translateError(err) {
   const msg = err?.shortMessage || err?.message || String(err);
   const map = [
+    [/returned no data|no data \("0x"\)/i, 500, 'Não existe contrato nesse endereço na Arc Testnet. Confira DISTRIBUTOR_ADDRESS / ORACLE_ADDRESS.'],
     [/blocklist|blocked/i, 403, 'Endereço bloqueado pelo sistema anti-drenagem da Arc.'],
     [/InsufficientTreasury/i, 402, 'Tesouraria sem USDC suficiente. Fundeie o RewardDistributor.'],
     [/insufficient|balance/i, 402, 'Conta sem saldo USDC para gas.'],

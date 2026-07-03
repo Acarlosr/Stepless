@@ -37,9 +37,39 @@ export default async function handler(req, res) {
   const relayer = relayerAccount();
   const verifier = verifierAccount();
   const oracle = oracleAddress();
-  const distributor = distributorAddress();
+  let distributor = distributorAddress();
 
   try {
+    // ── Pré-check: os contratos existem mesmo nesses endereços? ────────────
+    const [oracleCode, distCodeConfigured] = await Promise.all([
+      pub.getCode({ address: oracle }),
+      pub.getCode({ address: distributor }),
+    ]);
+    if (!oracleCode || oracleCode === '0x') {
+      return res.status(500).json({
+        success: false,
+        error: `Não existe contrato em ORACLE_ADDRESS (${oracle}) na Arc Testnet. Confira o endereço.`,
+      });
+    }
+    if (!distCodeConfigured || distCodeConfigured === '0x') {
+      // Distributor configurado não existe — tenta descobrir pelo Oracle
+      const fromOracle = await pub.readContract({
+        address: oracle, abi: ORACLE_ABI, functionName: 'rewardDistributor',
+      });
+      const fromOracleCode = fromOracle && fromOracle !== '0x0000000000000000000000000000000000000000'
+        ? await pub.getCode({ address: fromOracle })
+        : null;
+      if (fromOracleCode && fromOracleCode !== '0x') {
+        distributor = fromOracle; // usa o endereço registrado no Oracle
+      } else {
+        return res.status(500).json({
+          success: false,
+          error: `O RewardDistributor NÃO está deployado em ${distributor}, e o Oracle também não aponta para nenhum válido (rewardDistributor = ${fromOracle}). É preciso deployar o RewardDistributor na Arc Testnet e configurar DISTRIBUTOR_ADDRESS na Vercel.`,
+          oracle,
+          relayer: relayer.address,
+        });
+      }
+    }
     const [
       oracleAdmin, relayerAuthOracle, verifierAuthOracle, oracleDistributor,
       distAdmin, oracleAuthDist, relayerAuthDist, isVerifier,
