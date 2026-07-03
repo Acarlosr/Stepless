@@ -605,17 +605,20 @@ async function handleRegisterLocation(e) {
   const lat = parseFloat(document.getElementById('reg-lat').value);
   const lng = parseFloat(document.getElementById('reg-lng').value);
   const name = document.getElementById('reg-name').value.trim();
-  const category = parseInt(document.getElementById('reg-category').value, 10);
+  // Multi-select: um local pode ter várias features (rampa + banheiro + vaga, etc.)
+  const categories = Array.from(
+    document.querySelectorAll('#reg-category-group input[name="category"]:checked')
+  ).map(el => parseInt(el.value, 10));
   const otherDesc = document.getElementById('reg-other-desc')?.value.trim() || '';
   // When "Outro" (id=7) is selected and user filled the description, append it
-  const fullName = (category === 7 && otherDesc) ? `${name} — ${otherDesc}` : name;
+  const fullName = (categories.includes(7) && otherDesc) ? `${name} — ${otherDesc}` : name;
   const photoInput = document.getElementById('reg-photo');
 
   if (isNaN(lat) || isNaN(lng)) {
     showAlert('register-alert', 'danger', s.reg_gps_error || 'Use o GPS ou busque um endereço primeiro.');
     return;
   }
-  if (!name || isNaN(category)) {
+  if (!name || categories.length === 0) {
     showAlert('register-alert', 'danger', s.err_tx_failed || 'Preencha todos os campos.');
     return;
   }
@@ -668,7 +671,7 @@ async function handleRegisterLocation(e) {
       body: JSON.stringify({
         action: 'registerLocation',
         userAddress: walletAddress,
-        submissionData: { locationHash, latPacked, lngPacked, dataHash, exifLat, exifLng, exifTimestamp, name: fullName },
+        submissionData: { locationHash, latPacked, lngPacked, dataHash, exifLat, exifLng, exifTimestamp, name: fullName, categories },
       }),
     });
 
@@ -819,10 +822,12 @@ async function estimateRegisterGas() {
   const lat = parseFloat(document.getElementById('reg-lat')?.value);
   const lng = parseFloat(document.getElementById('reg-lng')?.value);
   const name = document.getElementById('reg-name')?.value.trim();
-  const category = parseInt(document.getElementById('reg-category')?.value, 10);
+  const categories = Array.from(
+    document.querySelectorAll('#reg-category-group input[name="category"]:checked')
+  ).map(el => parseInt(el.value, 10));
   const gasEl = document.getElementById('register-gas-estimate');
 
-  if (isNaN(lat) || isNaN(lng) || !name || isNaN(category) || !publicClient) return;
+  if (isNaN(lat) || isNaN(lng) || !name || categories.length === 0 || !publicClient) return;
 
   try {
     const viem = window.viem;
@@ -834,7 +839,7 @@ async function estimateRegisterGas() {
       address: cfg.contracts.SteplessOracle,
       abi: cfg.abis.SteplessOracle,
       functionName: 'registerLocation',
-      args: [latInt, lngInt, name, category, dummyHash],
+      args: [latInt, lngInt, name, categories[0], dummyHash],
       account: walletAddress,
     });
 
@@ -939,10 +944,10 @@ function initEventListeners() {
   if (addrInput) addrInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doAddressSearch(); } });
 
   // Gas estimate on name/category change
-  ['reg-name', 'reg-category'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener('change', estimateRegisterGas);
-  });
+  const regNameEl = document.getElementById('reg-name');
+  if (regNameEl) regNameEl.addEventListener('change', estimateRegisterGas);
+  const regCatGroup = document.getElementById('reg-category-group');
+  if (regCatGroup) regCatGroup.addEventListener('change', estimateRegisterGas);
 
   // EXIF GPS feedback ao selecionar foto
   const photoInput = document.getElementById('reg-photo');

@@ -410,6 +410,12 @@
     let searchDone   = false;
     let activeCat    = 'all';
 
+    // Mesma ordem/ids usados no formulário de registro (dashboard.html)
+    const CATEGORY_LABELS = {
+      0: '♿ Rampa', 1: '🛗 Elevador', 2: '🚻 Banheiro', 3: '🅿️ Vaga PCD',
+      4: '🔔 Sinalização', 5: '🔊 Áudio', 6: '✋ Braile', 7: '✨ Outro',
+    };
+
     const publicClient = createPublicClient({ chain: ARC_CHAIN, transport: http() });
 
     // ── Helpers ──────────────────────────────────────────
@@ -523,23 +529,27 @@
       return locations;
     }
 
-    // ── Buscar nomes salvos fora da chain (Upstash, via api/relay) ─
-    async function enrichWithNames(locations) {
+    // ── Buscar nome + categorias salvos fora da chain (Upstash, via api/relay) ─
+    async function enrichWithMeta(locations) {
       if (locations.length === 0) return;
       try {
-        const resp = await fetch('/api/location-names', {
+        const resp = await fetch('/api/location-meta', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ hashes: locations.map(l => l.locationHash) }),
         });
         if (!resp.ok) return;
-        const { names } = await resp.json();
-        if (!names) return;
+        const { meta } = await resp.json();
+        if (!meta) return;
         locations.forEach(loc => {
-          loc.name = names[loc.locationHash.toLowerCase()] || null;
+          const m = meta[loc.locationHash.toLowerCase()];
+          loc.name = m?.name || null;
+          // null = sem metadado salvo (registrado antes dessa feature) → não filtra por categoria
+          // [] = metadado salvo mas sem categoria marcada (não deveria acontecer, mas por via das dúvidas)
+          loc.categories = m ? (m.categories || []) : null;
         });
       } catch (e) {
-        console.warn('[buscar] Não foi possível buscar nomes:', e.message);
+        console.warn('[buscar] Não foi possível buscar metadados:', e.message);
       }
     }
 
@@ -550,6 +560,11 @@
       const countEl  = document.getElementById('results-count');
 
       let filtered = allLocations.filter(loc => {
+        if (activeCat !== 'all') {
+          // categories === null → local sem metadado salvo (registrado antes dessa feature).
+          // Não dá pra confirmar a categoria, então some do filtro específico (mas aparece em "Todos").
+          if (!loc.categories || !loc.categories.includes(Number(activeCat))) return false;
+        }
         if (userLat !== null && loc.lat !== null && radiusKm < 9999) {
           const dist = haversineKm(userLat, userLng, loc.lat, loc.lng);
           if (dist > radiusKm) return false;
@@ -586,6 +601,12 @@
           ? `<a href="${EXPLORER}/tx/${loc.txHash}" target="_blank" rel="noopener">🔗 Ver TX</a>`
           : `<a href="${EXPLORER}/address/${ORACLE_ADDRESS}" target="_blank" rel="noopener">🔗 On-chain</a>`;
 
+        const catBadges = (loc.categories && loc.categories.length > 0)
+          ? `<div class="location-cats" style="display:flex; flex-wrap:wrap; gap:4px; margin:6px 0;">
+              ${loc.categories.map(c => `<span style="font-size:.72rem; background:var(--bg-alt); border:1px solid var(--border); border-radius:999px; padding:2px 8px;">${CATEGORY_LABELS[c] || `Cat. ${c}`}</span>`).join('')}
+             </div>`
+          : '';
+
         return `
           <article class="location-card" role="listitem">
             <div class="location-card-top">
@@ -595,6 +616,7 @@
                 <p class="location-cat" style="font-family:monospace;font-size:.75rem;">${shortHash(loc.locationHash)}</p>
               </div>
             </div>
+            ${catBadges}
             <div class="location-meta">
               ${distLabel}
               ${verBadge}
@@ -617,7 +639,7 @@
       try {
         if (!searchDone) {
           allLocations = await fetchAllLocations();
-          await enrichWithNames(allLocations);
+          await enrichWithMeta(allLocations);
           searchDone = true;
         }
         renderResults();
@@ -662,7 +684,7 @@
       try {
         if (!searchDone) {
           allLocations = await fetchAllLocations();
-          await enrichWithNames(allLocations);
+          await enrichWithMeta(allLocations);
           searchDone = true;
         }
         renderResults();
