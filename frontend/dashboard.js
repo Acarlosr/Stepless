@@ -618,8 +618,12 @@ async function handleRegisterLocation(e) {
     showAlert('register-alert', 'danger', s.reg_gps_error || 'Use o GPS ou busque um endereço primeiro.');
     return;
   }
-  if (!name || categories.length === 0) {
-    showAlert('register-alert', 'danger', s.err_tx_failed || 'Preencha todos os campos.');
+  if (!name) {
+    showAlert('register-alert', 'danger', s.reg_missing_name || 'Preencha o nome do local.');
+    return;
+  }
+  if (categories.length === 0) {
+    showAlert('register-alert', 'danger', s.reg_missing_category || 'Marque pelo menos uma categoria.');
     return;
   }
   if (!photoInput.files || photoInput.files.length === 0) {
