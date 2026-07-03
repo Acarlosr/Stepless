@@ -15,7 +15,7 @@
 const ARC_TESTNET = {
   id: 5042002,
   name: "Arc Testnet",
-  nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 6 },
+  nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 }, // MetaMask exige 18; formatação real usa 6 decimais separadamente
   rpcUrls: {
     default: { http: ["https://rpc.testnet.arc.network"] },
     public: { http: ["https://rpc.testnet.arc.network"] },
@@ -319,7 +319,8 @@ const STEPLESS_ORACLE_ABI = [
   },
   {
     type: "function",
-    name: "locationIdByIndex",
+    // Nome real no contrato: array público allLocationHashes(uint256)
+    name: "allLocationHashes",
     inputs: [{ name: "index", type: "uint256", internalType: "uint256" }],
     outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
     stateMutability: "view",

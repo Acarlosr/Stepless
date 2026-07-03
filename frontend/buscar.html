@@ -443,19 +443,27 @@
       const map = {};
       try {
         const latest = await publicClient.getBlockNumber();
-        // Tenta últimos 5000 blocos (range pequeno para evitar limite do RPC)
-        const from = latest > 5000n ? latest - 5000n : 0n;
-        const logs = await publicClient.getContractEvents({
-          address: ORACLE_ADDRESS, abi: ORACLE_ABI,
-          eventName: 'LocationRegistered',
-          fromBlock: from, toBlock: 'latest',
-        });
-        for (const log of logs) {
-          map[log.args.locationHash] = {
-            lat: Number(log.args.latPacked) / 1e6 - 90,
-            lng: Number(log.args.lngPacked) / 1e6 - 180,
-            txHash: log.transactionHash,
-          };
+        // Varre em janelas de 5000 blocos (limite do RPC), voltando até
+        // ~200k blocos ou até o bloco de deploy do Oracle — o que vier antes.
+        const DEPLOY_BLOCK = 49700000n;   // Oracle deployado ~bloco 49.72M
+        const WINDOW  = 5000n;
+        const MAX_WINDOWS = 40;
+        let to = latest;
+        for (let w = 0; w < MAX_WINDOWS && to > DEPLOY_BLOCK; w++) {
+          const from = to - WINDOW + 1n > DEPLOY_BLOCK ? to - WINDOW + 1n : DEPLOY_BLOCK;
+          const logs = await publicClient.getContractEvents({
+            address: ORACLE_ADDRESS, abi: ORACLE_ABI,
+            eventName: 'LocationRegistered',
+            fromBlock: from, toBlock: to,
+          });
+          for (const log of logs) {
+            map[log.args.locationHash] = {
+              lat: Number(log.args.latPacked) / 1e6 - 90,
+              lng: Number(log.args.lngPacked) / 1e6 - 180,
+              txHash: log.transactionHash,
+            };
+          }
+          to = from - 1n;
         }
       } catch (e) {
         console.warn('[buscar] getLogs indisponível:', e.message);
@@ -535,7 +543,9 @@
       grid.innerHTML = filtered.map(loc => {
         const distLabel = loc._dist != null
           ? `<span class="location-dist">📍 ${loc._dist < 1 ? Math.round(loc._dist*1000)+'m' : loc._dist.toFixed(1)+'km'}</span>`
-          : '';
+          : (userLat !== null
+              ? `<span class="location-dist" style="color:var(--text-muted);" title="Coordenadas não indexadas — evento fora do range de blocos varrido">📍 distância indisponível</span>`
+              : '');
 
         const verBadge = loc.verifications > 0
           ? `<span style="font-size:.75rem;color:var(--success);font-weight:600;">✅ ${loc.verifications} verif.</span>`

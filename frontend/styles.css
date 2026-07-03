@@ -262,6 +262,14 @@ textarea:focus-visible {
   list-style: none;
   flex-wrap: nowrap;
   align-items: center;
+  /* Permite o menu encolher em vez de transbordar sobre o logo */
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+}
+
+.nav-links::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
 }
 
 .nav-links a {
@@ -370,7 +378,9 @@ textarea:focus-visible {
   border-radius: 2px;
 }
 
-@media (max-width: 768px) {
+/* Colapsa para menu hamburguer mais cedo — com wallet conectada a nav
+   do index.html não cabe abaixo de ~1100px e sobrepunha o logo */
+@media (max-width: 1100px) {
   .nav-toggle {
     display: block;
   }
@@ -378,6 +388,7 @@ textarea:focus-visible {
   .nav-links {
     display: none;
     position: absolute;
+    overflow-x: visible;
     top: var(--header-height);
     left: 0;
     right: 0;
