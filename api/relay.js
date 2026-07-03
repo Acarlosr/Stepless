@@ -21,6 +21,7 @@
 import { createWalletClient, createPublicClient, http, keccak256, encodePacked, getAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { createHash } from 'crypto';
+import { store, contribKey, PENDING_LIST_KEY, clientIp } from './_stepless.js';
 
 // ─── Off-chain metadata storage (Upstash Redis REST API) ────────────────────
 // O contrato só guarda locationHash (um hash unidirecional) — o nome e as
@@ -187,6 +188,11 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Oracle address not configured' });
   }
 
+  // ── Rate limit: 6 escritas/min por IP (evita drenagem do gas do relayer) ──
+  if (!(await store.rateLimit(`relay:${clientIp(req)}`, 6, 60))) {
+    return res.status(429).json({ success: false, error: 'Muitas requisições. Aguarde um minuto e tente de novo.' });
+  }
+
   const { action, userAddress, submissionData } = req.body || {};
 
   if (!action || !userAddress || !submissionData) {
@@ -234,6 +240,7 @@ export default async function handler(req, res) {
     }
 
     let txHash;
+    let contributionId = null;
 
     // ── submitContribution ────────────────────────────────────────────────
     if (action === 'submitContribution') {
@@ -244,7 +251,7 @@ export default async function handler(req, res) {
           error: 'submitContribution requires: locationHash, contributionType, dataHash',
         });
       }
-      const contributionId = `0x${createHash('sha256')
+      contributionId = `0x${createHash('sha256')
         .update(`${locationHash}${userAddress}${Date.now()}`)
         .digest('hex')}`;
 
@@ -297,6 +304,45 @@ export default async function handler(req, res) {
 
     const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 
+    // ── Cria a contribuição recompensável para o novo local ───────────────
+    // registerLocation sozinho não gera nada "pagável" — o RewardDistributor
+    // paga por contributionId verificado. Então criamos a contribuição
+    // NewLocation aqui, na mesma chamada, e guardamos a atribuição ao
+    // usuário REAL (on-chain o msg.sender é o relayer).
+    let contributionTx = null;
+    if (action === 'registerLocation') {
+      const { locationHash, dataHash } = submissionData;
+      contributionId = `0x${createHash('sha256')
+        .update(`${locationHash}${userAddress}${Date.now()}`)
+        .digest('hex')}`;
+      try {
+        contributionTx = await walletClient.writeContract({
+          address: oracleAddress,
+          abi: ORACLE_ABI,
+          functionName: 'submitContribution',
+          args: [contributionId, locationHash, 0 /* NewLocation */, dataHash || locationHash],
+        });
+        await publicClient.waitForTransactionReceipt({ hash: contributionTx });
+      } catch (cErr) {
+        console.warn('[relay] submitContribution after register failed:', cErr?.shortMessage || cErr?.message);
+        contributionId = null; // local registrado, mas sem contribuição pagável
+      }
+    }
+
+    // ── Registra pendência p/ verificação + atribuição do usuário real ────
+    if (contributionId) {
+      await store.setJSON(contribKey(contributionId), {
+        user: userAddress,
+        locationHash: submissionData.locationHash,
+        name: submissionData.name || null,
+        categories: Array.isArray(submissionData.categories) ? submissionData.categories : [],
+        rewardType: action === 'registerLocation' ? 'NewLocation' : 'LocationUpdate',
+        status: 'pending',
+        ts: Date.now(),
+      });
+      await store.listPush(PENDING_LIST_KEY, contributionId);
+    }
+
     // Salva nome + categorias fora da chain (best-effort — não bloqueia a resposta em caso de falha)
     if (action === 'registerLocation' && submissionData.name) {
       await saveLocationMeta(submissionData.locationHash, {
@@ -308,6 +354,8 @@ export default async function handler(req, res) {
     return res.status(200).json({
       success: true,
       txHash,
+      contributionId,
+      contributionTx,
       blockNumber: receipt.blockNumber?.toString(),
       status: receipt.status,
     });

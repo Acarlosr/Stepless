@@ -423,15 +423,14 @@ async function checkVerifierStatus() {
     const denied = document.getElementById('verify-access-denied');
     const content = document.getElementById('verify-content');
 
-    if (isVerifier) {
-      badge?.classList.remove('hidden');
-      denied?.classList.add('hidden');
-      content?.classList.remove('hidden');
-    } else {
-      badge?.classList.add('hidden');
-      denied?.classList.remove('hidden');
-      content?.classList.add('hidden');
-    }
+    // A verificação on-chain agora é feita pela chave verificadora do backend
+    // (/api/verify) — o painel fica visível para qualquer wallet conectada.
+    // O badge continua indicando se a wallet conectada é verificadora on-chain.
+    denied?.classList.add('hidden');
+    content?.classList.remove('hidden');
+    if (isVerifier) badge?.classList.remove('hidden');
+    else badge?.classList.add('hidden');
+    await loadPendingContributions();
   } catch (err) {
     console.error('Verifier check error:', err);
   }
@@ -685,7 +684,10 @@ async function handleRegisterLocation(e) {
       throw new Error(result.error || 'Relayer error');
     }
 
-    showAlert('register-alert', 'success', `✓ ${s.success_registered || 'Local registrado!'} TX: ${shortHash(result.txHash)}`);
+    const pendingNote = result.contributionId
+      ? ` · Contribuição ${shortHash(result.contributionId)} aguardando verificação para pagar a recompensa.`
+      : '';
+    showAlert('register-alert', 'success', `✓ ${s.success_registered || 'Local registrado!'} TX: ${shortHash(result.txHash)}${pendingNote}`);
     document.getElementById('register-form')?.reset();
     logEvent('LocationRegistered', `by ${shortAddr(walletAddress)}`);
     await refreshAll();
@@ -703,10 +705,10 @@ async function handleRegisterLocation(e) {
  *  Write: Verify Contribution
  * ═══════════════════════════════════════════════════════════════ */
 
-async function handleVerify(approved) {
+async function handleVerify(approved, idFromTable) {
   const s = getStrings();
   const idInput = document.getElementById('verify-id');
-  const contributionId = idInput.value.trim();
+  const contributionId = (idFromTable || idInput?.value || '').trim();
 
   if (!contributionId || !contributionId.startsWith('0x') || contributionId.length !== 66) {
     alert(s.err_tx_failed || 'Invalid contribution ID');
@@ -714,29 +716,67 @@ async function handleVerify(approved) {
   }
 
   try {
-    const txHash = await walletClient.writeContract({
-      address: cfg.contracts.SteplessOracle,
-      abi: cfg.abis.SteplessOracle,
-      functionName: 'verifyContribution',
-      args: [contributionId, approved],
-      account: walletAddress,
-      chain: cfg.chain,
+    // Verificação + pagamento acontecem no backend (/api/verify):
+    // a chave verificadora aprova on-chain e o relayer paga o USDC
+    // direto para a wallet do contribuidor real.
+    const resp = await fetch('/api/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contributionId, approve: approved, reason: approved ? '' : 'Rejeitado pelo verificador' }),
     });
+    const result = await resp.json();
+    if (!result.success) throw new Error(result.error || 'Verify API error');
 
-    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-
-    if (receipt.status === 'success') {
-      const action = approved ? 'approved' : 'rejected';
-      showAlert('register-alert', 'success', `✓ ${s.success_verified || 'Contribution verified!'} (${action})`);
-      logEvent('ContributionVerified', `${shortHash(contributionId)} ${action} by ${shortAddr(walletAddress)}`);
-      idInput.value = '';
-      await refreshAll();
-    } else {
-      throw new Error('Transaction reverted');
-    }
+    const action = approved ? 'approved' : 'rejected';
+    const paid = result.payTx ? ` 💸 USDC pago para ${shortAddr(result.paidTo)}` : '';
+    showAlert('register-alert', 'success', `✓ ${s.success_verified || 'Contribution verified!'} (${action})${paid}`);
+    logEvent('ContributionVerified', `${shortHash(contributionId)} ${action}${paid}`);
+    if (idInput) idInput.value = '';
+    await loadPendingContributions();
+    await refreshAll();
   } catch (err) {
     console.error('Verify error:', err);
     alert(handleArcError(err));
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ *  Pending contributions (via /api/pending)
+ * ═══════════════════════════════════════════════════════════════ */
+
+async function loadPendingContributions() {
+  const tbody = document.getElementById('verify-table-body');
+  if (!tbody) return;
+  const s = getStrings();
+  try {
+    const resp = await fetch('/api/pending');
+    const { pending = [] } = await resp.json();
+
+    if (pending.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" class="table-empty">${s.verify_empty || 'Nenhuma contribuição pendente'}</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = pending.map(p => `
+      <tr>
+        <td style="font-family:monospace;font-size:0.8rem;" title="${p.contributionId}">${shortHash(p.contributionId)}${p.name ? `<br><small>${p.name}</small>` : ''}</td>
+        <td style="font-family:monospace;font-size:0.8rem;">${shortAddr(p.user)}</td>
+        <td>${p.rewardType || 'NewLocation'}</td>
+        <td>⏳ pendente</td>
+        <td>
+          <button class="btn btn-success btn-sm" data-verify="${p.contributionId}" data-approve="1">✓</button>
+          <button class="btn btn-danger btn-sm" data-verify="${p.contributionId}" data-approve="0">✗</button>
+        </td>
+      </tr>`).join('');
+
+    tbody.querySelectorAll('button[data-verify]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        btn.disabled = true;
+        handleVerify(btn.dataset.approve === '1', btn.dataset.verify).finally(() => { btn.disabled = false; });
+      });
+    });
+  } catch (err) {
+    console.warn('Pending list error:', err);
   }
 }
 
