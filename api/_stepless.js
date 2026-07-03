@@ -50,7 +50,7 @@ export function oracleAddress() {
   return getAddress(process.env.ORACLE_ADDRESS.toLowerCase());
 }
 export function distributorAddress() {
-  return getAddress((process.env.DISTRIBUTOR_ADDRESS || '0x6A4EB7949eE5985e6524184cE7FA46a8b15e556B').toLowerCase());
+  return getAddress((process.env.DISTRIBUTOR_ADDRESS || '0x4959D0bB848aF5437F249e8516914e0E9353584b').toLowerCase());
 }
 
 // ─── ABIs mínimas ────────────────────────────────────────────────────────────

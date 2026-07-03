@@ -55,7 +55,7 @@ const TOKENS = {
  * ────────────────────────────────────────────────────────────── */
 
 const CONTRACTS = {
-  RewardDistributor: "0x6A4EB7949eE5985e6524184cE7FA46a8b15e556B",
+  RewardDistributor: "0x4959D0bB848aF5437F249e8516914e0E9353584b",
   SteplessOracle:    "0x220a3A4CAb8A5894C0926E9Ff700168F32F8192e",
   X402API:           "0x0D318864C80eCe8d28800a750bdA06b6E52ffCc9",
   Multicall3:        "0xcA11bde05977b3631167028862bE2a173976CA11",
