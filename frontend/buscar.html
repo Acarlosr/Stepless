@@ -35,9 +35,10 @@
       border-radius: 8px;
       border: none;
       font-size: 1rem;
-      color: var(--text);
+      color: #1a1a2e;
       background: #fff;
     }
+    .search-box input::placeholder { color: #4a5568; opacity: 1; }
     .search-box input:focus { outline: 3px solid rgba(255,255,255,.5); }
     .search-box .btn { white-space: nowrap; }
     .btn-white {
@@ -427,6 +428,11 @@
     function shortHash(h) {
       return h ? `${h.slice(0,10)}...${h.slice(-6)}` : '—';
     }
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
 
     function setStatus(msg) {
       document.getElementById('search-status').textContent = msg;
@@ -517,6 +523,26 @@
       return locations;
     }
 
+    // ── Buscar nomes salvos fora da chain (Upstash, via api/relay) ─
+    async function enrichWithNames(locations) {
+      if (locations.length === 0) return;
+      try {
+        const resp = await fetch('/api/location-names', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hashes: locations.map(l => l.locationHash) }),
+        });
+        if (!resp.ok) return;
+        const { names } = await resp.json();
+        if (!names) return;
+        locations.forEach(loc => {
+          loc.name = names[loc.locationHash.toLowerCase()] || null;
+        });
+      } catch (e) {
+        console.warn('[buscar] Não foi possível buscar nomes:', e.message);
+      }
+    }
+
     // ── Renderizar resultados ─────────────────────────────
     function renderResults() {
       const radiusKm = Number(document.getElementById('radius-select').value);
@@ -565,7 +591,7 @@
             <div class="location-card-top">
               <div class="location-icon" aria-hidden="true">♿</div>
               <div>
-                <p class="location-name">Local #${loc.index}</p>
+                <p class="location-name">${loc.name ? escapeHtml(loc.name) : `Local #${loc.index}`}</p>
                 <p class="location-cat" style="font-family:monospace;font-size:.75rem;">${shortHash(loc.locationHash)}</p>
               </div>
             </div>
@@ -591,6 +617,7 @@
       try {
         if (!searchDone) {
           allLocations = await fetchAllLocations();
+          await enrichWithNames(allLocations);
           searchDone = true;
         }
         renderResults();
@@ -635,6 +662,7 @@
       try {
         if (!searchDone) {
           allLocations = await fetchAllLocations();
+          await enrichWithNames(allLocations);
           searchDone = true;
         }
         renderResults();

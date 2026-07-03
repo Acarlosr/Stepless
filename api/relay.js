@@ -21,6 +21,27 @@ import { createWalletClient, createPublicClient, http, keccak256, encodePacked, 
 import { privateKeyToAccount } from 'viem/accounts';
 import { createHash } from 'crypto';
 
+// ─── Off-chain name storage (Upstash Redis REST API) ────────────────────────
+// O contrato só guarda locationHash (um hash unidirecional) — o nome digitado
+// pelo usuário nunca vai para a chain. Para exibir o nome depois, guardamos
+// locationHash → nome aqui, fora da chain. Configure UPSTASH_REDIS_REST_URL e
+// UPSTASH_REDIS_REST_TOKEN (free tier em upstash.com) para habilitar; sem eles,
+// o registro on-chain continua funcionando normalmente, só sem nome salvo.
+async function saveLocationName(locationHash, name) {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token || !name) return;
+  try {
+    const key = `stepless:loc:${locationHash.toLowerCase()}`;
+    const res = await fetch(`${url}/set/${encodeURIComponent(key)}/${encodeURIComponent(name)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) console.warn('[relay] Upstash save failed:', res.status, await res.text().catch(() => ''));
+  } catch (err) {
+    console.warn('[relay] Upstash save error (name not persisted):', err?.message);
+  }
+}
+
 // ─── Arc Testnet chain config ───────────────────────────────────────────────
 const arcTestnet = {
   id: 5042002,
@@ -259,6 +280,11 @@ export default async function handler(req, res) {
     }
 
     const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+    // Salva o nome fora da chain (best-effort — não bloqueia a resposta em caso de falha)
+    if (action === 'registerLocation' && submissionData.name) {
+      await saveLocationName(submissionData.locationHash, submissionData.name);
+    }
 
     return res.status(200).json({
       success: true,

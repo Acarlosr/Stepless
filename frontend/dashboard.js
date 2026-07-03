@@ -668,7 +668,7 @@ async function handleRegisterLocation(e) {
       body: JSON.stringify({
         action: 'registerLocation',
         userAddress: walletAddress,
-        submissionData: { locationHash, latPacked, lngPacked, dataHash, exifLat, exifLng, exifTimestamp },
+        submissionData: { locationHash, latPacked, lngPacked, dataHash, exifLat, exifLng, exifTimestamp, name: fullName },
       }),
     });
 
