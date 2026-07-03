@@ -1,0 +1,23 @@
+# ── Segredos — NUNCA commitar ────────────────────────────────
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# ── Dependências e builds ────────────────────────────────────
+node_modules/
+.next/
+out/
+dist/
+.vercel/
+
+# ── Foundry ──────────────────────────────────────────────────
+contracts/cache/
+contracts/out/
+contracts/broadcast/
+
+# ── Arquivos temporários ─────────────────────────────────────
+.DS_Store
+*.log
+*.zip
