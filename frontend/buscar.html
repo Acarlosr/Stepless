@@ -493,19 +493,21 @@
           functionName: 'allLocationHashes', args: [BigInt(i)],
         });
 
-        // getLocation retorna struct {locationHash, firstContributor, registeredBlock, verificationCount, exists}
+        // getLocation tem múltiplos outputs — viem retorna como ARRAY:
+        // [locationHash, firstContributor, registeredBlock, verificationCount, exists]
         const loc = await publicClient.readContract({
           address: ORACLE_ADDRESS, abi: ORACLE_ABI,
           functionName: 'getLocation', args: [hash],
         });
+        const [, firstContributor, registeredBlock, verificationCount] = loc;
 
         const eventData = coordsMap[hash] || {};
         locations.push({
           index:             i + 1,
           locationHash:      hash,
-          contributor:       loc.firstContributor,
-          blockNumber:       Number(loc.registeredBlock),
-          verifications:     Number(loc.verificationCount),
+          contributor:       firstContributor,
+          blockNumber:       Number(registeredBlock),
+          verifications:     Number(verificationCount),
           // coords — só disponíveis se evento foi indexado no range buscado
           lat:   eventData.lat  ?? null,
           lng:   eventData.lng  ?? null,

@@ -551,25 +551,27 @@ async function loadRewardHistory() {
           args: [BigInt(i)],
         });
 
-        // getLocation retorna struct {locationHash, firstContributor, registeredBlock, verificationCount, exists}
+        // getLocation tem múltiplos outputs — viem retorna como ARRAY:
+        // [locationHash, firstContributor, registeredBlock, verificationCount, exists]
         const loc = await publicClient.readContract({
           address: cfg.contracts.SteplessOracle,
           abi: ARRAY_ABI,
           functionName: 'getLocation',
           args: [locationHash],
         });
+        const [, firstContributor, registeredBlock, verificationCount] = loc;
 
-        const contributor = loc.firstContributor;
+        const contributor = firstContributor;
         if (contributor?.toLowerCase() !== walletAddress.toLowerCase()) continue;
 
         const addrUrl = `${explorerBase}/address/${cfg.contracts.SteplessOracle}`;
-        const verBadge = Number(loc.verificationCount) > 0
-          ? `<span class="badge badge-success">✅ ${loc.verificationCount} verif.</span>`
+        const verBadge = Number(verificationCount) > 0
+          ? `<span class="badge badge-success">✅ ${verificationCount} verif.</span>`
           : `<span class="badge badge-info">⏳ Aguardando</span>`;
 
         rows.push(`<tr>
           <td><a href="${addrUrl}" target="_blank" rel="noopener">${shortHash(locationHash)}</a></td>
-          <td style="color:var(--text-muted)">Bloco #${loc.registeredBlock}</td>
+          <td style="color:var(--text-muted)">Bloco #${registeredBlock}</td>
           <td>${verBadge}</td>
           <td style="font-family:monospace;font-size:.85rem">${shortHash(locationHash)}</td>
           <td>✅ On-chain</td>
