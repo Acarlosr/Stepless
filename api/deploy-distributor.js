@@ -55,8 +55,12 @@ export default async function handler(req, res) {
       });
     }
 
-    if (existing) {
-      return res.status(200).json({ success: true, alreadyDeployed: true, distributor: existing });
+    const force = req.query?.force === '1' || req.query?.force === 'true' || req.body?.force === true;
+    if (existing && !force) {
+      return res.status(200).json({
+        success: true, alreadyDeployed: true, distributor: existing,
+        note: 'Já existe um distributor no endereço configurado. Se o oracle mudou desde o deploy dele (ele é immutable), chame novamente com ?force=1 para deployar um novo apontando para o ORACLE_ADDRESS atual.',
+      });
     }
 
     // Deploy: bytecode + constructor(oracle, admin=relayer)
