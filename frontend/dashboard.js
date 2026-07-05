@@ -489,12 +489,12 @@ async function loadRewardHistory() {
       for (const ev of allLogs) {
         const txUrl = `${explorerBase}/tx/${ev.txHash}`;
         if (ev.type === 'location') {
-          const cat = cfg.locationCategories.find(c => c.id === Number(ev.category))?.label?.[getLang()] || `Cat.${ev.category}`;
+          // Evento on-chain não emite name/category (só existem no getLocation) — mostra local genérico.
           rows.push(`<tr>
             <td><a href="${txUrl}" target="_blank" rel="noopener">${shortHash(ev.txHash)}</a></td>
             <td style="color:var(--text-muted)">—</td>
-            <td><span class="badge badge-info">📍 ${cat}</span></td>
-            <td style="font-family:monospace;font-size:.85rem">${ev.name || shortHash(ev.locationId)}</td>
+            <td><span class="badge badge-info">📍 Local</span></td>
+            <td style="font-family:monospace;font-size:.85rem">${shortHash(ev.locationId)}</td>
             <td>#${ev.blockNumber}</td>
           </tr>`);
         } else {
