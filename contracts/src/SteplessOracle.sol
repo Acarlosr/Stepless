@@ -30,6 +30,8 @@ contract SteplessOracle {
     error Unauthorized();
     error ZeroAddress();
     error LocationAlreadyRegistered(bytes32 locationHash);
+    error LocationNotFound(bytes32 locationHash);
+    error ContributionAlreadyExists(bytes32 contributionId);
     error ContributionNotFound(bytes32 contributionId);
     error AlreadyVerified(bytes32 contributionId);
     error NotAVerifier(address addr);
@@ -129,9 +131,10 @@ contract SteplessOracle {
         authorizedCallers[_admin] = true;
     }
 
-    /// @notice Seta o RewardDistributor após deploy (two-phase). Só pode ser chamado uma vez.
+    /// @notice Seta/atualiza o RewardDistributor (somente admin).
+    /// @dev    v2: atualizável — a versão "só uma vez" travou o v1 apontando
+    ///         para um distributor inexistente, quebrando verifyContribution.
     function setRewardDistributor(address _distributor) external onlyAdmin {
-        if (_distributorSet) revert Unauthorized(); // immutable após set
         if (_distributor == address(0)) revert ZeroAddress();
         rewardDistributor = IRewardDistributor(_distributor);
         _distributorSet = true;
@@ -144,17 +147,21 @@ contract SteplessOracle {
     /// @param latPacked     Latitude * 1e6 as uint256 (negative handled off-chain).
     /// @param lngPacked     Longitude * 1e6 as uint256.
     /// @param dataHash      IPFS/Arweave hash of photos + detailed metadata.
+    /// @param contributor   Endereço REAL do contribuidor (o relayer chama em
+    ///                      nome do usuário). address(0) → usa msg.sender.
     function registerLocation(
         bytes32 locationHash,
         uint256 latPacked,
         uint256 lngPacked,
-        bytes32 dataHash
+        bytes32 dataHash,
+        address contributor
     ) external onlyAuthorized {
         if (locations[locationHash].exists) revert LocationAlreadyRegistered(locationHash);
+        address actualContributor = contributor == address(0) ? msg.sender : contributor;
 
         locations[locationHash] = Location({
             locationHash: locationHash,
-            firstContributor: msg.sender,
+            firstContributor: actualContributor,
             registeredBlock: block.number,  // block.number, NOT block.timestamp
             verificationCount: 0,
             exists: true
@@ -166,7 +173,7 @@ contract SteplessOracle {
         // try/catch: memo may not be available on all Arc testnet instances
         try memo.attachMemo(locationHash, abi.encodePacked(latPacked, lngPacked, dataHash)) {} catch {}
 
-        emit LocationRegistered(locationHash, msg.sender, latPacked, lngPacked, block.number);
+        emit LocationRegistered(locationHash, actualContributor, latPacked, lngPacked, block.number);
     }
 
     // ── Core: Submit Contribution ───────────────────────────────────────────
@@ -176,20 +183,23 @@ contract SteplessOracle {
     /// @param locationHash    Hash of the location being contributed to.
     /// @param contributionType  Type of contribution.
     /// @param dataHash         IPFS/Arweave hash of supporting data.
+    /// @param contributor      Endereço REAL do contribuidor (address(0) → msg.sender).
     function submitContribution(
         bytes32 contributionId,
         bytes32 locationHash,
         ContributionType contributionType,
-        bytes32 dataHash
+        bytes32 dataHash,
+        address contributor
     ) external onlyAuthorized {
-        if (!locations[locationHash].exists) revert LocationAlreadyRegistered(locationHash);
+        if (!locations[locationHash].exists) revert LocationNotFound(locationHash);
         if (contributions[contributionId].contributor != address(0)) {
-            revert ContributionNotFound(contributionId);
+            revert ContributionAlreadyExists(contributionId);
         }
+        address actualContributor = contributor == address(0) ? msg.sender : contributor;
 
         contributions[contributionId] = Contribution({
             locationHash: locationHash,
-            contributor: msg.sender,
+            contributor: actualContributor,
             contributionType: contributionType,
             dataHash: dataHash,
             verified: false,
@@ -205,7 +215,7 @@ contract SteplessOracle {
         emit ContributionSubmitted(
             contributionId,
             locationHash,
-            msg.sender,
+            actualContributor,
             contributionType,
             dataHash,
             block.number

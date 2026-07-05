@@ -94,6 +94,7 @@ export default async function handler(req, res) {
       verifier: verifier.address,
       oracle, distributor,
       oracleAdmin, distributorAdmin: distAdmin,
+      oracleRewardDistributor: oracleDistributor,
       isRelayerOracleAdmin: oracleAdmin.toLowerCase() === relayer.address.toLowerCase(),
       isRelayerDistAdmin: distAdmin.toLowerCase() === relayer.address.toLowerCase(),
       checks: {

@@ -56,9 +56,9 @@ export function distributorAddress() {
 // ─── ABIs mínimas ────────────────────────────────────────────────────────────
 export const ORACLE_ABI = [
   { name: 'registerLocation', type: 'function', stateMutability: 'nonpayable',
-    inputs: [{ name: 'locationHash', type: 'bytes32' }, { name: 'latPacked', type: 'uint256' }, { name: 'lngPacked', type: 'uint256' }, { name: 'dataHash', type: 'bytes32' }], outputs: [] },
+    inputs: [{ name: 'locationHash', type: 'bytes32' }, { name: 'latPacked', type: 'uint256' }, { name: 'lngPacked', type: 'uint256' }, { name: 'dataHash', type: 'bytes32' }, { name: 'contributor', type: 'address' }], outputs: [] },
   { name: 'submitContribution', type: 'function', stateMutability: 'nonpayable',
-    inputs: [{ name: 'contributionId', type: 'bytes32' }, { name: 'locationHash', type: 'bytes32' }, { name: 'contributionType', type: 'uint8' }, { name: 'dataHash', type: 'bytes32' }], outputs: [] },
+    inputs: [{ name: 'contributionId', type: 'bytes32' }, { name: 'locationHash', type: 'bytes32' }, { name: 'contributionType', type: 'uint8' }, { name: 'dataHash', type: 'bytes32' }, { name: 'contributor', type: 'address' }], outputs: [] },
   { name: 'verifyContribution', type: 'function', stateMutability: 'nonpayable',
     inputs: [{ name: 'contributionId', type: 'bytes32' }, { name: 'approve', type: 'bool' }, { name: 'reason', type: 'string' }], outputs: [] },
   { name: 'setAuthorizedCaller', type: 'function', stateMutability: 'nonpayable',
@@ -76,6 +76,8 @@ export const ORACLE_ABI = [
   { type: 'error', name: 'Unauthorized', inputs: [] },
   { type: 'error', name: 'ZeroAddress', inputs: [] },
   { type: 'error', name: 'LocationAlreadyRegistered', inputs: [{ name: 'locationHash', type: 'bytes32' }] },
+  { type: 'error', name: 'LocationNotFound', inputs: [{ name: 'locationHash', type: 'bytes32' }] },
+  { type: 'error', name: 'ContributionAlreadyExists', inputs: [{ name: 'contributionId', type: 'bytes32' }] },
   { type: 'error', name: 'ContributionNotFound', inputs: [{ name: 'contributionId', type: 'bytes32' }] },
   { type: 'error', name: 'AlreadyVerified', inputs: [{ name: 'contributionId', type: 'bytes32' }] },
   { type: 'error', name: 'NotAVerifier', inputs: [{ name: 'addr', type: 'address' }] },
