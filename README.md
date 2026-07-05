@@ -30,7 +30,7 @@ Stepless turns accessibility mapping into on-chain, instantly-settled USDC rewar
 
 | Contract | Address | Purpose |
 |---|---|---|
-| **SteplessOracle** | [`0x220a3A4CAb8A5894C0926E9Ff700168F32F8192e`](https://testnet.arcscan.app/address/0x220a3A4CAb8A5894C0926E9Ff700168F32F8192e) | Location registry + contribution tracking |
+| **SteplessOracle** | [`0x2Ac87a4E49D59900295999B1A44930B912F65F48`](https://testnet.arcscan.app/address/0x2Ac87a4E49D59900295999B1A44930B912F65F48) | Location registry + contribution tracking |
 | **RewardDistributor** | [`0x4959d0BB848Af5437F249E8516914e0e9353584b`](https://testnet.arcscan.app/address/0x4959d0BB848Af5437F249E8516914e0e9353584b) | USDC treasury + reward payments |
 | **X402API** | [`0x0D318864C80eCe8d28800a750bdA06b6E52ffCc9`](https://testnet.arcscan.app/address/0x0D318864C80eCe8d28800a750bdA06b6E52ffCc9) | HTTP 402 payment protocol for API access |
 

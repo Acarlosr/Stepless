@@ -53,7 +53,7 @@ dataSources:
     name: SteplessOracle
     network: arc-testnet
     source:
-      address: "0xDb2A06d4cd454B4BBbE86A1F01B324C902cF9AE7"
+      address: "0x2Ac87a4E49D59900295999B1A44930B912F65F48"
       abi: SteplessOracle
       startBlock: 0
     mapping:
