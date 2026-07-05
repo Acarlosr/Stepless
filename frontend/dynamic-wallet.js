@@ -1,198 +1,275 @@
 /**
  * dynamic-wallet.js
- * Integração do Dynamic SDK (vanilla JS / CDN) para Stepless.
+ * Login por email (OTP) via Dynamic — cria uma embedded wallet (WaaS) na
+ * hora, sem precisar de MetaMask nem nenhuma extensão instalada. Mantém
+ * MetaMask/window.ethereum como opção alternativa no mesmo modal.
  *
- * Exporta:
- *   initDynamic()     → inicializa o SDK (chamar 1x no DOMContentLoaded)
- *   connectWallet()   → abre o modal do Dynamic e retorna { address, walletClient }
- *   disconnectWallet()→ faz logout
- *   getWalletState()  → { isConnected, address, walletClient }
+ * Usa os pacotes reais e atuais do Dynamic (@dynamic-labs-sdk/client +
+ * @dynamic-labs-sdk/evm), carregados via esm.sh já que este projeto não tem
+ * build step. A versão anterior deste arquivo tentava carregar um script
+ * ("dynamic-embed.js") que não existe — por isso o connect nunca funcionava
+ * sem MetaMask.
  *
- * O Dynamic SDK é carregado via esm.sh (UMD/ESM).
- * Environment ID vem de window.DYNAMIC_ENV_ID (definido inline no HTML)
- * ou da constante abaixo.
+ * IMPORTANTE — arquitetura do Stepless: a wallet do usuário NUNCA assina
+ * transações on-chain neste app. registerLocation / verifyContribution /
+ * payReward são todos feitos pelo relayer no backend (ver api/relay.js e
+ * api/verify.js) — a wallet conectada só precisa fornecer um ENDEREÇO válido
+ * para receber a recompensa em USDC. Por isso, quando a conexão vem do login
+ * por email (embedded wallet), o "provider" retornado é um stub seguro: ele
+ * nunca é chamado para assinar nada no fluxo normal de uso.
+ *
+ * Exporta: initDynamic, connectWallet, disconnectWallet, getWalletState,
+ * onWalletChange, getProvider — mesma API pública de antes, então
+ * dashboard.js / index.html não precisam mudar.
  */
 
-const DYNAMIC_ENV_ID = '9b978edb-c7e1-425c-93eb-1c042b66dff1';
+const DYNAMIC_ENV_ID = window.DYNAMIC_ENV_ID || '9b978edb-c7e1-425c-93eb-1c042b66dff1';
 
-// Arc Testnet chain definition para o Dynamic
 const ARC_TESTNET = {
   chainId: 5042002,
   name: 'Arc Testnet',
-  networkId: 5042002,
   nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 6 },
   rpcUrls: ['https://rpc.testnet.arc.network'],
   blockExplorerUrls: ['https://testnet.arcscan.app'],
-  iconUrls: [],
 };
 
-// Estado global do módulo
-let _dynamic = null;       // instância do DynamicContextSDK
+// ─── Estado do módulo ────────────────────────────────────────────────────────
+let _client = null;      // instância do Dynamic client
+let _clientMod = null;   // módulo @dynamic-labs-sdk/client (funções soltas)
+let _waasMod = null;     // módulo @dynamic-labs-sdk/client/waas (lazy)
 let _address = null;
 let _walletClient = null;
 let _isConnected = false;
-let _listeners = [];       // callbacks onStateChange
+let _listeners = [];
 
-// ─── Notifica listeners externos ───────────────────────────────────────────
 function _notify() {
   const state = { isConnected: _isConnected, address: _address, walletClient: _walletClient };
   _listeners.forEach(fn => { try { fn(state); } catch (_) {} });
 }
 
-/**
- * Registra um callback chamado sempre que o estado da wallet muda.
- * Retorna função para cancelar o listener.
- */
+/** Registra um callback chamado sempre que o estado da wallet muda. */
 export function onWalletChange(fn) {
   _listeners.push(fn);
   return () => { _listeners = _listeners.filter(l => l !== fn); };
 }
 
-// ─── Carrega o SDK via esm.sh ───────────────────────────────────────────────
-async function _loadSDK() {
-  if (_dynamic) return _dynamic;
-
-  // Dynamic SDK — pacotes principais
-  const [coreModule, ethModule] = await Promise.all([
-    import('https://esm.sh/@dynamic-labs/sdk-api@0.0.545'),
-    import('https://esm.sh/@dynamic-labs/ethereum@0.0.545'),
-  ]);
-
-  return { coreModule, ethModule };
+// ─── initDynamic ────────────────────────────────────────────────────────────
+/** Inicializa o Dynamic client. Chamar 1x, antes de qualquer connectWallet(). */
+export async function initDynamic() {
+  if (_client) return;
+  try {
+    // IMPORTANTE: sem "?bundle" — com bundle, esm.sh gera cópias isoladas dos
+    // módulos internos compartilhados e addEvmExtension() não encontra o
+    // client criado por createDynamicClient() ("No Dynamic client has been
+    // created yet"), mesmo tendo sido chamado corretamente na sequência certa.
+    const [clientMod, evmMod] = await Promise.all([
+      import('https://esm.sh/@dynamic-labs-sdk/client'),
+      import('https://esm.sh/@dynamic-labs-sdk/evm'),
+    ]);
+    _clientMod = clientMod;
+    _client = clientMod.createDynamicClient({
+      environmentId: DYNAMIC_ENV_ID,
+      metadata: { name: 'Stepless', url: location.origin },
+    });
+    // Extensões não recebem argumentos e devem ser registradas logo após
+    // criar o client (antes da inicialização terminar).
+    evmMod.addEvmExtension();
+    console.log('[Dynamic] Client inicializado (login por email disponível)');
+  } catch (err) {
+    console.warn('[Dynamic] Falha ao inicializar SDK — só MetaMask vai funcionar:', err);
+    _client = null;
+    _clientMod = null;
+  }
 }
 
-// ─── initDynamic ────────────────────────────────────────────────────────────
-/**
- * Inicializa o Dynamic SDK.
- * Deve ser chamado 1x, antes de qualquer conectWallet().
- */
-export async function initDynamic() {
-  if (_dynamic) return;
-
-  try {
-    // Dynamic recomenda o SDK via script UMD para vanilla JS.
-    // Carregamos via esm.sh o pacote @dynamic-labs/sdk-react-core
-    // que exporta createConfig + DynamicContextSDK (sem React).
-    const mod = await import('https://esm.sh/@dynamic-labs/sdk-react-core@3.9.9?bundle');
-
-    const { DynamicContextProvider } = mod;
-
-    // Para vanilla JS usamos o SDK diretamente sem React.
-    // O Dynamic também expõe um helper `createHeadlessDynamic`
-    // disponível via @dynamic-labs/sdk-api (headless mode).
-    // Fallback: usar window.ethereum injetado pelo Dynamic Embedded Wallet.
-
-    console.log('[Dynamic] SDK carregado');
-    _dynamic = mod;
-  } catch (err) {
-    console.warn('[Dynamic] Falha ao carregar SDK via esm.sh:', err);
-    _dynamic = null;
-  }
+async function _loadWaas() {
+  if (_waasMod) return _waasMod;
+  _waasMod = await import('https://esm.sh/@dynamic-labs-sdk/client/waas');
+  return _waasMod;
 }
 
 // ─── connectWallet ──────────────────────────────────────────────────────────
 /**
- * Abre o modal do Dynamic para login/cadastro.
- * Retorna { address, provider } ao conectar.
- *
- * Estratégia:
- *  1. Se Dynamic SDK headless disponível → usa API headless
- *  2. Senão → injeta o widget iframe do Dynamic (embeddable widget)
- *  3. Fallback final → window.ethereum (MetaMask)
+ * Abre um modal próprio (o SDK do Dynamic é headless, sem UI pronta) com
+ * duas opções: login por email (OTP) ou MetaMask. Resolve com
+ * { address, walletClient, provider } quando o usuário conectar.
  */
-export async function connectWallet() {
-  // Tenta carregar o Dynamic widget script se ainda não foi injetado
-  await _ensureDynamicWidget();
-
-  // Aguarda o Dynamic expor window.dynamic após inicialização
-  const dynamicSDK = await _waitForDynamic(5000);
-
-  if (dynamicSDK) {
-    return await _connectViaDynamic(dynamicSDK);
-  } else {
-    // Fallback: MetaMask / window.ethereum
-    return await _connectViaEthereum();
-  }
-}
-
-// ─── Injeta o script do Dynamic Widget ─────────────────────────────────────
-let _widgetInjected = false;
-async function _ensureDynamicWidget() {
-  if (_widgetInjected) return;
-  _widgetInjected = true;
-
-  return new Promise((resolve) => {
-    const script = document.createElement('script');
-    // Dynamic fornece um widget embeddable via CDN
-    script.src = `https://embed.dynamic.xyz/dynamic-embed.js`;
-    script.setAttribute('data-environment-id', DYNAMIC_ENV_ID);
-    script.setAttribute('data-network-ids', String(ARC_TESTNET.chainId));
-    script.async = true;
-    script.onload = () => {
-      console.log('[Dynamic] Widget script carregado');
-      resolve();
-    };
-    script.onerror = () => {
-      console.warn('[Dynamic] Falha ao carregar widget script');
-      resolve(); // não bloqueia — usa fallback
-    };
-    document.head.appendChild(script);
+export function connectWallet() {
+  return new Promise((resolve, reject) => {
+    _openModal({ resolve, reject });
   });
 }
 
-// ─── Aguarda window.dynamic ser exposto pelo script ────────────────────────
-function _waitForDynamic(timeoutMs = 5000) {
-  return new Promise((resolve) => {
-    if (window.dynamic?.auth) { resolve(window.dynamic); return; }
-    const start = Date.now();
-    const check = setInterval(() => {
-      if (window.dynamic?.auth) {
-        clearInterval(check);
-        resolve(window.dynamic);
-      } else if (Date.now() - start > timeoutMs) {
-        clearInterval(check);
-        resolve(null);
+// ─── Modal DOM (injetado 1x, reaproveitado) ────────────────────────────────
+let _modalEl = null;
+function _buildModal() {
+  if (_modalEl) return _modalEl;
+  const el = document.createElement('div');
+  el.id = 'stepless-wallet-modal';
+  el.className = 'sw-modal-overlay hidden';
+  el.innerHTML = `
+    <div class="sw-modal-card" role="dialog" aria-modal="true" aria-label="Conectar wallet">
+      <button type="button" class="sw-modal-close" aria-label="Fechar">✕</button>
+      <h3>Conecte sua Wallet</h3>
+      <p class="sw-modal-sub">Entre com seu email — a gente cria uma wallet pra você na hora, sem instalar nada.</p>
+
+      <form id="sw-email-form" class="sw-step">
+        <label for="sw-email-input">Email</label>
+        <input type="email" id="sw-email-input" placeholder="seu@email.com" required autocomplete="email" />
+        <button type="submit" class="btn btn-primary btn-block" style="margin-top:.75rem">Enviar código</button>
+      </form>
+
+      <form id="sw-otp-form" class="sw-step hidden">
+        <p class="sw-modal-sub" id="sw-otp-hint"></p>
+        <label for="sw-otp-input">Código</label>
+        <input type="text" id="sw-otp-input" placeholder="000000" inputmode="numeric" maxlength="8" required />
+        <button type="submit" class="btn btn-primary btn-block" style="margin-top:.75rem">Confirmar código</button>
+        <button type="button" id="sw-otp-back" class="btn btn-ghost btn-block" style="margin-top:.5rem">Voltar</button>
+      </form>
+
+      <p id="sw-modal-error" class="sw-modal-error hidden"></p>
+
+      <div class="sw-modal-divider"><span>ou</span></div>
+
+      <button type="button" id="sw-metamask-btn" class="btn btn-secondary btn-block">🦊 Usar MetaMask</button>
+    </div>
+  `;
+  document.body.appendChild(el);
+  _modalEl = el;
+  return el;
+}
+
+function _showError(el, msg) {
+  const errEl = el.querySelector('#sw-modal-error');
+  errEl.textContent = msg;
+  errEl.classList.remove('hidden');
+}
+function _clearError(el) {
+  el.querySelector('#sw-modal-error').classList.add('hidden');
+}
+
+function _openModal({ resolve, reject }) {
+  const el = _buildModal();
+  el.classList.remove('hidden');
+  _clearError(el);
+
+  let pendingOtp = null; // resultado de sendEmailOTP, usado na verificação
+
+  const emailForm = el.querySelector('#sw-email-form');
+  const otpForm = el.querySelector('#sw-otp-form');
+
+  const reset = () => {
+    emailForm.reset();
+    otpForm.reset();
+    emailForm.classList.remove('hidden');
+    otpForm.classList.add('hidden');
+    _clearError(el);
+  };
+
+  const close = (err) => {
+    el.classList.add('hidden');
+    reset();
+    if (err) reject(err);
+  };
+
+  el.querySelector('.sw-modal-close').onclick = () => close(new Error('Cancelado pelo usuário'));
+
+  emailForm.onsubmit = async (ev) => {
+    ev.preventDefault();
+    _clearError(el);
+    const email = el.querySelector('#sw-email-input').value.trim();
+    if (!_clientMod) {
+      _showError(el, 'Login por email indisponível agora — use MetaMask abaixo.');
+      return;
+    }
+    const btn = emailForm.querySelector('button[type=submit]');
+    const originalLabel = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Enviando...';
+    try {
+      // sendEmailOTP retorna { email, verificationUUID } diretamente — esse
+      // objeto INTEIRO é o "otpVerification" esperado por verifyOTP (não um
+      // campo aninhado .otpVerification, como a doc do Dynamic sugere).
+      pendingOtp = await _clientMod.sendEmailOTP({ email });
+      el.querySelector('#sw-otp-hint').textContent = `Digite o código enviado para ${email}`;
+      emailForm.classList.add('hidden');
+      otpForm.classList.remove('hidden');
+      el.querySelector('#sw-otp-input').focus();
+    } catch (err) {
+      _showError(el, err?.message || 'Falha ao enviar código. Tente de novo.');
+    } finally {
+      btn.disabled = false; btn.textContent = originalLabel;
+    }
+  };
+
+  el.querySelector('#sw-otp-back').onclick = () => {
+    _clearError(el);
+    otpForm.classList.add('hidden');
+    emailForm.classList.remove('hidden');
+  };
+
+  otpForm.onsubmit = async (ev) => {
+    ev.preventDefault();
+    _clearError(el);
+    const code = el.querySelector('#sw-otp-input').value.trim();
+    const btn = otpForm.querySelector('button[type=submit]');
+    const originalLabel = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Confirmando...';
+    try {
+      await _clientMod.verifyOTP({ otpVerification: pendingOtp, verificationToken: code });
+
+      // A wallet embedded não é criada automaticamente — precisa chamar
+      // createWaasWalletAccounts() explicitamente pras chains que faltarem.
+      const waas = await _loadWaas();
+      const missingChains = waas.getChainsMissingWaasWalletAccounts();
+      if (missingChains?.length) {
+        await waas.createWaasWalletAccounts({ chains: missingChains });
       }
-    }, 100);
-  });
+
+      const accounts = await _clientMod.getWalletAccounts();
+      const address = accounts?.[0]?.address;
+      if (!address) throw new Error('Wallet criada, mas sem endereço retornado.');
+
+      _address = address;
+      // Stub seguro: essa wallet nunca precisa assinar nada neste app
+      // (todas as transações passam pelo relayer no backend).
+      _walletClient = {
+        request: async () => {
+          throw new Error('Esta wallet (login por email) não assina transações — não é necessário neste app.');
+        },
+      };
+      _isConnected = true;
+      _notify();
+
+      close();
+      resolve({ address: _address, walletClient: _walletClient, provider: _walletClient });
+    } catch (err) {
+      _showError(el, err?.message || 'Código inválido. Tente de novo.');
+    } finally {
+      btn.disabled = false; btn.textContent = originalLabel;
+    }
+  };
+
+  el.querySelector('#sw-metamask-btn').onclick = async () => {
+    _clearError(el);
+    try {
+      const result = await _connectViaEthereum();
+      close();
+      resolve(result);
+    } catch (err) {
+      _showError(el, err?.message || 'Falha ao conectar MetaMask.');
+    }
+  };
 }
 
-// ─── Conecta via Dynamic SDK (auth flow) ───────────────────────────────────
-async function _connectViaDynamic(sdk) {
-  // Abre o modal de autenticação
-  await sdk.auth.show();
-
-  // Aguarda autenticação (o modal fecha ao autenticar)
-  await new Promise((resolve, reject) => {
-    const unsub = sdk.auth.on('authenticated', resolve);
-    const unsuberr = sdk.auth.on('error', (err) => { reject(err); });
-    // Timeout de 5 minutos
-    setTimeout(() => { reject(new Error('Timeout aguardando autenticação')); }, 300000);
-  });
-
-  const user = sdk.auth.getUser();
-  const wallet = sdk.wallets.getAll()[0];
-
-  if (!wallet) throw new Error('Nenhuma wallet após autenticação Dynamic');
-
-  _address = wallet.address;
-  _walletClient = wallet;
-  _isConnected = true;
-  _notify();
-
-  return { address: _address, walletClient: _walletClient, provider: wallet.provider };
-}
-
-// ─── Fallback: conecta via window.ethereum ──────────────────────────────────
+// ─── Fallback: conecta via window.ethereum (MetaMask etc.) ─────────────────
 async function _connectViaEthereum() {
   if (!window.ethereum) {
-    throw new Error('Nenhuma wallet detectada. Instale MetaMask ou use email login.');
+    throw new Error('MetaMask não detectado. Use o login por email acima.');
   }
 
   const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
   _address = accounts[0];
 
-  // Garante Arc Testnet
   const arcChainHex = '0x' + ARC_TESTNET.chainId.toString(16);
   const currentChain = await window.ethereum.request({ method: 'eth_chainId' });
 
@@ -229,10 +306,9 @@ async function _connectViaEthereum() {
 
 // ─── disconnectWallet ───────────────────────────────────────────────────────
 export async function disconnectWallet() {
-  const sdk = window.dynamic;
-  if (sdk?.auth) {
-    try { await sdk.auth.logout(); } catch (_) {}
-  }
+  try {
+    if (_clientMod?.logout) await _clientMod.logout();
+  } catch (_) {}
   _address = null;
   _walletClient = null;
   _isConnected = false;
@@ -244,19 +320,14 @@ export function getWalletState() {
   return { isConnected: _isConnected, address: _address, walletClient: _walletClient };
 }
 
-// ─── getSigner (compatível com viem walletClient) ───────────────────────────
+// ─── getProvider ─────────────────────────────────────────────────────────────
 /**
  * Retorna um provider EIP-1193 compatível com viem's custom() transport.
- * Funciona tanto para Dynamic embedded wallet quanto MetaMask.
+ * Para MetaMask é o provider real; para a embedded wallet (email) é o stub
+ * seguro (nunca chamado no fluxo normal do app).
  */
 export function getProvider() {
   if (!_isConnected) return null;
-
-  // Dynamic wallet expõe .provider EIP-1193
-  if (_walletClient && _walletClient.provider) {
-    return _walletClient.provider;
-  }
-
-  // Fallback: window.ethereum
+  if (_walletClient && typeof _walletClient.request === 'function') return _walletClient;
   return window.ethereum || null;
 }
