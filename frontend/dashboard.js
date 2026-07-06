@@ -23,6 +23,8 @@ let walletAddress = null;
 let wsClient = null;
 let activeUnwatch = [];
 let isConnected = false;
+let leafletMap = null;
+let leafletMarkersLayer = null;
 
 /* ═══════════════════════════════════════════════════════════════
  *  Viem loading (CDN esm.sh)
@@ -350,6 +352,7 @@ async function refreshAll() {
     loadLocationCount(),
     checkVerifierStatus(),
     loadRewardHistory(),
+    loadMapMarkers(),
   ]);
 }
 
@@ -614,6 +617,102 @@ async function loadRewardHistory() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+ *  Mapa (Leaflet + OpenStreetMap — grátis, sem API key)
+ * ═══════════════════════════════════════════════════════════════ */
+
+// Desfaz o empacotamento usado no registerLocation: (lat+90)*1e6 / (lng+180)*1e6.
+// Precisa ser o inverso exato do que api/relay.js faz antes de mandar pro contrato.
+function unpackLat(latPacked) { return Number(latPacked) / 1e6 - 90; }
+function unpackLng(lngPacked) { return Number(lngPacked) / 1e6 - 180; }
+
+function initLeafletMap() {
+  if (leafletMap || !window.L) return leafletMap;
+  const el = document.getElementById('leaflet-map');
+  if (!el) return null;
+
+  leafletMap = window.L.map(el, { scrollWheelZoom: false }).setView([-14.2, -51.9], 4); // centro do Brasil
+  window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19,
+  }).addTo(leafletMap);
+  leafletMarkersLayer = window.L.layerGroup().addTo(leafletMap);
+
+  return leafletMap;
+}
+
+function categoryLabel(id) {
+  return cfg.locationCategories.find(c => c.id === Number(id))?.label?.[getLang()] || null;
+}
+
+function addMapMarker({ lat, lng, name, categories, contributor, txHash }) {
+  if (!leafletMap || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+  const explorerBase = cfg.chain.blockExplorers.default.url;
+  const cat = Array.isArray(categories) && categories.length ? categoryLabel(categories[0]) : null;
+  const title = name || 'Local acessível';
+  const popup = `
+    <strong>📍 ${title}</strong><br/>
+    ${cat ? `${cat}<br/>` : ''}
+    <span style="color:var(--text-muted)">por ${shortAddr(contributor)}</span><br/>
+    ${txHash ? `<a href="${explorerBase}/tx/${txHash}" target="_blank" rel="noopener">ver no ArcScan</a>` : ''}
+  `;
+  window.L.marker([lat, lng]).addTo(leafletMarkersLayer).bindPopup(popup);
+}
+
+async function loadMapMarkers() {
+  if (!initLeafletMap()) return; // Leaflet ainda não carregou (script CDN) — refreshAll() tenta de novo depois
+  leafletMarkersLayer.clearLayers();
+
+  try {
+    const logs = await publicClient.getContractEvents({
+      address: cfg.contracts.SteplessOracle,
+      abi: cfg.abis.SteplessOracle,
+      eventName: 'LocationRegistered',
+      fromBlock: 0n,
+      toBlock: 'latest',
+    });
+
+    const hint = document.getElementById('map-empty-hint');
+    if (logs.length === 0) {
+      if (hint) hint.style.display = 'block';
+      return;
+    }
+    if (hint) hint.style.display = 'none';
+
+    // Busca nome/categorias salvos fora da chain, em lote, pelos locationHash
+    const hashes = logs.map(l => l.args.locationId).filter(Boolean);
+    let metaMap = {};
+    try {
+      const metaRes = await fetch('/api/location-meta', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hashes }),
+      });
+      const metaJson = await metaRes.json();
+      metaMap = metaJson.meta || {};
+    } catch (_) { /* segue sem nome/categoria — marcador ainda aparece */ }
+
+    const points = [];
+    for (const log of logs) {
+      const lat = unpackLat(log.args.latPacked);
+      const lng = unpackLng(log.args.lngPacked);
+      const meta = metaMap[log.args.locationId?.toLowerCase()] || {};
+      addMapMarker({
+        lat, lng,
+        name: meta.name,
+        categories: meta.categories,
+        contributor: log.args.contributor,
+        txHash: log.transactionHash,
+      });
+      points.push([lat, lng]);
+    }
+
+    if (points.length === 1) leafletMap.setView(points[0], 13);
+    else if (points.length > 1) leafletMap.fitBounds(points, { padding: [30, 30] });
+  } catch (err) {
+    console.warn('[map] Falha ao carregar locais:', err?.shortMessage || err?.message);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
  *  Write: Register Location
  * ═══════════════════════════════════════════════════════════════ */
 
@@ -840,11 +939,36 @@ function startWebSocketSubscriptions(viem) {
       abi: cfg.abis.SteplessOracle,
       eventName: 'LocationRegistered',
       onLogs: (logs) => {
-        logs.forEach(log => {
-          const name = log.args.name || 'Unknown';
+        logs.forEach(async (log) => {
           const isMine = log.args.contributor?.toLowerCase() === walletAddress?.toLowerCase();
-          logEvent('LocationRegistered', `"${name}" by ${shortAddr(log.args.contributor)}${isMine ? ' ← YOU' : ''}`);
+          const locationId = log.args.locationId;
+
+          // Busca nome salvo fora da chain pra esse local específico (best-effort)
+          let name = null, categories = [];
+          try {
+            const r = await fetch('/api/location-meta', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ hashes: [locationId] }),
+            });
+            const meta = (await r.json()).meta?.[locationId?.toLowerCase()];
+            if (meta) { name = meta.name; categories = meta.categories; }
+          } catch (_) {}
+
+          logEvent('LocationRegistered', `"${name || 'Unknown'}" by ${shortAddr(log.args.contributor)}${isMine ? ' ← YOU' : ''}`);
           loadLocationCount();
+
+          // Adiciona o marcador no mapa em tempo real, sem precisar recarregar a página
+          if (leafletMap) {
+            const hint = document.getElementById('map-empty-hint');
+            if (hint) hint.style.display = 'none';
+            addMapMarker({
+              lat: unpackLat(log.args.latPacked),
+              lng: unpackLng(log.args.lngPacked),
+              name, categories,
+              contributor: log.args.contributor,
+              txHash: log.transactionHash,
+            });
+          }
         });
       },
     });

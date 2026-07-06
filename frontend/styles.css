@@ -1236,6 +1236,17 @@ input[type="file"]::file-selector-button {
   opacity: 0.4;
 }
 
+/* Mapa real (Leaflet) — sobrescreve o visual de "placeholder em desenvolvimento" */
+#leaflet-map {
+  border-style: solid;
+  z-index: 0;
+}
+#leaflet-map .leaflet-popup-content-wrapper,
+#leaflet-map .leaflet-popup-tip {
+  background: var(--bg-card);
+  color: var(--text);
+}
+
 /* Event log */
 .event-log {
   max-height: 300px;

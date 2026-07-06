@@ -7,6 +7,8 @@
   <meta name="theme-color" content="#1a56c4" />
   <title>Stepless Dashboard — Arc Testnet</title>
   <link rel="stylesheet" href="styles.css" />
+  <!-- Leaflet + OpenStreetMap — grátis, sem API key, sem conta, UMD via CDN (sem build step) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦿</text></svg>" />
 </head>
 <body>
@@ -146,14 +148,8 @@
         <h2 class="section-title" id="map-title" data-i18n="map_title">Mapa de Locais Acessíveis</h2>
         <div class="dashboard-grid">
           <div>
-            <div class="map-placeholder" role="img" aria-label="Map placeholder showing accessible locations">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                <circle cx="12" cy="10" r="3"/>
-              </svg>
-              <span data-i18n="map_placeholder">Mapa interativo em desenvolvimento</span>
-              <span style="font-size:0.8rem;" data-i18n="map_placeholder_sub">Locais aparecem aqui após conexão</span>
-            </div>
+            <div id="leaflet-map" class="map-placeholder" style="padding:0; overflow:hidden;" role="application" aria-label="Mapa com os locais acessíveis registrados"></div>
+            <p id="map-empty-hint" style="font-size:0.85rem; color:var(--text-muted); margin-top:8px;" data-i18n="map_placeholder_sub">Locais aparecem aqui conforme são registrados</p>
           </div>
 
           <!-- Real-time event log -->
@@ -321,6 +317,8 @@
        ════════════════════════════════════════════════ -->
   <!-- exifr: extração de metadados EXIF (GPS, timestamp) da foto -->
   <script src="https://cdn.jsdelivr.net/npm/exifr@7/dist/lite.umd.js"></script>
+  <!-- Leaflet: mapa interativo (window.L global, UMD clássico) -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script type="module" src="dashboard.js"></script>
   <script type="module">
     /* Theme + nav + language init (shared with landing page) */
