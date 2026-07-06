@@ -353,8 +353,8 @@
     window.SteplessConfig = SteplessConfig;
 
     /* ── Dynamic Wallet ── */
-    import { initDynamic, connectWallet as _connectWallet, onWalletChange, getProvider } from './dynamic-wallet.js';
-    initDynamic(); // inicia em background
+    import { initDynamic, connectWallet as _connectWallet, onWalletChange, getProvider, tryRestoreSession as _dynamicRestore } from './dynamic-wallet.js';
+    const _dynamicInitPromise = initDynamic(); // inicia em background, guarda a promise pra auto-connect
 
     /* ── i18n ── */
     const I18N = {
@@ -575,52 +575,72 @@
     }
 
     /* ── Wallet UI ── */
-    async function connectWallet() {
+    // Atualiza a UI de "conectado" (usado tanto no clique manual quanto na
+    // reconexão automática/sessão restaurada).
+    async function _showConnectedUI(address) {
       const btn = document.getElementById('connect-wallet-btn');
       const info = document.getElementById('wallet-info');
       const addrEl = document.getElementById('wallet-address');
       const balEl = document.getElementById('wallet-balance');
+
+      // Lê saldo USDC via Viem
+      try {
+        const viem = await import('https://esm.sh/viem@2.21.0');
+        const { createPublicClient, http, formatUnits, getContract } = viem;
+        const cfg = window.SteplessConfig;
+        const publicClient = createPublicClient({ chain: cfg.chain, transport: http() });
+        const usdcContract = getContract({
+          address: cfg.tokens.USDC.address,
+          abi: cfg.abis.ERC20,
+          client: publicClient,
+        });
+        const balance = await usdcContract.read.balanceOf([address]);
+        balEl.textContent = `${formatUnits(balance, 6)} USDC`;
+      } catch (_) {
+        balEl.textContent = '— USDC';
+      }
+
+      btn.style.display = 'none';
+      info.classList.add('connected');
+      addrEl.textContent = `${address.slice(0, 6)}...${address.slice(-4)}`;
+      addrEl.title = `${address} — clique para copiar`;
+      addrEl.onclick = () => {
+        navigator.clipboard?.writeText(address);
+        const original = addrEl.textContent;
+        addrEl.textContent = '✅ Copiado!';
+        setTimeout(() => { addrEl.textContent = original; }, 1200);
+      };
+    }
+
+    async function connectWallet() {
+      const btn = document.getElementById('connect-wallet-btn');
       const strings = I18N[currentLang];
 
       btn.textContent = strings.wallet_connecting || 'Conectando...';
       btn.disabled = true;
 
       try {
-        const { address, provider } = await _connectWallet();
-
-        // Lê saldo USDC via Viem
-        try {
-          const viem = await import('https://esm.sh/viem@2.21.0');
-          const { createPublicClient, http, formatUnits, getContract, custom } = viem;
-          const cfg = window.SteplessConfig;
-          const publicClient = createPublicClient({ chain: cfg.chain, transport: http() });
-          const usdcContract = getContract({
-            address: cfg.tokens.USDC.address,
-            abi: cfg.abis.ERC20,
-            client: publicClient,
-          });
-          const balance = await usdcContract.read.balanceOf([address]);
-          balEl.textContent = `${formatUnits(balance, 6)} USDC`;
-        } catch (_) {
-          balEl.textContent = '— USDC';
-        }
-
-        btn.style.display = 'none';
-        info.classList.add('connected');
-        addrEl.textContent = `${address.slice(0, 6)}...${address.slice(-4)}`;
-        addrEl.title = `${address} — clique para copiar`;
-        addrEl.onclick = () => {
-          navigator.clipboard?.writeText(address);
-          const original = addrEl.textContent;
-          addrEl.textContent = '✅ Copiado!';
-          setTimeout(() => { addrEl.textContent = original; }, 1200);
-        };
-
+        const { address } = await _connectWallet();
+        await _showConnectedUI(address);
       } catch (err) {
         console.error('[Stepless] Wallet connection failed:', err);
         alert(err.message);
         btn.textContent = I18N[currentLang].connect_wallet || 'Conectar Wallet';
         btn.disabled = false;
+      }
+    }
+
+    // Restaura sessão salva do Dynamic (login por email anterior) sem abrir
+    // modal nem pedir OTP de novo — só chamado silenciosamente no load.
+    async function tryAutoConnectWallet() {
+      try {
+        await _dynamicInitPromise;
+        const restored = await _dynamicRestore();
+        if (!restored) return;
+        await _showConnectedUI(restored.address);
+        console.log('[Stepless] Sessão restaurada via Dynamic:', restored.address);
+      } catch (err) {
+        console.log('[Stepless] Sem sessão salva:', err.message);
       }
     }
 
@@ -640,6 +660,8 @@
 
       const ls = document.getElementById('lang-select');
       if (ls) ls.addEventListener('change', e => setLanguage(e.target.value));
+
+      tryAutoConnectWallet();
     });
   </script>
 </body>

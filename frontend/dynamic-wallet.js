@@ -19,8 +19,15 @@
  * nunca é chamado para assinar nada no fluxo normal de uso.
  *
  * Exporta: initDynamic, connectWallet, disconnectWallet, getWalletState,
- * onWalletChange, getProvider — mesma API pública de antes, então
- * dashboard.js / index.html não precisam mudar.
+ * onWalletChange, getProvider, tryRestoreSession — mesma API pública de
+ * antes + tryRestoreSession (novo).
+ *
+ * SESSÃO PERSISTENTE: o Dynamic já guarda a sessão (JWT) sozinho no
+ * storage do navegador — o problema não era "a sessão não persiste", era
+ * que ninguém nunca checava se já existia uma sessão salva antes de abrir
+ * o modal de login. `tryRestoreSession()` faz essa checagem (via
+ * `isSignedIn()` + `getWalletAccounts()`) e, se achar uma sessão válida,
+ * restaura o estado de conexão sem pedir email/código de novo.
  */
 
 const DYNAMIC_ENV_ID = window.DYNAMIC_ENV_ID || '9b978edb-c7e1-425c-93eb-1c042b66dff1';
@@ -74,11 +81,57 @@ export async function initDynamic() {
     // Extensões não recebem argumentos e devem ser registradas logo após
     // criar o client (antes da inicialização terminar).
     evmMod.addEvmExtension();
+
+    // Espera o client terminar de carregar a sessão salva (JWT em
+    // cookie/storage) antes de considerar "inicializado". Sem isso,
+    // isSignedIn()/getWalletAccounts() podem responder antes da sessão
+    // salva ter sido lida, dando falso negativo.
+    if (typeof clientMod.waitForClientInitialized === 'function') {
+      await clientMod.waitForClientInitialized();
+    }
+
     console.log('[Dynamic] Client inicializado (login por email disponível)');
   } catch (err) {
     console.warn('[Dynamic] Falha ao inicializar SDK — só MetaMask vai funcionar:', err);
     _client = null;
     _clientMod = null;
+  }
+}
+
+// ─── tryRestoreSession ──────────────────────────────────────────────────────
+/**
+ * Chamar depois de initDynamic(), antes de mostrar qualquer UI de login.
+ * Se o usuário já tiver uma sessão válida (login por email anterior, JWT
+ * ainda guardado pelo navegador), restaura o estado de conexão e retorna
+ * { address, walletClient, provider } — sem abrir modal, sem pedir OTP de
+ * novo. Retorna null se não houver sessão (usuário precisa conectar).
+ */
+export async function tryRestoreSession() {
+  if (!_clientMod || !_client) return null;
+  try {
+    const signedIn = typeof _clientMod.isSignedIn === 'function'
+      ? _clientMod.isSignedIn()
+      : Boolean(_client.user);
+    if (!signedIn) return null;
+
+    const accounts = await _clientMod.getWalletAccounts();
+    const address = accounts?.[0]?.address;
+    if (!address) return null;
+
+    _address = address;
+    _walletClient = {
+      request: async () => {
+        throw new Error('Esta wallet (login por email) não assina transações — não é necessário neste app.');
+      },
+    };
+    _isConnected = true;
+    _notify();
+
+    console.log('[Dynamic] Sessão restaurada — login automático:', address);
+    return { address: _address, walletClient: _walletClient, provider: _walletClient };
+  } catch (err) {
+    console.warn('[Dynamic] Falha ao restaurar sessão salva:', err);
+    return null;
   }
 }
 

@@ -7,10 +7,11 @@
  */
 
 import { SteplessConfig } from './arc-config.js';
-import { initDynamic, connectWallet as _dynamicConnect, disconnectWallet, onWalletChange, getProvider } from './dynamic-wallet.js';
+import { initDynamic, connectWallet as _dynamicConnect, disconnectWallet, onWalletChange, getProvider, tryRestoreSession as _dynamicRestore } from './dynamic-wallet.js';
 
-// Inicializa Dynamic em background
-initDynamic();
+// Inicializa Dynamic em background — guardamos a promise pra poder esperar
+// ela terminar antes de checar sessão salva em tryAutoConnect().
+const _dynamicInitPromise = initDynamic();
 
 /* ═══════════════════════════════════════════════════════════════
  *  State
@@ -157,6 +158,47 @@ function handleArcError(err) {
  *  Wallet connection
  * ═══════════════════════════════════════════════════════════════ */
 
+/**
+ * Finaliza a conexão (Dynamic ou MetaMask): cria os clientes viem, atualiza
+ * a UI e carrega os dados do dashboard. Compartilhado entre connect()
+ * (clique manual) e tryAutoConnect() (reconexão silenciosa/sessão salva).
+ */
+async function _completeConnection(address, provider) {
+  walletAddress = address;
+
+  const viem = await loadViem();
+
+  publicClient = viem.createPublicClient({
+    chain: cfg.chain,
+    transport: viem.http(),
+  });
+
+  walletClient = viem.createWalletClient({
+    account: walletAddress,
+    chain: cfg.chain,
+    transport: viem.custom(provider),
+  });
+
+  isConnected = true;
+
+  document.getElementById('not-connected')?.classList.add('hidden');
+  document.getElementById('dashboard-content')?.classList.remove('hidden');
+
+  const btn = document.getElementById('connect-wallet-btn');
+  if (btn) btn.style.display = 'none';
+  const info = document.getElementById('wallet-info');
+  if (info) info.classList.add('connected');
+  const addrEl = document.getElementById('wallet-address');
+  if (addrEl) { addrEl.textContent = shortAddr(walletAddress); makeAddressCopyable(addrEl, walletAddress); }
+
+  await refreshAll();
+  await checkRelayerSetup();
+  await checkAdminPanel();
+  startWebSocketSubscriptions(viem);
+
+  return viem;
+}
+
 async function connect() {
   const s = getStrings();
 
@@ -169,45 +211,13 @@ async function connect() {
   try {
     // ── Dynamic SDK: abre modal de login/email/social ──────────────────
     const { address, provider } = await _dynamicConnect();
-    walletAddress = address;
-
-    // ── Cria clientes Viem usando o provider retornado pelo Dynamic ────
-    const viem = await loadViem();
-
-    publicClient = viem.createPublicClient({
-      chain: cfg.chain,
-      transport: viem.http(),
-    });
-
-    walletClient = viem.createWalletClient({
-      account: walletAddress,
-      chain: cfg.chain,
-      transport: viem.custom(provider),
-    });
-
-    isConnected = true;
 
     // Reage a logout/troca de conta do Dynamic
     onWalletChange(({ isConnected: ic }) => {
       if (!ic) location.reload();
     });
 
-    // ── Update UI ──────────────────────────────────────────────────────
-    document.getElementById('not-connected')?.classList.add('hidden');
-    document.getElementById('dashboard-content')?.classList.remove('hidden');
-
-    if (btn) btn.style.display = 'none';
-    const info = document.getElementById('wallet-info');
-    if (info) info.classList.add('connected');
-    const addrEl = document.getElementById('wallet-address');
-    addrEl.textContent = shortAddr(walletAddress);
-    makeAddressCopyable(addrEl, walletAddress);
-
-    // Carrega dados e inicia subscriptions
-    await refreshAll();
-    await checkRelayerSetup();
-    await checkAdminPanel();
-    startWebSocketSubscriptions(viem);
+    await _completeConnection(address, provider);
 
   } catch (err) {
     console.error('Connection failed:', err);
@@ -1235,46 +1245,43 @@ window.SteplessDashboard = {
  * ═══════════════════════════════════════════════════════════════ */
 
 async function tryAutoConnect() {
-  if (!window.ethereum) return;
+  // 1) MetaMask/window.ethereum — reconecta silenciosamente se já aprovado.
+  if (window.ethereum) {
+    try {
+      // eth_accounts não abre prompt — só retorna se já aprovado
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      if (accounts && accounts.length > 0) {
+        const viem = await loadViem();
+        const address = viem.getAddress(accounts[0]);
+        await _completeConnection(address, window.ethereum);
+
+        // Reage a logout/troca de conta
+        window.ethereum.on?.('accountsChanged', accs => {
+          if (!accs || accs.length === 0) location.reload();
+          else if (accs[0].toLowerCase() !== walletAddress.toLowerCase()) location.reload();
+        });
+
+        console.log('[autoConnect] Reconectado via MetaMask:', walletAddress);
+        return;
+      }
+    } catch (err) {
+      console.log('[autoConnect] MetaMask:', err.message);
+    }
+  }
+
+  // 2) Dynamic (login por email) — restaura sessão salva sem pedir OTP de
+  // novo. Espera initDynamic() terminar de carregar a sessão do storage.
   try {
-    // eth_accounts não abre prompt — só retorna se já aprovado
-    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-    if (!accounts || accounts.length === 0) return;
+    await _dynamicInitPromise;
+    const restored = await _dynamicRestore();
+    if (!restored) return;
 
-    const viem = await loadViem();
-    walletAddress = viem.getAddress(accounts[0]);
-
-    publicClient = viem.createPublicClient({ chain: cfg.chain, transport: viem.http() });
-    walletClient = viem.createWalletClient({
-      account: walletAddress,
-      chain: cfg.chain,
-      transport: viem.custom(window.ethereum),
+    onWalletChange(({ isConnected: ic }) => {
+      if (!ic) location.reload();
     });
 
-    isConnected = true;
-
-    // Reage a logout/troca de conta
-    window.ethereum.on?.('accountsChanged', accs => {
-      if (!accs || accs.length === 0) location.reload();
-      else if (accs[0].toLowerCase() !== walletAddress.toLowerCase()) location.reload();
-    });
-
-    // Atualiza UI
-    document.getElementById('not-connected')?.classList.add('hidden');
-    document.getElementById('dashboard-content')?.classList.remove('hidden');
-    const btn = document.getElementById('connect-wallet-btn');
-    if (btn) btn.style.display = 'none';
-    const info = document.getElementById('wallet-info');
-    if (info) info.classList.add('connected');
-    const addrEl2 = document.getElementById('wallet-address');
-    if (addrEl2) { addrEl2.textContent = shortAddr(walletAddress); makeAddressCopyable(addrEl2, walletAddress); }
-
-    await refreshAll();
-    await checkRelayerSetup();
-    await checkAdminPanel();
-    startWebSocketSubscriptions(viem);
-
-    console.log('[autoConnect] Reconectado:', walletAddress);
+    await _completeConnection(restored.address, restored.provider);
+    console.log('[autoConnect] Sessão restaurada via Dynamic:', walletAddress);
   } catch (err) {
     // Falha silenciosa — usuário conecta manualmente
     console.log('[autoConnect]', err.message);
