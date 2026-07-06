@@ -51,7 +51,7 @@
         <button class="btn btn-primary btn-sm" id="connect-wallet-btn" data-i18n="connect_wallet">Conectar Wallet</button>
         <div class="wallet-info" id="wallet-info">
           <span class="status-dot connected" aria-hidden="true"></span>
-          <span class="wallet-address" id="wallet-address">—</span>
+          <span class="wallet-address" id="wallet-address" style="cursor:pointer" title="Clique para copiar o endereço completo">—</span>
           <span class="wallet-balance" id="wallet-balance">—</span>
         </div>
       </nav>
@@ -608,6 +608,13 @@
         btn.style.display = 'none';
         info.classList.add('connected');
         addrEl.textContent = `${address.slice(0, 6)}...${address.slice(-4)}`;
+        addrEl.title = `${address} — clique para copiar`;
+        addrEl.onclick = () => {
+          navigator.clipboard?.writeText(address);
+          const original = addrEl.textContent;
+          addrEl.textContent = '✅ Copiado!';
+          setTimeout(() => { addrEl.textContent = original; }, 1200);
+        };
 
       } catch (err) {
         console.error('[Stepless] Wallet connection failed:', err);

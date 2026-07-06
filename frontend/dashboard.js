@@ -61,6 +61,20 @@ function shortAddr(addr) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
+// Deixa o endereço da wallet no header clicável — copia o endereço completo
+// pra área de transferência (útil pra colar em faucets/exploradores).
+function makeAddressCopyable(el, address) {
+  if (!el || !address) return;
+  el.style.cursor = 'pointer';
+  el.title = `${address} — clique para copiar`;
+  el.onclick = () => {
+    navigator.clipboard?.writeText(address);
+    const original = el.textContent;
+    el.textContent = '✅ Copiado!';
+    setTimeout(() => { el.textContent = original; }, 1200);
+  };
+}
+
 function shortHash(hash) {
   if (!hash) return '—';
   return `${hash.slice(0, 10)}...${hash.slice(-6)}`;
@@ -183,7 +197,9 @@ async function connect() {
     if (btn) btn.style.display = 'none';
     const info = document.getElementById('wallet-info');
     if (info) info.classList.add('connected');
-    document.getElementById('wallet-address').textContent = shortAddr(walletAddress);
+    const addrEl = document.getElementById('wallet-address');
+    addrEl.textContent = shortAddr(walletAddress);
+    makeAddressCopyable(addrEl, walletAddress);
 
     // Carrega dados e inicia subscriptions
     await refreshAll();
@@ -1126,8 +1142,8 @@ async function tryAutoConnect() {
     if (btn) btn.style.display = 'none';
     const info = document.getElementById('wallet-info');
     if (info) info.classList.add('connected');
-    const addrEl = document.getElementById('wallet-address');
-    if (addrEl) addrEl.textContent = shortAddr(walletAddress);
+    const addrEl2 = document.getElementById('wallet-address');
+    if (addrEl2) { addrEl2.textContent = shortAddr(walletAddress); makeAddressCopyable(addrEl2, walletAddress); }
 
     await refreshAll();
     await checkRelayerSetup();
