@@ -215,7 +215,18 @@ function _openModal({ resolve, reject }) {
     const originalLabel = btn.textContent;
     btn.disabled = true; btn.textContent = 'Confirmando...';
     try {
-      await _clientMod.verifyOTP({ otpVerification: pendingOtp, verificationToken: code });
+      // requestedScopes: Credentiallink — criar a embedded wallet conta como
+      // "vincular uma nova credencial" pro Dynamic, e isso exige um token de
+      // acesso elevado (step-up auth) a partir da API version 2026_04_01.
+      // Sem isso, createWaasWalletAccounts() falha com "Elevated access
+      // token required" mesmo com o código certo. Pedindo o scope aqui,
+      // no mesmo verifyOTP, o SDK já guarda o token elevado automaticamente
+      // e aplica nas chamadas seguintes — não precisa de uma 2ª verificação.
+      await _clientMod.verifyOTP({
+        otpVerification: pendingOtp,
+        verificationToken: code,
+        requestedScopes: [_clientMod.TokenScope.Credentiallink],
+      });
 
       // A wallet embedded não é criada automaticamente — precisa chamar
       // createWaasWalletAccounts() explicitamente pras chains que faltarem.
