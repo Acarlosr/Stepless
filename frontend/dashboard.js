@@ -213,7 +213,13 @@ async function checkRelayerSetup() {
     const resp = await fetch('/api/setup');
     if (!resp.ok) { panel.style.display = 'block'; return; }
     const data = await resp.json();
-    panel.style.display = data.isAuthorized ? 'none' : 'block';
+    // /api/setup não retorna um campo "isAuthorized" — o status real está em
+    // data.checks (um mapa de booleans). Antes disso o banner aparecia SEMPRE
+    // (data.isAuthorized era undefined pra qualquer visitante), mesmo com tudo
+    // já configurado, pedindo pra conectar uma wallet admin que ninguém além
+    // do dono do projeto tem.
+    const allOk = data.checks && Object.values(data.checks).every(Boolean);
+    panel.style.display = allOk ? 'none' : 'block';
   } catch (_) {
     panel.style.display = 'block'; // mostra se não conseguir verificar
   }
