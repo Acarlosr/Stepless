@@ -1081,6 +1081,13 @@ input[type="file"]::file-selector-button {
   margin: 4px 0;
 }
 
+.timeline-subtitle {
+  color: var(--primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
 .timeline-desc {
   color: var(--text-muted);
   font-size: 0.95rem;

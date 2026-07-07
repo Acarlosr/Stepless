@@ -40,6 +40,7 @@
     "@crossmint/client-sdk": "^0.2.4",
     "@crossmint/react-native-ui": "^0.1.3",
     "viem": "^2.21.6",
+    "react-native-get-random-values": "~1.11.0",
     "i18next": "^23.12.2",
     "react-i18next": "^15.0.1",
     "expo-localization": "~15.0.3",

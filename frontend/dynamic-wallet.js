@@ -114,7 +114,24 @@ export async function tryRestoreSession() {
       : Boolean(_client.user);
     if (!signedIn) return null;
 
-    const accounts = await _clientMod.getWalletAccounts();
+    // Após um reload, o Dynamic reporta isSignedIn() === true (JWT no
+    // storage), mas a embedded wallet (WaaS) ainda NÃO foi recarregada na
+    // memória do client — então getWalletAccounts() volta vazio e o usuário
+    // era obrigado a logar de novo. Aqui a gente reidrata os accounts WaaS
+    // (mesma lógica do connectWallet) antes de ler o endereço.
+    let accounts = await _clientMod.getWalletAccounts();
+    if (!accounts?.length) {
+      try {
+        const waas = await _loadWaas();
+        const missingChains = waas.getChainsMissingWaasWalletAccounts?.();
+        if (missingChains?.length) {
+          await waas.createWaasWalletAccounts({ chains: missingChains });
+        }
+        accounts = await _clientMod.getWalletAccounts();
+      } catch (waasErr) {
+        console.warn('[Dynamic] Não deu pra reidratar WaaS na restauração:', waasErr);
+      }
+    }
     const address = accounts?.[0]?.address;
     if (!address) return null;
 

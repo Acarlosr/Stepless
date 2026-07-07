@@ -1,0 +1,60 @@
+{
+  "expo": {
+    "name": "Stepless",
+    "slug": "stepless",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "stepless",
+    "userInterfaceStyle": "automatic",
+    "primaryColor": "#1A56DB",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "xyz.stepless.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "O Stepless usa sua localização para mapear e mostrar locais acessíveis próximos.",
+        "NSCameraUsageDescription": "O Stepless usa a câmera para você fotografar o local acessível que está registrando.",
+        "NSPhotoLibraryUsageDescription": "O Stepless pode usar suas fotos para registrar locais acessíveis.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "xyz.stepless.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#1A56DB"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": ""
+        }
+      }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "O Stepless usa sua localização para mapear locais acessíveis próximos."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "O Stepless usa a câmera para fotografar o local acessível.",
+          "photosPermission": "O Stepless pode usar suas fotos para registrar locais acessíveis."
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "extra": {
+      "steplessApi": "https://www.stepless.lat",
+      "eas": {
+        "projectId": ""
+      }
+    }
+  }
+}

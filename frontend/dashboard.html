@@ -33,7 +33,7 @@
           <span></span><span></span><span></span>
         </button>
         <ul class="nav-links" id="dash-nav-links">
-          <li><a href="buscar.html">🔍 Buscar</a></li>
+          <li><a href="buscar.html" data-i18n="nav_search">Busca</a></li>
           <li><a href="#register" data-i18n="nav_register">Mapear</a></li>
           <li><a href="#rewards" data-i18n="nav_rewards">Recompensas</a></li>
           <li><a href="#verify" data-i18n="nav_verify">Verificar</a></li>
@@ -324,7 +324,7 @@
     /* Theme + nav + language init (shared with landing page) */
     const I18N = {
       pt: {
-        nav_stats:"Estatísticas", nav_map:"Mapa", nav_register:"Mapear Local", nav_verify:"Verificar", nav_rewards:"Recompensas", nav_home:"Início",
+        nav_stats:"Estatísticas", nav_map:"Mapa", nav_search:"Busca", nav_register:"Mapear Local", nav_verify:"Verificar", nav_rewards:"Recompensas", nav_home:"Início",
         connect_wallet:"Conectar Wallet",
         not_connected_title:"Conecte sua Wallet", not_connected_desc:"Conecte sua wallet para acessar o dashboard do contribuidor, mapear locais e receber recompensas em USDC.",
         stats_title:"Estatísticas do Contribuidor", stats_subtitle:"Seu desempenho na rede Stepless.",
@@ -367,7 +367,7 @@
         loading:"Carregando...",
       },
       en: {
-        nav_stats:"Stats", nav_map:"Map", nav_register:"Map Location", nav_verify:"Verify", nav_rewards:"Rewards", nav_home:"Home",
+        nav_stats:"Stats", nav_map:"Map", nav_search:"Search", nav_register:"Map Location", nav_verify:"Verify", nav_rewards:"Rewards", nav_home:"Home",
         connect_wallet:"Connect Wallet",
         not_connected_title:"Connect Your Wallet", not_connected_desc:"Connect your wallet to access the contributor dashboard, map locations, and receive USDC rewards.",
         stats_title:"Contributor Statistics", stats_subtitle:"Your performance on the Stepless network.",
@@ -410,7 +410,7 @@
         loading:"Loading...",
       },
       es: {
-        nav_stats:"Estadísticas", nav_map:"Mapa", nav_register:"Mapear Lugar", nav_verify:"Verificar", nav_rewards:"Recompensas", nav_home:"Inicio",
+        nav_stats:"Estadísticas", nav_map:"Mapa", nav_search:"Buscar", nav_register:"Mapear Lugar", nav_verify:"Verificar", nav_rewards:"Recompensas", nav_home:"Inicio",
         connect_wallet:"Conectar Wallet",
         not_connected_title:"Conecta tu Wallet", not_connected_desc:"Conecta tu wallet para acceder al dashboard del contribuidor, mapear lugares y recibir recompensas en USDC.",
         stats_title:"Estadísticas del Contribuidor", stats_subtitle:"Tu desempeño en la red Stepless.",
@@ -449,6 +449,8 @@
     let currentLang = 'pt';
 
     function detectLanguage() {
+      const saved = localStorage.getItem('stepless-lang');
+      if (saved && I18N[saved]) return saved;
       const bl = (navigator.language || 'pt-BR').toLowerCase();
       if (bl.startsWith('en')) return 'en';
       if (bl.startsWith('es')) return 'es';
@@ -457,6 +459,7 @@
 
     function setLanguage(lang) {
       currentLang = lang;
+      localStorage.setItem('stepless-lang', lang);
       document.documentElement.lang = lang === 'pt' ? 'pt-BR' : lang;
       const strings = I18N[lang];
       document.querySelectorAll('[data-i18n]').forEach(el => {

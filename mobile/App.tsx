@@ -7,11 +7,12 @@
  * RPC: https://rpc.testnet.arc.network
  *
  * Navigation: Login → Home (Map) → Rewards → Profile
- * Social login via Crossmint (Google, Apple, Email)
+ * Carteira embarcada (viem + expo-secure-store) — recebe USDC; relayer paga o gas
  * WCAG AA color scheme, i18n (pt-BR, en, es)
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import 'react-native-get-random-values'; // polyfill de crypto p/ viem (deve vir 1º)
+import React, { useEffect, useState } from 'react';
 import {
   StatusBar,
   View,
@@ -84,7 +85,7 @@ export const ARC_TESTNET_CONFIG = {
   chainId: 5042002,
   name: 'Arc Testnet',
   rpcUrl: 'https://rpc.testnet.arc.network',
-  blockExplorerUrl: 'https://explorer.testnet.arc.network',
+  blockExplorerUrl: 'https://testnet.arcscan.app',
   // USDC on Arc is dual: native (18 dec gas) AND ERC-20 (6 dec transfers)
   usdcNativeDecimals: 18,
   usdcErc20Decimals: 6,
@@ -195,33 +196,6 @@ function RootNavigator() {
         <Stack.Screen name="Login" component={LoginScreen} />
       )}
     </Stack.Navigator>
-  );
-}
-
-// ─── Login Screen (placeholder — full impl in wallet service) ─────────
-function LoginScreen() {
-  const { t } = useTranslation();
-  const { colors } = useAppTheme();
-  const { connectWallet, isConnecting } = useWallet();
-
-  return (
-    <View style={[styles.loginContainer, { backgroundColor: colors.background }]}>
-      {/* Full login UI implemented via Crossmint UI components */}
-      {/* This is a minimal fallback; the Crossmint provider renders the actual UI */}
-    </View>
-  );
-}
-
-// ─── Profile Screen (minimal — focused on wallet & settings) ──────────
-function ProfileScreen() {
-  const { t } = useTranslation();
-  const { colors } = useAppTheme();
-  const { walletAddress, disconnectWallet } = useWallet();
-
-  return (
-    <View style={[styles.profileContainer, { backgroundColor: colors.background }]}>
-      {/* Profile content: wallet address, language settings, accessibility prefs */}
-    </View>
   );
 }
 

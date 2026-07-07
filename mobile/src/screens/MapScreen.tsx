@@ -40,6 +40,7 @@ import {
   packCoordinate,
   ArcContractError,
 } from '../services/contracts';
+import { registerLocation as apiRegisterLocation } from '../services/api';
 
 const { width, height } = Dimensions.get('window');
 
@@ -76,6 +77,14 @@ const CATEGORY_META: Record<
   [LocationCategory.Entrance]: { icon: 'enter', color: '#15803D', labelKey: 'categories.entrance' },
 };
 
+// Slug estável por categoria — salvo fora da chain (Upstash) via /api/relay.
+const CATEGORY_SLUG: Record<LocationCategory, string> = {
+  [LocationCategory.Ramp]: 'ramp',
+  [LocationCategory.Restroom]: 'restroom',
+  [LocationCategory.Parking]: 'parking',
+  [LocationCategory.Entrance]: 'entrance',
+};
+
 // ─── IPFS Upload Configuration ────────────────────────────────────────
 const PINATA_API_KEY = process.env.EXPO_PUBLIC_PINATA_API_KEY || '';
 const PINATA_SECRET_KEY = process.env.EXPO_PUBLIC_PINATA_SECRET_KEY || '';
@@ -85,7 +94,7 @@ const WEB3_STORAGE_TOKEN = process.env.EXPO_PUBLIC_WEB3_STORAGE_TOKEN || '';
 // ─── Component ────────────────────────────────────────────────────────
 export default function MapScreen() {
   const { t } = useTranslation();
-  const { walletAddress, sendTransaction } = useWallet();
+  const { walletAddress } = useWallet();
   const insets = useSafeAreaInsets();
 
   const [region, setRegion] = useState<Region>({
@@ -332,51 +341,30 @@ export default function MapScreen() {
     setIsSubmitting(true);
 
     try {
-      // Step 1: Upload photo to IPFS
-      setSubmissionStatus('uploading');
-      const photoIpfsUri = await uploadToIPFS(formData.photoUri);
+      // Registro via backend REAL (relayer). O usuário não assina nada: o
+      // relayer autorizado registra o local e paga o gas em USDC. A foto e as
+      // coordenadas seguem no corpo; o backend valida o anti-fraude e cria a
+      // contribuição pagável (0.10 USDC) atribuída ao endereço do usuário.
+      setSubmissionStatus('registering');
 
-      // Build location metadata
-      const locationMetadata = {
-        name: formData.name,
-        category: formData.category,
+      const result = await apiRegisterLocation({
+        userAddress: walletAddress,
         lat: formData.lat,
         lng: formData.lng,
-        photo: photoIpfsUri,
-        contributor: walletAddress,
-        timestamp: Date.now(),
-      };
+        name: formData.name.trim(),
+        categories: [CATEGORY_SLUG[formData.category]],
+        photoUri: formData.photoUri,
+      });
 
-      // Upload metadata to IPFS as well
-      const metadataHash = await uploadMetadataToIPFS(locationMetadata);
+      console.log('[Stepless] Local registrado. TX:', result.txHash, 'contrib:', result.contributionId);
 
-      // Step 2: Generate location hash (keccak256 of name + coords)
-      const { latPacked, lngPacked } = packCoordinate(formData.lat, formData.lng);
-
-      // Create location hash — in production use viem's keccak256
-      // const locationHash = keccak256(encodePacked(['string', 'int256', 'int256'], [name, latPacked, lngPacked]))
-      const locationHash = `0x${'0'.repeat(64)}` as `0x${string}`; // Placeholder — use viem keccak256
-
-      // Step 3: Call SteplessOracle.registerLocation
-      setSubmissionStatus('registering');
-      const { data: txData, gasEstimate } = await SteplessOracle.registerLocation(
-        locationHash,
-        formData.lat,
-        formData.lng,
-        metadataHash as `0x${string}`
-      );
-
-      console.log(`Gas estimate (sponsored by Gas Station): ~${gasEstimate} USDC`);
-
-      // Step 4: Send transaction via wallet
-      // const txHash = await sendTransaction({
-      //   to: SteplessOracle.address,
-      //   data: txData,
-      // });
-
-      // Step 5: Wait for confirmation and show reward status
       setSubmissionStatus('success');
-      setPendingReward('$0.10 USDC'); // New location reward
+      // A recompensa é paga após a verificação da contribuição pendente.
+      setPendingReward(
+        result.contributionId
+          ? '$0.10 USDC — aguardando verificação'
+          : '$0.10 USDC'
+      );
 
       // Refresh nearby locations
       fetchNearbyLocations(formData.lat, formData.lng);

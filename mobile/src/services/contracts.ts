@@ -50,10 +50,13 @@ export const CONTRACT_ADDRESSES = {
   USDC_ERC20: '0x3600000000000000000000000000000000000000' as Address,
   // Memo contract (Arc-native memo system)
   MEMO: '0x5294E9927c3306DcBaDb03fe70b92e01cCede505' as Address,
-  // Stepless protocol contracts (deploy on Arc Testnet)
-  REWARD_DISTRIBUTOR: '0xSteplessRewardDistributor000000000000000000000001' as Address,
-  STEPLESS_ORACLE: '0xSteplessOracle00000000000000000000000000000000000002' as Address,
-  X402_API: '0xX402API0000000000000000000000000000000000000003' as Address,
+  // Stepless protocol contracts — v3 LIVE on Arc Testnet (deployed 2026-07-06).
+  // lowercase de propósito: o viem no ambiente RN/browser valida checksum EIP-55
+  // estritamente; usar tudo minúsculo evita erro de checksum (o backend normaliza).
+  STEPLESS_ORACLE: '0x53ba90e17bbe96e924979723c744475d55cccc16' as Address,
+  REWARD_DISTRIBUTOR: '0xdf8fa455f01965866ac99ebc553ad3c2b58a0368' as Address,
+  // X402API ainda não integrado (ver roadmap) — placeholder até o deploy.
+  X402_API: '0x0000000000000000000000000000000000000000' as Address,
 } as const;
 
 // ─── RewardDistributor ABI ────────────────────────────────────────────

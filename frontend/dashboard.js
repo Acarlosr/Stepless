@@ -231,7 +231,7 @@ async function connect() {
  *  Admin panel — autorizar relayer (só aparece para o admin)
  * ═══════════════════════════════════════════════════════════════ */
 
-const RELAYER_ADDRESS = '0xbc8aE412f4F6aFA21aDf4A18DEfFabbFB21304aE'; // chave rotacionada 2026-07-06 — a antiga vazou no histórico do git
+const RELAYER_ADDRESS = '0xd299358Db4e263d95Fdc0B72970373470921c53A'; // relayer atual (verificado no ArcScan em 2026-07-06 — autorizado pelo admin 0xbc8aE412... às 19:56); admin continua sendo 0xbc8aE412f4F6aFA21aDf4A18DEfFabbFB21304aE
 
 // Verifica se relayer está autorizado e mostra banner de setup se não estiver
 async function checkRelayerSetup() {

@@ -226,7 +226,7 @@
   </style>
 </head>
 <body>
-  <a href="#main" class="skip-link">Pular para o conteúdo</a>
+  <a href="#main" class="skip-link" data-i18n="skip_link">Pular para o conteúdo</a>
 
   <!-- ════════════════════ Header ════════════════════ -->
   <header class="header" role="banner">
@@ -239,16 +239,21 @@
         </svg>
         <span>Stepless</span>
       </a>
-      <nav class="nav" role="navigation" aria-label="Navegação principal">
-        <button class="nav-toggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="main-nav-links">
+      <nav class="nav" role="navigation" aria-label="Navegação principal" data-i18n-aria-label="nav_aria">
+        <button class="nav-toggle" aria-label="Abrir menu" data-i18n-aria-label="nav_toggle" aria-expanded="false" aria-controls="main-nav-links">
           <span></span><span></span><span></span>
         </button>
         <ul class="nav-links" id="main-nav-links">
-          <li><a href="buscar.html" aria-current="page">🔍 Buscar</a></li>
-          <li><a href="dashboard.html">Dashboard</a></li>
-          <li><a href="index.html">Início</a></li>
+          <li><a href="buscar.html" aria-current="page" data-i18n="nav_search">Busca</a></li>
+          <li><a href="dashboard.html" data-i18n="nav_dashboard">Dashboard</a></li>
+          <li><a href="index.html" data-i18n="nav_home">Início</a></li>
         </ul>
-        <button class="theme-toggle" id="theme-toggle" aria-label="Alternar modo escuro">
+        <select class="lang-select" id="lang-select" aria-label="Selecionar idioma" data-i18n-aria-label="language_select">
+          <option value="pt">PT/BR</option>
+          <option value="en">EN</option>
+          <option value="es">ES</option>
+        </select>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Alternar modo escuro" data-i18n-aria-label="theme_toggle" data-i18n-title="theme_toggle">
           <span id="theme-icon">🌙</span>
         </button>
       </nav>
@@ -256,23 +261,25 @@
   </header>
 
   <!-- ════════════════════ Hero de Busca ════════════════════ -->
-  <section class="search-hero" role="search" aria-label="Buscar locais acessíveis">
+  <section class="search-hero" role="search" aria-label="Buscar locais acessíveis" data-i18n-aria-label="search_aria">
     <div class="container">
-      <h1>♿ Encontre locais acessíveis perto de você</h1>
-      <p>Rampas, elevadores, banheiros adaptados e mais — registrados on-chain pela comunidade.</p>
+      <h1 data-i18n="hero_title">Encontre locais acessíveis perto de você</h1>
+      <p data-i18n="hero_subtitle">Rampas, elevadores, banheiros adaptados e mais — registrados on-chain pela comunidade.</p>
 
       <div class="search-box">
         <input
           type="text"
           id="address-input"
           placeholder="Digite um endereço, bairro ou cidade..."
+          data-i18n-placeholder="address_placeholder"
           aria-label="Buscar por endereço"
+          data-i18n-aria-label="address_aria"
           autocomplete="off"
         />
-        <button class="btn btn-white" id="btn-search-addr" aria-label="Buscar por endereço">
+        <button class="btn btn-white" id="btn-search-addr" aria-label="Buscar por endereço" data-i18n-aria-label="address_aria">
           🔍 Buscar
         </button>
-        <button class="btn btn-white" id="btn-gps" aria-label="Usar minha localização GPS">
+        <button class="btn btn-white" id="btn-gps" aria-label="Usar minha localização GPS" data-i18n-aria-label="gps_aria">
           📍 Perto de mim
         </button>
       </div>
@@ -285,26 +292,26 @@
   <main id="main" class="container" style="padding-top:28px; padding-bottom:60px;">
 
     <!-- Filtros + raio -->
-    <div class="filters" id="filter-bar" role="group" aria-label="Filtrar por categoria">
-      <span style="font-size:.85rem; font-weight:600; color:var(--text-muted);">Filtrar:</span>
-      <button class="filter-chip active" data-cat="all">Todos</button>
-      <button class="filter-chip" data-cat="0">♿ Rampa</button>
-      <button class="filter-chip" data-cat="1">🛗 Elevador</button>
-      <button class="filter-chip" data-cat="2">🚻 Banheiro</button>
-      <button class="filter-chip" data-cat="3">🅿️ Vaga PCD</button>
-      <button class="filter-chip" data-cat="4">🔔 Sinalização</button>
-      <button class="filter-chip" data-cat="5">🔊 Áudio</button>
-      <button class="filter-chip" data-cat="6">✋ Braile</button>
-      <button class="filter-chip" data-cat="7">✨ Outro</button>
+    <div class="filters" id="filter-bar" role="group" aria-label="Filtrar por categoria" data-i18n-aria-label="filter_aria">
+      <span style="font-size:.85rem; font-weight:600; color:var(--text-muted);" data-i18n="filter_label">Filtrar:</span>
+      <button class="filter-chip active" data-cat="all" data-i18n="filter_all">Todos</button>
+      <button class="filter-chip" data-cat="0" data-i18n="cat_ramp">Rampa</button>
+      <button class="filter-chip" data-cat="1" data-i18n="cat_elevator">Elevador</button>
+      <button class="filter-chip" data-cat="2" data-i18n="cat_restroom">Banheiro</button>
+      <button class="filter-chip" data-cat="3" data-i18n="cat_parking">Vaga PCD</button>
+      <button class="filter-chip" data-cat="4" data-i18n="cat_signage">Sinalização</button>
+      <button class="filter-chip" data-cat="5" data-i18n="cat_audio">Áudio</button>
+      <button class="filter-chip" data-cat="6" data-i18n="cat_braille">Braile</button>
+      <button class="filter-chip" data-cat="7" data-i18n="cat_other">Outro</button>
 
       <div class="radius-row" style="margin-left:auto;">
-        <label for="radius-select">Raio:</label>
-        <select id="radius-select" aria-label="Raio de busca">
+        <label for="radius-select" data-i18n="radius_label">Raio:</label>
+        <select id="radius-select" aria-label="Raio de busca" data-i18n-aria-label="radius_aria">
           <option value="1">1 km</option>
           <option value="5" selected>5 km</option>
           <option value="10">10 km</option>
           <option value="50">50 km</option>
-          <option value="9999">Todos</option>
+          <option value="9999" data-i18n="radius_all">Todos</option>
         </select>
       </div>
     </div>
@@ -312,23 +319,23 @@
     <!-- Estado inicial -->
     <div id="state-initial" class="state-box">
       <div class="state-icon">🗺️</div>
-      <h2 style="font-size:1.2rem; color:var(--text);">Onde você está?</h2>
-      <p>Use "Perto de mim" para detectar sua localização automaticamente, ou busque por um endereço acima.</p>
-      <button class="btn btn-primary" style="margin-top:20px;" id="btn-gps-main">📍 Usar minha localização</button>
+      <h2 style="font-size:1.2rem; color:var(--text);" data-i18n="initial_title">Onde você está?</h2>
+      <p data-i18n="initial_desc">Use "Perto de mim" para detectar sua localização automaticamente, ou busque por um endereço acima.</p>
+      <button class="btn btn-primary" style="margin-top:20px;" id="btn-gps-main" data-i18n="gps_main_btn">📍 Usar minha localização</button>
     </div>
 
     <!-- Loading -->
     <div id="state-loading" class="state-box hidden">
       <div class="state-icon" aria-hidden="true">⏳</div>
-      <h2 style="font-size:1.1rem; color:var(--text);" id="loading-msg">Buscando locais...</h2>
-      <p>Consultando a blockchain Arc Testnet...</p>
+      <h2 style="font-size:1.1rem; color:var(--text);" id="loading-msg" data-i18n="loading_title">Buscando locais...</h2>
+      <p data-i18n="loading_desc">Consultando a blockchain Arc Testnet...</p>
     </div>
 
     <!-- Sem resultados -->
     <div id="state-empty" class="state-box hidden">
       <div class="state-icon" aria-hidden="true">🔎</div>
-      <h2 style="font-size:1.1rem; color:var(--text);">Nenhum local encontrado</h2>
-      <p>Nenhum local acessível registrado nessa área ainda. <a href="dashboard.html">Seja o primeiro a mapear!</a></p>
+      <h2 style="font-size:1.1rem; color:var(--text);" data-i18n="empty_title">Nenhum local encontrado</h2>
+      <p><span data-i18n="empty_desc">Nenhum local acessível registrado nessa área ainda.</span> <a href="dashboard.html" data-i18n="empty_cta">Seja o primeiro a mapear!</a></p>
     </div>
 
     <!-- Resultados -->
@@ -336,11 +343,11 @@
       <div class="results-header">
         <div>
           <span id="results-count" class="results-count"></span>
-          <span class="onchain-badge" style="margin-left:8px;">✅ On-chain</span>
+          <span class="onchain-badge" style="margin-left:8px;" data-i18n="onchain_badge">On-chain</span>
         </div>
-        <a href="dashboard.html" class="btn btn-primary btn-sm">+ Registrar novo local</a>
+        <a href="dashboard.html" class="btn btn-primary btn-sm" data-i18n="register_new">+ Registrar novo local</a>
       </div>
-      <div class="results-grid" id="results-grid" role="list" aria-label="Locais acessíveis encontrados"></div>
+      <div class="results-grid" id="results-grid" role="list" aria-label="Locais acessíveis encontrados" data-i18n-aria-label="results_aria"></div>
     </div>
 
   </main>
@@ -349,11 +356,11 @@
   <footer class="footer" role="contentinfo">
     <div class="container">
       <div class="footer-links">
-        <a href="dashboard.html">Dashboard do Contribuidor</a>
+        <a href="dashboard.html" data-i18n="footer_dashboard">Dashboard do Contribuidor</a>
         <a href="https://testnet.arcscan.app" target="_blank" rel="noopener">ArcScan</a>
-        <a href="index.html">Início</a>
+        <a href="index.html" data-i18n="footer_home">Início</a>
       </div>
-      <p>Stepless — Dados de acessibilidade on-chain na Arc Testnet.</p>
+      <p data-i18n="footer_text">Stepless — Dados de acessibilidade on-chain na Arc Testnet.</p>
     </div>
   </footer>
 
@@ -364,6 +371,213 @@
     // ── Config ──────────────────────────────────────────
     const ORACLE_ADDRESS = '0x2Ac87a4E49D59900295999B1A44930B912F65F48';
     const EXPLORER       = 'https://testnet.arcscan.app';
+
+    const I18N = {
+      pt: {
+        meta_desc: 'Stepless — Busque locais acessíveis perto de você. Rampas, elevadores, banheiros adaptados e muito mais, registrados on-chain na Arc Testnet.',
+        page_title: 'Stepless — Buscar Locais Acessíveis',
+        skip_link: 'Pular para o conteúdo',
+        nav_aria: 'Navegação principal',
+        nav_toggle: 'Abrir menu',
+        nav_search: 'Busca',
+        nav_dashboard: 'Dashboard',
+        nav_home: 'Início',
+        language_select: 'Selecionar idioma',
+        theme_toggle: 'Alternar modo escuro',
+        search_aria: 'Buscar locais acessíveis',
+        hero_title: 'Encontre locais acessíveis perto de você',
+        hero_subtitle: 'Rampas, elevadores, banheiros adaptados e mais — registrados on-chain pela comunidade.',
+        address_placeholder: 'Digite um endereço, bairro ou cidade...',
+        address_aria: 'Buscar por endereço',
+        gps_aria: 'Usar minha localização GPS',
+        search_btn: '🔍 Buscar',
+        gps_btn: '📍 Perto de mim',
+        filter_aria: 'Filtrar por categoria',
+        filter_label: 'Filtrar:',
+        filter_all: 'Todos',
+        radius_label: 'Raio:',
+        radius_aria: 'Raio de busca',
+        radius_all: 'Todos',
+        initial_title: 'Onde você está?',
+        initial_desc: 'Use "Perto de mim" para detectar sua localização automaticamente, ou busque por um endereço acima.',
+        gps_main_btn: '📍 Usar minha localização',
+        loading_title: 'Buscando locais...',
+        loading_desc: 'Consultando a blockchain Arc Testnet...',
+        empty_title: 'Nenhum local encontrado',
+        empty_desc: 'Nenhum local acessível registrado nessa área ainda.',
+        empty_cta: 'Seja o primeiro a mapear!',
+        onchain_badge: 'On-chain',
+        register_new: '+ Registrar novo local',
+        results_aria: 'Locais acessíveis encontrados',
+        footer_dashboard: 'Dashboard do Contribuidor',
+        footer_home: 'Início',
+        footer_text: 'Stepless — Dados de acessibilidade on-chain na Arc Testnet.',
+        cat_ramp: 'Rampa',
+        cat_elevator: 'Elevador',
+        cat_restroom: 'Banheiro',
+        cat_parking: 'Vaga PCD',
+        cat_signage: 'Sinalização',
+        cat_audio: 'Áudio',
+        cat_braille: 'Braile',
+        cat_other: 'Outro',
+        loading_read_count: 'Lendo {count} local(is) da blockchain...',
+        result_count_one: '1 local encontrado',
+        result_count_many: '{count} locais encontrados',
+        dist_unavailable: 'distância indisponível',
+        dist_unavailable_title: 'Coordenadas não indexadas — evento fora do range de blocos varrido',
+        verified_short: '{count} verif.',
+        waiting_verification: 'Aguard. verificação',
+        view_map: 'Ver no mapa',
+        view_tx: 'Ver TX',
+        onchain_link: 'On-chain',
+        block_label: 'Bloco',
+        fallback_location: 'Local #{index}',
+        category_fallback: 'Cat. {cat}',
+        geocode_not_found: 'Endereço não encontrado',
+        error_prefix: 'Erro',
+        gps_unavailable: 'GPS não disponível neste dispositivo.',
+        gps_detecting: 'Detectando localização...',
+        gps_error: 'Não foi possível obter localização. Busque por endereço.',
+        loading_all: 'Carregando todos os locais...',
+        address_searching: 'Buscando endereço...',
+      },
+      en: {
+        meta_desc: 'Stepless — Search accessible places near you. Ramps, elevators, accessible restrooms, and more, registered on-chain on Arc Testnet.',
+        page_title: 'Stepless — Search Accessible Places',
+        skip_link: 'Skip to content',
+        nav_aria: 'Main navigation',
+        nav_toggle: 'Open menu',
+        nav_search: 'Search',
+        nav_dashboard: 'Dashboard',
+        nav_home: 'Home',
+        language_select: 'Select language',
+        theme_toggle: 'Toggle dark mode',
+        search_aria: 'Search accessible places',
+        hero_title: 'Find accessible places near you',
+        hero_subtitle: 'Ramps, elevators, accessible restrooms, and more — registered on-chain by the community.',
+        address_placeholder: 'Enter an address, neighborhood, or city...',
+        address_aria: 'Search by address',
+        gps_aria: 'Use my GPS location',
+        search_btn: '🔍 Search',
+        gps_btn: '📍 Near me',
+        filter_aria: 'Filter by category',
+        filter_label: 'Filter:',
+        filter_all: 'All',
+        radius_label: 'Radius:',
+        radius_aria: 'Search radius',
+        radius_all: 'All',
+        initial_title: 'Where are you?',
+        initial_desc: 'Use "Near me" to detect your location automatically, or search by address above.',
+        gps_main_btn: '📍 Use my location',
+        loading_title: 'Searching places...',
+        loading_desc: 'Querying the Arc Testnet blockchain...',
+        empty_title: 'No places found',
+        empty_desc: 'No accessible places have been registered in this area yet.',
+        empty_cta: 'Be the first to map one!',
+        onchain_badge: 'On-chain',
+        register_new: '+ Register new place',
+        results_aria: 'Accessible places found',
+        footer_dashboard: 'Contributor Dashboard',
+        footer_home: 'Home',
+        footer_text: 'Stepless — On-chain accessibility data on Arc Testnet.',
+        cat_ramp: 'Ramp',
+        cat_elevator: 'Elevator',
+        cat_restroom: 'Restroom',
+        cat_parking: 'Accessible parking',
+        cat_signage: 'Signage',
+        cat_audio: 'Audio',
+        cat_braille: 'Braille',
+        cat_other: 'Other',
+        loading_read_count: 'Reading {count} location(s) from the blockchain...',
+        result_count_one: '1 place found',
+        result_count_many: '{count} places found',
+        dist_unavailable: 'distance unavailable',
+        dist_unavailable_title: 'Coordinates not indexed — event outside the scanned block range',
+        verified_short: '{count} verified',
+        waiting_verification: 'Waiting for verification',
+        view_map: 'View on map',
+        view_tx: 'View TX',
+        onchain_link: 'On-chain',
+        block_label: 'Block',
+        fallback_location: 'Place #{index}',
+        category_fallback: 'Cat. {cat}',
+        geocode_not_found: 'Address not found',
+        error_prefix: 'Error',
+        gps_unavailable: 'GPS is not available on this device.',
+        gps_detecting: 'Detecting location...',
+        gps_error: 'Could not get your location. Search by address.',
+        loading_all: 'Loading all places...',
+        address_searching: 'Searching address...',
+      },
+      es: {
+        meta_desc: 'Stepless — Busca lugares accesibles cerca de ti. Rampas, ascensores, baños adaptados y más, registrados on-chain en Arc Testnet.',
+        page_title: 'Stepless — Buscar Lugares Accesibles',
+        skip_link: 'Saltar al contenido',
+        nav_aria: 'Navegación principal',
+        nav_toggle: 'Abrir menú',
+        nav_search: 'Buscar',
+        nav_dashboard: 'Dashboard',
+        nav_home: 'Inicio',
+        language_select: 'Seleccionar idioma',
+        theme_toggle: 'Alternar modo oscuro',
+        search_aria: 'Buscar lugares accesibles',
+        hero_title: 'Encuentra lugares accesibles cerca de ti',
+        hero_subtitle: 'Rampas, ascensores, baños adaptados y más — registrados on-chain por la comunidad.',
+        address_placeholder: 'Ingresa una dirección, barrio o ciudad...',
+        address_aria: 'Buscar por dirección',
+        gps_aria: 'Usar mi ubicación GPS',
+        search_btn: '🔍 Buscar',
+        gps_btn: '📍 Cerca de mí',
+        filter_aria: 'Filtrar por categoría',
+        filter_label: 'Filtrar:',
+        filter_all: 'Todos',
+        radius_label: 'Radio:',
+        radius_aria: 'Radio de búsqueda',
+        radius_all: 'Todos',
+        initial_title: '¿Dónde estás?',
+        initial_desc: 'Usa "Cerca de mí" para detectar tu ubicación automáticamente, o busca una dirección arriba.',
+        gps_main_btn: '📍 Usar mi ubicación',
+        loading_title: 'Buscando lugares...',
+        loading_desc: 'Consultando la blockchain Arc Testnet...',
+        empty_title: 'No se encontraron lugares',
+        empty_desc: 'Todavía no hay lugares accesibles registrados en esta área.',
+        empty_cta: '¡Sé el primero en mapear!',
+        onchain_badge: 'On-chain',
+        register_new: '+ Registrar nuevo lugar',
+        results_aria: 'Lugares accesibles encontrados',
+        footer_dashboard: 'Dashboard del Contribuidor',
+        footer_home: 'Inicio',
+        footer_text: 'Stepless — Datos de accesibilidad on-chain en Arc Testnet.',
+        cat_ramp: 'Rampa',
+        cat_elevator: 'Ascensor',
+        cat_restroom: 'Baño',
+        cat_parking: 'Estacionamiento PCD',
+        cat_signage: 'Señalización',
+        cat_audio: 'Audio',
+        cat_braille: 'Braille',
+        cat_other: 'Otro',
+        loading_read_count: 'Leyendo {count} lugar(es) de la blockchain...',
+        result_count_one: '1 lugar encontrado',
+        result_count_many: '{count} lugares encontrados',
+        dist_unavailable: 'distancia no disponible',
+        dist_unavailable_title: 'Coordenadas no indexadas — evento fuera del rango de bloques escaneado',
+        verified_short: '{count} verif.',
+        waiting_verification: 'Esperando verificación',
+        view_map: 'Ver en el mapa',
+        view_tx: 'Ver TX',
+        onchain_link: 'On-chain',
+        block_label: 'Bloque',
+        fallback_location: 'Lugar #{index}',
+        category_fallback: 'Cat. {cat}',
+        geocode_not_found: 'Dirección no encontrada',
+        error_prefix: 'Error',
+        gps_unavailable: 'GPS no disponible en este dispositivo.',
+        gps_detecting: 'Detectando ubicación...',
+        gps_error: 'No fue posible obtener la ubicación. Busca por dirección.',
+        loading_all: 'Cargando todos los lugares...',
+        address_searching: 'Buscando dirección...',
+      },
+    };
 
     const ARC_CHAIN = {
       id: 5042002,
@@ -409,16 +623,74 @@
     let userLng      = null;
     let searchDone   = false;
     let activeCat    = 'all';
+    let currentLang  = 'pt';
 
     // Mesma ordem/ids usados no formulário de registro (dashboard.html)
-    const CATEGORY_LABELS = {
-      0: '♿ Rampa', 1: '🛗 Elevador', 2: '🚻 Banheiro', 3: '🅿️ Vaga PCD',
-      4: '🔔 Sinalização', 5: '🔊 Áudio', 6: '✋ Braile', 7: '✨ Outro',
-    };
+    const CATEGORY_ICONS = { 0:'♿', 1:'🛗', 2:'🚻', 3:'🅿️', 4:'🔔', 5:'🔊', 6:'✋', 7:'✨' };
+    let CATEGORY_LABELS = {};
 
     const publicClient = createPublicClient({ chain: ARC_CHAIN, transport: http() });
 
     // ── Helpers ──────────────────────────────────────────
+    function t(key, vars = {}) {
+      let value = I18N[currentLang]?.[key] || I18N.pt[key] || key;
+      Object.entries(vars).forEach(([k, v]) => {
+        value = value.replaceAll(`{${k}}`, String(v));
+      });
+      return value;
+    }
+
+    function detectLanguage() {
+      const saved = localStorage.getItem('stepless-lang');
+      if (saved && I18N[saved]) return saved;
+      const browserLang = (navigator.language || 'pt-BR').toLowerCase();
+      if (browserLang.startsWith('en')) return 'en';
+      if (browserLang.startsWith('es')) return 'es';
+      return 'pt';
+    }
+
+    function refreshCategoryLabels() {
+      CATEGORY_LABELS = {
+        0: `${CATEGORY_ICONS[0]} ${t('cat_ramp')}`,
+        1: `${CATEGORY_ICONS[1]} ${t('cat_elevator')}`,
+        2: `${CATEGORY_ICONS[2]} ${t('cat_restroom')}`,
+        3: `${CATEGORY_ICONS[3]} ${t('cat_parking')}`,
+        4: `${CATEGORY_ICONS[4]} ${t('cat_signage')}`,
+        5: `${CATEGORY_ICONS[5]} ${t('cat_audio')}`,
+        6: `${CATEGORY_ICONS[6]} ${t('cat_braille')}`,
+        7: `${CATEGORY_ICONS[7]} ${t('cat_other')}`,
+      };
+    }
+
+    function setLanguage(lang) {
+      currentLang = I18N[lang] ? lang : 'pt';
+      localStorage.setItem('stepless-lang', currentLang);
+      document.documentElement.lang = currentLang === 'pt' ? 'pt-BR' : currentLang;
+      document.title = t('page_title');
+      document.querySelector('meta[name="description"]')?.setAttribute('content', t('meta_desc'));
+
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (I18N[currentLang]?.[key]) el.textContent = t(key);
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        el.setAttribute('placeholder', t(el.getAttribute('data-i18n-placeholder')));
+      });
+      document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+        el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria-label')));
+      });
+      document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        el.setAttribute('title', t(el.getAttribute('data-i18n-title')));
+      });
+
+      document.getElementById('btn-search-addr').textContent = t('search_btn');
+      document.getElementById('btn-gps').textContent = t('gps_btn');
+      const langSel = document.getElementById('lang-select');
+      if (langSel) langSel.value = currentLang;
+      refreshCategoryLabels();
+      if (searchDone) renderResults();
+    }
+
     function haversineKm(lat1, lng1, lat2, lng2) {
       const R = 6371;
       const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -492,7 +764,7 @@
       if (total === 0) return [];
 
       document.getElementById('loading-msg').textContent =
-        `Lendo ${total} local(is) da blockchain...`;
+        t('loading_read_count', { count: total });
 
       // Tenta obter coords via eventos
       const coordsMap = await tryGetEventCoords();
@@ -581,29 +853,29 @@
 
       showState('results');
       countEl.textContent =
-        `${filtered.length} local${filtered.length !== 1 ? 'is' : ''} encontrado${filtered.length !== 1 ? 's' : ''}`;
+        filtered.length === 1 ? t('result_count_one') : t('result_count_many', { count: filtered.length });
 
       grid.innerHTML = filtered.map(loc => {
         const distLabel = loc._dist != null
           ? `<span class="location-dist">📍 ${loc._dist < 1 ? Math.round(loc._dist*1000)+'m' : loc._dist.toFixed(1)+'km'}</span>`
           : (userLat !== null
-              ? `<span class="location-dist" style="color:var(--text-muted);" title="Coordenadas não indexadas — evento fora do range de blocos varrido">📍 distância indisponível</span>`
+              ? `<span class="location-dist" style="color:var(--text-muted);" title="${escapeHtml(t('dist_unavailable_title'))}">📍 ${escapeHtml(t('dist_unavailable'))}</span>`
               : '');
 
         const verBadge = loc.verifications > 0
-          ? `<span style="font-size:.75rem;color:var(--success);font-weight:600;">✅ ${loc.verifications} verif.</span>`
-          : `<span style="font-size:.75rem;color:var(--text-muted);">⏳ Aguard. verificação</span>`;
+          ? `<span style="font-size:.75rem;color:var(--success);font-weight:600;">✅ ${escapeHtml(t('verified_short', { count: loc.verifications }))}</span>`
+          : `<span style="font-size:.75rem;color:var(--text-muted);">⏳ ${escapeHtml(t('waiting_verification'))}</span>`;
 
         const mapsLink = loc.lat !== null
-          ? `<a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" rel="noopener">🗺️ Ver no mapa</a>`
+          ? `<a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" rel="noopener">🗺️ ${escapeHtml(t('view_map'))}</a>`
           : '';
         const txLink = loc.txHash
-          ? `<a href="${EXPLORER}/tx/${loc.txHash}" target="_blank" rel="noopener">🔗 Ver TX</a>`
-          : `<a href="${EXPLORER}/address/${ORACLE_ADDRESS}" target="_blank" rel="noopener">🔗 On-chain</a>`;
+          ? `<a href="${EXPLORER}/tx/${loc.txHash}" target="_blank" rel="noopener">🔗 ${escapeHtml(t('view_tx'))}</a>`
+          : `<a href="${EXPLORER}/address/${ORACLE_ADDRESS}" target="_blank" rel="noopener">🔗 ${escapeHtml(t('onchain_link'))}</a>`;
 
         const catBadges = (loc.categories && loc.categories.length > 0)
           ? `<div class="location-cats" style="display:flex; flex-wrap:wrap; gap:4px; margin:6px 0;">
-              ${loc.categories.map(c => `<span style="font-size:.72rem; background:var(--bg-alt); border:1px solid var(--border); border-radius:999px; padding:2px 8px;">${CATEGORY_LABELS[c] || `Cat. ${c}`}</span>`).join('')}
+              ${loc.categories.map(c => `<span style="font-size:.72rem; background:var(--bg-alt); border:1px solid var(--border); border-radius:999px; padding:2px 8px;">${escapeHtml(CATEGORY_LABELS[c] || t('category_fallback', { cat: c }))}</span>`).join('')}
              </div>`
           : '';
 
@@ -612,7 +884,7 @@
             <div class="location-card-top">
               <div class="location-icon" aria-hidden="true">♿</div>
               <div>
-                <p class="location-name">${loc.name ? escapeHtml(loc.name) : `Local #${loc.index}`}</p>
+                <p class="location-name">${loc.name ? escapeHtml(loc.name) : escapeHtml(t('fallback_location', { index: loc.index }))}</p>
                 <p class="location-cat" style="font-family:monospace;font-size:.75rem;">${shortHash(loc.locationHash)}</p>
               </div>
             </div>
@@ -622,7 +894,7 @@
               ${verBadge}
               <span class="location-contrib" title="${loc.contributor}">👤 ${shortAddr(loc.contributor)}</span>
             </div>
-            <div style="font-size:.78rem;color:var(--text-muted);">Bloco #${loc.blockNumber}</div>
+            <div style="font-size:.78rem;color:var(--text-muted);">${escapeHtml(t('block_label'))} #${loc.blockNumber}</div>
             <div class="location-actions">${mapsLink}${txLink}</div>
           </article>
         `;
@@ -645,33 +917,34 @@
         renderResults();
       } catch (err) {
         console.error(err);
-        setStatus(`❌ Erro: ${err.message}`);
+        setStatus(`❌ ${t('error_prefix')}: ${err.message}`);
         showState('initial');
       }
     }
 
     // ── Geocoding (Nominatim) ─────────────────────────────
     async function geocodeAddress(query) {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&accept-language=pt`;
+      const acceptLanguage = currentLang === 'pt' ? 'pt-BR' : currentLang;
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&accept-language=${acceptLanguage}`;
       const r = await fetch(url, { headers: { 'User-Agent': 'Stepless-dApp/1.0' } });
       const data = await r.json();
-      if (!data.length) throw new Error('Endereço não encontrado');
+      if (!data.length) throw new Error(t('geocode_not_found'));
       return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), label: data[0].display_name };
     }
 
     // ── GPS ───────────────────────────────────────────────
     function detectGPS() {
       if (!navigator.geolocation) {
-        setStatus('❌ GPS não disponível neste dispositivo.');
+        setStatus(`❌ ${t('gps_unavailable')}`);
         return;
       }
-      setStatus('🔍 Detectando localização...');
+      setStatus(`🔍 ${t('gps_detecting')}`);
       navigator.geolocation.getCurrentPosition(
         async pos => {
           const { latitude: lat, longitude: lng } = pos.coords;
           await searchNear(lat, lng, `${lat.toFixed(4)}, ${lng.toFixed(4)}`);
         },
-        () => setStatus('❌ Não foi possível obter localização. Busque por endereço.'),
+        () => setStatus(`❌ ${t('gps_error')}`),
         { timeout: 10000, enableHighAccuracy: true }
       );
     }
@@ -680,7 +953,7 @@
     async function searchAll() {
       userLat = null; userLng = null;
       showState('loading');
-      document.getElementById('loading-msg').textContent = 'Carregando todos os locais...';
+      document.getElementById('loading-msg').textContent = t('loading_all');
       try {
         if (!searchDone) {
           allLocations = await fetchAllLocations();
@@ -701,7 +974,7 @@
     document.getElementById('btn-search-addr').addEventListener('click', async () => {
       const query = document.getElementById('address-input').value.trim();
       if (!query) { searchAll(); return; }
-      setStatus('🔍 Buscando endereço...');
+      setStatus(`🔍 ${t('address_searching')}`);
       try {
         const { lat, lng, label } = await geocodeAddress(query);
         await searchNear(lat, lng, label);
@@ -717,6 +990,11 @@
     document.getElementById('radius-select').addEventListener('change', () => {
       if (searchDone) renderResults();
     });
+
+    const langSelect = document.getElementById('lang-select');
+    if (langSelect) {
+      langSelect.addEventListener('change', e => setLanguage(e.target.value));
+    }
 
     // Filtros de categoria
     document.querySelectorAll('.filter-chip').forEach(btn => {
@@ -754,6 +1032,8 @@
         navToggle.setAttribute('aria-expanded', open);
       });
     }
+
+    setLanguage(detectLanguage());
   </script>
 </body>
 </html>
