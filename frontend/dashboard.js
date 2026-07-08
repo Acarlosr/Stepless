@@ -12,6 +12,7 @@ import { initDynamic, connectWallet as _dynamicConnect, disconnectWallet, onWall
 // Inicializa Dynamic em background — guardamos a promise pra poder esperar
 // ela terminar antes de checar sessão salva em tryAutoConnect().
 const _dynamicInitPromise = initDynamic();
+const WALLET_DISCONNECT_KEY = 'stepless-wallet-disconnected';
 
 /* ═══════════════════════════════════════════════════════════════
  *  State
@@ -164,6 +165,7 @@ function handleArcError(err) {
  * (clique manual) e tryAutoConnect() (reconexão silenciosa/sessão salva).
  */
 async function _completeConnection(address, provider) {
+  localStorage.removeItem(WALLET_DISCONNECT_KEY);
   walletAddress = address;
 
   const viem = await loadViem();
@@ -185,7 +187,9 @@ async function _completeConnection(address, provider) {
   document.getElementById('dashboard-content')?.classList.remove('hidden');
 
   const btn = document.getElementById('connect-wallet-btn');
-  if (btn) btn.style.display = 'none';
+  if (btn) { btn.style.display = 'none'; btn.disabled = false; }
+  const btnLarge = document.getElementById('connect-wallet-btn-large');
+  if (btnLarge) btnLarge.disabled = false;
   const info = document.getElementById('wallet-info');
   if (info) info.classList.add('connected');
   const addrEl = document.getElementById('wallet-address');
@@ -214,7 +218,7 @@ async function connect() {
 
     // Reage a logout/troca de conta do Dynamic
     onWalletChange(({ isConnected: ic }) => {
-      if (!ic) location.reload();
+      if (!ic && localStorage.getItem(WALLET_DISCONNECT_KEY) !== '1') location.reload();
     });
 
     await _completeConnection(address, provider);
@@ -225,6 +229,54 @@ async function connect() {
     if (btn) { btn.textContent = originalText; btn.disabled = false; }
     if (btnLarge) { btnLarge.textContent = originalText; btnLarge.disabled = false; }
   }
+}
+
+async function disconnect() {
+  const btn = document.getElementById('disconnect-wallet-btn');
+  if (btn) btn.disabled = true;
+  localStorage.setItem(WALLET_DISCONNECT_KEY, '1');
+
+  activeUnwatch.forEach(unwatch => {
+    try { unwatch?.(); } catch (_) {}
+  });
+  activeUnwatch = [];
+
+  try {
+    await disconnectWallet();
+  } catch (err) {
+    console.warn('Disconnect failed:', err);
+  }
+
+  isConnected = false;
+  walletAddress = null;
+  walletClient = null;
+  publicClient = null;
+
+  document.getElementById('dashboard-content')?.classList.add('hidden');
+  document.getElementById('not-connected')?.classList.remove('hidden');
+
+  const connectBtn = document.getElementById('connect-wallet-btn');
+  if (connectBtn) {
+    connectBtn.style.display = '';
+    connectBtn.disabled = false;
+    connectBtn.textContent = getStrings().connect_wallet || 'Conectar Wallet';
+  }
+  const connectBtnLarge = document.getElementById('connect-wallet-btn-large');
+  if (connectBtnLarge) {
+    connectBtnLarge.disabled = false;
+    connectBtnLarge.textContent = getStrings().connect_wallet || 'Conectar Wallet';
+  }
+  const info = document.getElementById('wallet-info');
+  if (info) info.classList.remove('connected');
+  const addrEl = document.getElementById('wallet-address');
+  if (addrEl) {
+    addrEl.textContent = '—';
+    addrEl.onclick = null;
+    addrEl.removeAttribute('title');
+  }
+  const balanceEl = document.getElementById('wallet-balance');
+  if (balanceEl) balanceEl.textContent = '—';
+  if (btn) btn.disabled = false;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1230,6 +1282,7 @@ function initEventListeners() {
 
 window.SteplessDashboard = {
   connect,
+  disconnect,
   refreshAll,
   loadUsdcBalance,
   loadContributorStats,
@@ -1245,6 +1298,8 @@ window.SteplessDashboard = {
  * ═══════════════════════════════════════════════════════════════ */
 
 async function tryAutoConnect() {
+  if (localStorage.getItem(WALLET_DISCONNECT_KEY) === '1') return;
+
   // 1) MetaMask/window.ethereum — reconecta silenciosamente se já aprovado.
   if (window.ethereum) {
     try {
@@ -1277,7 +1332,7 @@ async function tryAutoConnect() {
     if (!restored) return;
 
     onWalletChange(({ isConnected: ic }) => {
-      if (!ic) location.reload();
+      if (!ic && localStorage.getItem(WALLET_DISCONNECT_KEY) !== '1') location.reload();
     });
 
     await _completeConnection(restored.address, restored.provider);

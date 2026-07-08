@@ -390,6 +390,14 @@ export async function disconnectWallet() {
   try {
     if (_clientMod?.logout) await _clientMod.logout();
   } catch (_) {}
+  try {
+    if (_walletClient === window.ethereum && window.ethereum?.request) {
+      await window.ethereum.request({
+        method: 'wallet_revokePermissions',
+        params: [{ eth_accounts: {} }],
+      });
+    }
+  } catch (_) {}
   _address = null;
   _walletClient = null;
   _isConnected = false;

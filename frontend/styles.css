@@ -342,6 +342,11 @@ textarea:focus-visible {
   display: flex;
 }
 
+.disconnect-wallet-btn {
+  padding: 5px 10px;
+  min-height: 30px;
+}
+
 .status-dot {
   width: 8px;
   height: 8px;
@@ -1192,6 +1197,10 @@ input[type="file"]::file-selector-button {
 
 .wallet-info.connected {
   display: flex;
+}
+
+.wallet-info .disconnect-wallet-btn {
+  flex-shrink: 0;
 }
 
 .wallet-address {

@@ -52,6 +52,7 @@
           <span class="status-dot connected" aria-hidden="true"></span>
           <span class="wallet-address" id="wallet-address">—</span>
           <span class="wallet-balance" id="wallet-balance">—</span>
+          <button class="btn btn-secondary btn-sm disconnect-wallet-btn" id="disconnect-wallet-btn" data-i18n="disconnect_wallet">Desconectar</button>
         </div>
       </nav>
     </div>
@@ -325,7 +326,7 @@
     const I18N = {
       pt: {
         nav_stats:"Estatísticas", nav_map:"Mapa", nav_search:"Busca", nav_register:"Mapear Local", nav_verify:"Verificar", nav_rewards:"Recompensas", nav_home:"Início",
-        connect_wallet:"Conectar Wallet",
+        connect_wallet:"Conectar Wallet", disconnect_wallet:"Desconectar",
         not_connected_title:"Conecte sua Wallet", not_connected_desc:"Conecte sua wallet para acessar o dashboard do contribuidor, mapear locais e receber recompensas em USDC.",
         stats_title:"Estatísticas do Contribuidor", stats_subtitle:"Seu desempenho na rede Stepless.",
         stat_total_earned:"Total Ganho (USDC)", stat_contributions:"Contribuições", stat_verifications:"Verificações",
@@ -368,7 +369,7 @@
       },
       en: {
         nav_stats:"Stats", nav_map:"Map", nav_search:"Search", nav_register:"Map Location", nav_verify:"Verify", nav_rewards:"Rewards", nav_home:"Home",
-        connect_wallet:"Connect Wallet",
+        connect_wallet:"Connect Wallet", disconnect_wallet:"Disconnect",
         not_connected_title:"Connect Your Wallet", not_connected_desc:"Connect your wallet to access the contributor dashboard, map locations, and receive USDC rewards.",
         stats_title:"Contributor Statistics", stats_subtitle:"Your performance on the Stepless network.",
         stat_total_earned:"Total Earned (USDC)", stat_contributions:"Contributions", stat_verifications:"Verifications",
@@ -411,7 +412,7 @@
       },
       es: {
         nav_stats:"Estadísticas", nav_map:"Mapa", nav_search:"Buscar", nav_register:"Mapear Lugar", nav_verify:"Verificar", nav_rewards:"Recompensas", nav_home:"Inicio",
-        connect_wallet:"Conectar Wallet",
+        connect_wallet:"Conectar Wallet", disconnect_wallet:"Desconectar",
         not_connected_title:"Conecta tu Wallet", not_connected_desc:"Conecta tu wallet para acceder al dashboard del contribuidor, mapear lugares y recibir recompensas en USDC.",
         stats_title:"Estadísticas del Contribuidor", stats_subtitle:"Tu desempeño en la red Stepless.",
         stat_total_earned:"Total Ganado (USDC)", stat_contributions:"Contribuciones", stat_verifications:"Verificaciones",
@@ -539,6 +540,7 @@
       // Connect wallet buttons
       document.getElementById('connect-wallet-btn').addEventListener('click', () => window.SteplessDashboard?.connect());
       document.getElementById('connect-wallet-btn-large').addEventListener('click', () => window.SteplessDashboard?.connect());
+      document.getElementById('disconnect-wallet-btn').addEventListener('click', () => window.SteplessDashboard?.disconnect());
     });
   </script>
 </body>
