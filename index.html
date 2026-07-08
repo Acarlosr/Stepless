@@ -52,6 +52,7 @@
           <span class="status-dot connected" aria-hidden="true"></span>
           <span class="wallet-address" id="wallet-address">—</span>
           <span class="wallet-balance" id="wallet-balance">—</span>
+          <button class="btn btn-sm" id="disconnect-wallet-btn" data-i18n="disconnect_wallet" title="Desconectar">Desconectar</button>
         </div>
       </nav>
     </div>
@@ -356,7 +357,7 @@
       pt: {
         nav_problem: "Problema", nav_solution: "Solução", nav_how: "Como Funciona",
         nav_rewards: "Recompensas", nav_tech: "Tecnologia", nav_roadmap: "Roadmap",
-        nav_dashboard: "Dashboard", connect_wallet: "Conectar Wallet",
+        nav_dashboard: "Dashboard", connect_wallet: "Conectar Wallet", disconnect_wallet: "Desconectar",
         hero_title: "Acessibilidade descentralizada para todos",
         hero_subtitle: "Stepless é uma infraestrutura de mapeamento de acessibilidade na Arc Testnet, onde contribuidores são recompensados em USDC por mapear e verificar locais acessíveis.",
         hero_cta_dashboard: "Abrir Dashboard", hero_cta_learn: "Saiba Como Funciona",
@@ -403,7 +404,7 @@
       en: {
         nav_problem: "Problem", nav_solution: "Solution", nav_how: "How It Works",
         nav_rewards: "Rewards", nav_tech: "Tech", nav_roadmap: "Roadmap",
-        nav_dashboard: "Dashboard", connect_wallet: "Connect Wallet",
+        nav_dashboard: "Dashboard", connect_wallet: "Connect Wallet", disconnect_wallet: "Disconnect",
         hero_title: "Decentralized accessibility for everyone",
         hero_subtitle: "Stepless is an accessibility mapping infrastructure on Arc Testnet, where contributors are rewarded in USDC for mapping and verifying accessible locations.",
         hero_cta_dashboard: "Open Dashboard", hero_cta_learn: "Learn How It Works",
@@ -450,7 +451,7 @@
       es: {
         nav_problem: "Problema", nav_solution: "Solución", nav_how: "Cómo Funciona",
         nav_rewards: "Recompensas", nav_tech: "Tecnología", nav_roadmap: "Roadmap",
-        nav_dashboard: "Dashboard", connect_wallet: "Conectar Wallet",
+        nav_dashboard: "Dashboard", connect_wallet: "Conectar Wallet", disconnect_wallet: "Desconectar",
         hero_title: "Accesibilidad descentralizada para todos",
         hero_subtitle: "Stepless es una infraestructura de mapeo de accesibilidad en Arc Testnet, donde los contribuidores son recompensados en USDC por mapear y verificar lugares accesibles.",
         hero_cta_dashboard: "Abrir Dashboard", hero_cta_learn: "Cómo Funciona",
@@ -670,6 +671,20 @@
       }
     }
 
+    function disconnectWallet() {
+      walletAddress = null;
+      viemClient = null;
+      const btn = document.getElementById('connect-wallet-btn');
+      const info = document.getElementById('wallet-info');
+      const strings = I18N[currentLang];
+      info.classList.remove('connected');
+      document.getElementById('wallet-address').textContent = '—';
+      document.getElementById('wallet-balance').textContent = '—';
+      btn.textContent = strings.connect_wallet;
+      btn.disabled = false;
+      btn.style.display = '';
+    }
+
     /* ── Init ── */
     document.addEventListener('DOMContentLoaded', () => {
       initTheme();
@@ -678,6 +693,7 @@
 
       document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
       document.getElementById('connect-wallet-btn').addEventListener('click', connectWallet);
+      document.getElementById('disconnect-wallet-btn').addEventListener('click', disconnectWallet);
 
       document.querySelectorAll('.lang-btn').forEach(btn => {
         btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
