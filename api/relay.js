@@ -39,6 +39,11 @@ async function saveLocationMeta(locationHash, meta) {
     const value = JSON.stringify({
       name: meta.name,
       categories: Array.isArray(meta.categories) ? meta.categories : [],
+      // lat/lng reais calculados a partir do latPacked/lngPacked enviados no registro.
+      // Salvar aqui evita depender de escanear eventos on-chain depois (janela de
+      // blocos limitada e frágil) — a busca por endereço/GPS usa isso diretamente.
+      lat: typeof meta.lat === 'number' ? meta.lat : null,
+      lng: typeof meta.lng === 'number' ? meta.lng : null,
     });
     const res = await fetch(`${url}/set/${encodeURIComponent(key)}/${encodeURIComponent(value)}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -347,11 +352,17 @@ export default async function handler(req, res) {
       await store.listPush(PENDING_LIST_KEY, contributionId);
     }
 
-    // Salva nome + categorias fora da chain (best-effort — não bloqueia a resposta em caso de falha)
+    // Salva nome + categorias + lat/lng fora da chain (best-effort — não bloqueia a resposta em caso de falha)
     if (action === 'registerLocation' && submissionData.name) {
+      // latPacked/lngPacked vêm empacotados (offset +90/+180, *1e6) — desempacota
+      // para lat/lng reais antes de salvar, no mesmo formato usado no frontend.
+      const packedLat = Number(submissionData.latPacked);
+      const packedLng = Number(submissionData.lngPacked);
       await saveLocationMeta(submissionData.locationHash, {
         name: submissionData.name,
         categories: submissionData.categories,
+        lat: Number.isFinite(packedLat) ? packedLat / 1e6 - 90 : null,
+        lng: Number.isFinite(packedLng) ? packedLng / 1e6 - 180 : null,
       });
     }
 

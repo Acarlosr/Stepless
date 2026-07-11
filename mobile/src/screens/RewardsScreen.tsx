@@ -19,7 +19,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { Colors } from '../../App';
+import { Colors } from '../config/colors';
 import { useWallet } from '../services/wallet';
 import { fetchPending } from '../services/api';
 

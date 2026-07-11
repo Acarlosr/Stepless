@@ -35,7 +35,7 @@ import {
   type Hex,
 } from 'viem';
 import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts';
-import { ARC_TESTNET_CONFIG } from '../../App';
+import { ARC_TESTNET_CONFIG } from '../config/arc';
 
 // ─── Wallet State ─────────────────────────────────────────────────────
 interface EmbeddedUser {

@@ -23,7 +23,7 @@ import {
   decodeFunctionResult,
   type Log,
 } from 'viem';
-import { ARC_TESTNET_CONFIG } from '../../App';
+import { ARC_TESTNET_CONFIG } from '../config/arc';
 
 // ─── Arc Testnet Chain Definition ─────────────────────────────────────
 export const arcTestnet: Chain = {
@@ -39,7 +39,7 @@ export const arcTestnet: Chain = {
     default: { http: [ARC_TESTNET_CONFIG.rpcUrl] },
   },
   blockExplorers: {
-    default: { url: ARC_TESTNET_CONFIG.blockExplorerUrl },
+    default: { name: 'Arc Explorer', url: ARC_TESTNET_CONFIG.blockExplorerUrl },
   },
   testnet: true,
 };

@@ -74,6 +74,10 @@ const resources = {
         rewardPending: 'Recompensa pendente',
         locationsNearby: 'locais próximos',
         refresh: 'Atualizar',
+        search: 'Buscar locais',
+        searchPlaceholder: 'Buscar por nome ou categoria...',
+        noResults: 'Nenhum local encontrado por perto',
+        otherCategoryPlaceholder: 'Descreva o recurso de acessibilidade',
         verified: 'Verificado',
         pending: 'Pendente',
         mapViewLabel: 'Mapa de locais acessíveis',
@@ -89,6 +93,7 @@ const resources = {
         restroom: 'Banheiro Adaptado',
         parking: 'Vaga Preferencial',
         entrance: 'Entrada Acessível',
+        other: 'Outros',
       },
 
       // ─── Rewards Screen ───
@@ -273,6 +278,10 @@ const resources = {
         rewardPending: 'Pending reward',
         locationsNearby: 'locations nearby',
         refresh: 'Refresh',
+        search: 'Search locations',
+        searchPlaceholder: 'Search by name or category...',
+        noResults: 'No locations found nearby',
+        otherCategoryPlaceholder: 'Describe the accessibility feature',
         verified: 'Verified',
         pending: 'Pending',
         mapViewLabel: 'Map of accessible locations',
@@ -288,6 +297,7 @@ const resources = {
         restroom: 'Adapted Restroom',
         parking: 'Accessible Parking',
         entrance: 'Accessible Entrance',
+        other: 'Other',
       },
 
       // ─── Rewards Screen ───
@@ -472,6 +482,10 @@ const resources = {
         rewardPending: 'Recompensa pendiente',
         locationsNearby: 'lugares cercanos',
         refresh: 'Actualizar',
+        search: 'Buscar lugares',
+        searchPlaceholder: 'Buscar por nombre o categoría...',
+        noResults: 'No se encontraron lugares cerca',
+        otherCategoryPlaceholder: 'Describe el recurso de accesibilidad',
         verified: 'Verificado',
         pending: 'Pendiente',
         mapViewLabel: 'Mapa de lugares accesibles',
@@ -487,6 +501,7 @@ const resources = {
         restroom: 'Baño Adaptado',
         parking: 'Estacionamiento Preferencial',
         entrance: 'Entrada Accesible',
+        other: 'Otros',
       },
 
       // ─── Rewards Screen ───

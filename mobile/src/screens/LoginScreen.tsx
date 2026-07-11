@@ -18,7 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { Colors } from '../../App';
+import { Colors } from '../config/colors';
 import { useWallet } from '../services/wallet';
 
 export default function LoginScreen() {
@@ -30,8 +30,14 @@ export default function LoginScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: c.background }]}>
       <View style={styles.content}>
         {/* Marca */}
-        <View style={[styles.logoCircle, { backgroundColor: c.primary }]}>
-          <Ionicons name="accessibility" size={48} color={c.onPrimary} />
+        <View style={styles.logoCircle}>
+          <Image
+            source={require('../../assets/robot.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+            accessible
+            accessibilityLabel="Stepless"
+          />
         </View>
         <Text style={[styles.title, { color: c.text }]}>{t('login.title')}</Text>
         <Text style={[styles.subtitle, { color: c.textSecondary }]}>
@@ -92,9 +98,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'space-between' },
   content: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
   logoCircle: {
-    width: 96, height: 96, borderRadius: 48,
+    width: 132, height: 132, borderRadius: 66,
     justifyContent: 'center', alignItems: 'center', marginBottom: 24,
+    backgroundColor: '#EAF2FE',
   },
+  logoImage: { width: 76, height: 112 },
   title: { fontSize: 36, fontWeight: '800', marginBottom: 8 },
   subtitle: { fontSize: 16, fontWeight: '600', textAlign: 'center', marginBottom: 16 },
   description: { fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 28 },

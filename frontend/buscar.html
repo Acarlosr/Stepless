@@ -819,6 +819,12 @@
           // null = sem metadado salvo (registrado antes dessa feature) → não filtra por categoria
           // [] = metadado salvo mas sem categoria marcada (não deveria acontecer, mas por via das dúvidas)
           loc.categories = m ? (m.categories || []) : null;
+          // lat/lng salvos no momento do registro (api/relay.js) são a fonte confiável —
+          // sobrescreve o valor obtido por escaneamento de eventos (mais frágil/incompleto).
+          if (m && typeof m.lat === 'number' && typeof m.lng === 'number') {
+            loc.lat = m.lat;
+            loc.lng = m.lng;
+          }
         });
       } catch (e) {
         console.warn('[buscar] Não foi possível buscar metadados:', e.message);
@@ -837,7 +843,11 @@
           // Não dá pra confirmar a categoria, então some do filtro específico (mas aparece em "Todos").
           if (!loc.categories || !loc.categories.includes(Number(activeCat))) return false;
         }
-        if (userLat !== null && loc.lat !== null && radiusKm < 9999) {
+        if (userLat !== null && radiusKm < 9999) {
+          // Busca por endereço/GPS ativa: local SEM coordenada confiável não pode
+          // ser incluído "por padrão" — antes isso deixava passar locais de
+          // qualquer cidade quando a coordenada não estava indexada.
+          if (loc.lat === null || loc.lng === null) return false;
           const dist = haversineKm(userLat, userLng, loc.lat, loc.lng);
           if (dist > radiusKm) return false;
           loc._dist = dist;

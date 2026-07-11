@@ -155,3 +155,33 @@ export async function fetchPending(): Promise<any[]> {
     return [];
   }
 }
+
+export interface LocationMeta {
+  name: string;
+  categories: (string | number)[];
+  lat: number | null;
+  lng: number | null;
+}
+
+/**
+ * Busca nome + categorias dos locais (salvos fora da chain via Upstash,
+ * indexados por locationHash) — mesmo endpoint usado pelo dApp web.
+ * Hashes sem metadado ficam de fora do objeto retornado.
+ */
+export async function fetchLocationMeta(
+  hashes: string[]
+): Promise<Record<string, LocationMeta>> {
+  if (hashes.length === 0) return {};
+  try {
+    const resp = await fetch(`${STEPLESS_API_BASE}/api/location-meta`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hashes }),
+    });
+    if (!resp.ok) return {};
+    const data = await resp.json();
+    return data?.meta && typeof data.meta === 'object' ? data.meta : {};
+  } catch {
+    return {};
+  }
+}

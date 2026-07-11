@@ -32,7 +32,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
-import { Colors } from '../../App';
+import { Colors } from '../config/colors';
 import { useWallet } from '../services/wallet';
 import {
   SteplessOracle,
@@ -40,7 +40,10 @@ import {
   packCoordinate,
   ArcContractError,
 } from '../services/contracts';
-import { registerLocation as apiRegisterLocation } from '../services/api';
+import {
+  registerLocation as apiRegisterLocation,
+  fetchLocationMeta,
+} from '../services/api';
 
 const { width, height } = Dimensions.get('window');
 
@@ -57,9 +60,14 @@ interface AccessibleLocation {
   dataHash?: string;
 }
 
+// 'other' = categoria livre (não existe no enum on-chain; vai como slug + texto
+// para o Upstash via /api/relay, igual às demais — a chain só guarda o hash).
+type FormCategory = LocationCategory | 'other';
+
 interface AddLocationForm {
   name: string;
-  category: LocationCategory;
+  category: FormCategory;
+  customCategory: string;
   lat: number;
   lng: number;
   photoUri: string | null;
@@ -84,6 +92,27 @@ const CATEGORY_SLUG: Record<LocationCategory, string> = {
   [LocationCategory.Parking]: 'parking',
   [LocationCategory.Entrance]: 'entrance',
 };
+
+// Metadados da opção "Outros" (categoria livre, fora do enum on-chain).
+const OTHER_META = {
+  icon: 'ellipsis-horizontal-circle' as keyof typeof Ionicons.glyphMap,
+  color: '#64748B',
+  labelKey: 'categories.other',
+};
+
+// Converte slug/índice vindo do backend para a categoria do enum (p/ ícone do marker).
+function categoryFromMeta(cats: (string | number)[] | undefined): LocationCategory {
+  const first = cats?.[0];
+  if (typeof first === 'number' && first in CATEGORY_META) return first as LocationCategory;
+  const bySlug: Record<string, LocationCategory> = {
+    ramp: LocationCategory.Ramp,
+    restroom: LocationCategory.Restroom,
+    parking: LocationCategory.Parking,
+    entrance: LocationCategory.Entrance,
+  };
+  if (typeof first === 'string' && first in bySlug) return bySlug[first];
+  return LocationCategory.Ramp;
+}
 
 // ─── IPFS Upload Configuration ────────────────────────────────────────
 const PINATA_API_KEY = process.env.EXPO_PUBLIC_PINATA_API_KEY || '';
@@ -111,12 +140,15 @@ export default function MapScreen() {
   const [submissionStatus, setSubmissionStatus] = useState<'idle' | 'uploading' | 'registering' | 'success' | 'error'>('idle');
   const [pendingReward, setPendingReward] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const mapRef = useRef<MapView>(null);
 
   // Form state
   const [formData, setFormData] = useState<AddLocationForm>({
     name: '',
     category: LocationCategory.Ramp,
+    customCategory: '',
     lat: 0,
     lng: 0,
     photoUri: null,
@@ -195,6 +227,24 @@ export default function MapScreen() {
           // Skip locations that fail to load
         }
       }
+
+      // Nome + categorias reais (salvos fora da chain no registro, via Upstash)
+      try {
+        const hashes = locations
+          .map((l) => l.dataHash)
+          .filter((h): h is string => !!h);
+        const meta = await fetchLocationMeta(hashes);
+        for (const l of locations) {
+          const m = l.dataHash ? meta[l.dataHash.toLowerCase()] : undefined;
+          if (m) {
+            if (m.name) l.name = m.name;
+            l.category = categoryFromMeta(m.categories);
+          }
+        }
+      } catch {
+        // Sem metadados o mapa segue com nomes genéricos
+      }
+
       setNearbyLocations(locations);
     } catch (error) {
       console.error('Failed to fetch nearby locations:', error);
@@ -217,6 +267,7 @@ export default function MapScreen() {
     setFormData({
       name: '',
       category: LocationCategory.Ramp,
+      customCategory: '',
       lat: userLocation.lat,
       lng: userLocation.lng,
       photoUri: null,
@@ -347,12 +398,20 @@ export default function MapScreen() {
       // contribuição pagável (0.10 USDC) atribuída ao endereço do usuário.
       setSubmissionStatus('registering');
 
+      // Categoria: slug fixo, ou 'other' + texto livre digitado pelo usuário
+      const categories =
+        formData.category === 'other'
+          ? formData.customCategory.trim()
+            ? ['other', formData.customCategory.trim()]
+            : ['other']
+          : [CATEGORY_SLUG[formData.category]];
+
       const result = await apiRegisterLocation({
         userAddress: walletAddress,
         lat: formData.lat,
         lng: formData.lng,
         name: formData.name.trim(),
-        categories: [CATEGORY_SLUG[formData.category]],
+        categories,
         photoUri: formData.photoUri,
       });
 
@@ -456,41 +515,58 @@ export default function MapScreen() {
 
   // ─── Render category selector ─────────────────────────────────────
   const renderCategorySelector = () => {
-    const categories = [
+    const categories: FormCategory[] = [
       LocationCategory.Ramp,
       LocationCategory.Restroom,
       LocationCategory.Parking,
       LocationCategory.Entrance,
+      'other',
     ];
 
     return (
-      <View style={styles.categoryGrid}>
-        {categories.map((cat) => {
-          const meta = CATEGORY_META[cat];
-          const isSelected = formData.category === cat;
-          return (
-            <TouchableOpacity
-              key={cat}
-              style={[
-                styles.categoryButton,
-                {
-                  borderColor: isSelected ? meta.color : Colors.light.border,
-                  backgroundColor: isSelected ? `${meta.color}15` : Colors.light.surface,
-                },
-              ]}
-              onPress={() => setFormData((prev) => ({ ...prev, category: cat }))}
-              accessibilityRole="button"
-              accessibilityLabel={t(meta.labelKey)}
-              accessibilityState={{ selected: isSelected }}
-            >
-              <Ionicons name={meta.icon} size={24} color={meta.color} />
-              <Text style={[styles.categoryLabel, { color: Colors.light.text }]}>
-                {t(meta.labelKey)}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      <>
+        <View style={styles.categoryGrid}>
+          {categories.map((cat) => {
+            const meta = cat === 'other' ? OTHER_META : CATEGORY_META[cat];
+            const isSelected = formData.category === cat;
+            return (
+              <TouchableOpacity
+                key={String(cat)}
+                style={[
+                  styles.categoryButton,
+                  {
+                    borderColor: isSelected ? meta.color : Colors.light.border,
+                    backgroundColor: isSelected ? `${meta.color}15` : Colors.light.surface,
+                  },
+                ]}
+                onPress={() => setFormData((prev) => ({ ...prev, category: cat }))}
+                accessibilityRole="button"
+                accessibilityLabel={t(meta.labelKey)}
+                accessibilityState={{ selected: isSelected }}
+              >
+                <Ionicons name={meta.icon} size={24} color={meta.color} />
+                <Text style={[styles.categoryLabel, { color: Colors.light.text }]}>
+                  {t(meta.labelKey)}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        {formData.category === 'other' && (
+          <TextInput
+            style={[styles.textInput, { marginTop: 10 }]}
+            value={formData.customCategory}
+            onChangeText={(text) =>
+              setFormData((prev) => ({ ...prev, customCategory: text }))
+            }
+            placeholder={t('map.otherCategoryPlaceholder')}
+            placeholderTextColor={Colors.light.textMuted}
+            maxLength={60}
+            accessibilityLabel={t('map.otherCategoryPlaceholder')}
+            editable={!isSubmitting}
+          />
+        )}
+      </>
     );
   };
 
@@ -549,14 +625,110 @@ export default function MapScreen() {
             {nearbyLocations.length} {t('map.locationsNearby')}
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.refreshButton}
-          onPress={() => userLocation && fetchNearbyLocations(userLocation.lat, userLocation.lng)}
-          accessibilityLabel={t('map.refresh')}
-        >
-          <Ionicons name="refresh" size={20} color={Colors.light.primary} />
-        </TouchableOpacity>
+        <View style={styles.topBarActions}>
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={() => {
+              setShowSearch((v) => !v);
+              setSearchQuery('');
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t('map.search')}
+          >
+            <Ionicons
+              name={showSearch ? 'close' : 'search'}
+              size={20}
+              color={Colors.light.primary}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={() => userLocation && fetchNearbyLocations(userLocation.lat, userLocation.lng)}
+            accessibilityLabel={t('map.refresh')}
+          >
+            <Ionicons name="refresh" size={20} color={Colors.light.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Search panel */}
+      {showSearch && (
+        <View style={[styles.searchPanel, { top: insets.top + 56 }]}>
+          <View style={styles.searchInputRow}>
+            <Ionicons name="search" size={18} color={Colors.light.textMuted} />
+            <TextInput
+              style={styles.searchInput}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder={t('map.searchPlaceholder')}
+              placeholderTextColor={Colors.light.textMuted}
+              autoFocus
+              accessibilityLabel={t('map.search')}
+            />
+          </View>
+          {searchQuery.trim().length > 0 && (
+            <ScrollView
+              style={styles.searchResults}
+              keyboardShouldPersistTaps="handled"
+            >
+              {(() => {
+                const q = searchQuery.trim().toLowerCase();
+                const results = nearbyLocations.filter((l) => {
+                  const meta = CATEGORY_META[l.category] || CATEGORY_META[LocationCategory.Ramp];
+                  return (
+                    l.name.toLowerCase().includes(q) ||
+                    t(meta.labelKey).toLowerCase().includes(q)
+                  );
+                });
+                if (results.length === 0) {
+                  return (
+                    <Text style={styles.searchEmpty}>{t('map.noResults')}</Text>
+                  );
+                }
+                return results.slice(0, 20).map((l) => {
+                  const meta = CATEGORY_META[l.category] || CATEGORY_META[LocationCategory.Ramp];
+                  return (
+                    <TouchableOpacity
+                      key={l.id.toString()}
+                      style={styles.searchResultRow}
+                      onPress={() => {
+                        setShowSearch(false);
+                        setSearchQuery('');
+                        mapRef.current?.animateToRegion(
+                          {
+                            latitude: l.lat,
+                            longitude: l.lng,
+                            latitudeDelta: 0.005,
+                            longitudeDelta: 0.005,
+                          },
+                          800
+                        );
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={l.name}
+                    >
+                      <Ionicons name={meta.icon} size={20} color={meta.color} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.searchResultName} numberOfLines={1}>
+                          {l.name}
+                        </Text>
+                        <Text style={styles.searchResultCategory}>
+                          {t(meta.labelKey)}
+                        </Text>
+                      </View>
+                      <Ionicons
+                        name={l.verified ? 'checkmark-circle' : 'time-outline'}
+                        size={16}
+                        color={l.verified ? Colors.light.success : Colors.light.warning}
+                      />
+                    </TouchableOpacity>
+                  );
+                });
+              })()}
+            </ScrollView>
+          )}
+        </View>
+      )}
 
       {/* Add Location FAB */}
       <TouchableOpacity
@@ -739,6 +911,66 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: Colors.light.text,
+  },
+  topBarActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  searchPanel: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 6,
+    maxHeight: 340,
+  },
+  searchInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: Colors.light.text,
+  },
+  searchResults: {
+    marginTop: 6,
+  },
+  searchResultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+  },
+  searchResultName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.light.text,
+  },
+  searchResultCategory: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+  },
+  searchEmpty: {
+    textAlign: 'center',
+    padding: 16,
+    fontSize: 14,
+    color: Colors.light.textMuted,
   },
   refreshButton: {
     backgroundColor: 'rgba(255,255,255,0.95)',

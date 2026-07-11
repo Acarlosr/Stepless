@@ -7,7 +7,7 @@
  *
  * POST /api/location-meta
  * Body: { hashes: ['0x...', '0x...', ...] }
- * Resp: { meta: { '0xabc...': { name: 'Farol da Barra', categories: [0,3] }, ... } }
+ * Resp: { meta: { '0xabc...': { name: 'Farol da Barra', categories: [0,3], lat: -12.9, lng: -38.5 }, ... } }
  *       ← hashes sem metadado salvo ficam de fora do objeto
  *
  * Variáveis de ambiente no Vercel:
@@ -68,10 +68,12 @@ export default async function handler(req, res) {
         meta[h.toLowerCase()] = {
           name: parsed.name || null,
           categories: Array.isArray(parsed.categories) ? parsed.categories : [],
+          lat: typeof parsed.lat === 'number' ? parsed.lat : null,
+          lng: typeof parsed.lng === 'number' ? parsed.lng : null,
         };
       } catch {
-        // Valor legado (string simples, só nome) — trata como nome sem categorias.
-        meta[h.toLowerCase()] = { name: raw, categories: [] };
+        // Valor legado (string simples, só nome) — trata como nome sem categorias/coords.
+        meta[h.toLowerCase()] = { name: raw, categories: [], lat: null, lng: null };
       }
     });
 

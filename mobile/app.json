@@ -7,7 +7,9 @@
     "scheme": "stepless",
     "userInterfaceStyle": "automatic",
     "primaryColor": "#1A56DB",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "xyz.stepless.app",
@@ -21,16 +23,18 @@
     "android": {
       "package": "xyz.stepless.app",
       "adaptiveIcon": {
-        "backgroundColor": "#1A56DB"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#EAF2FE"
       },
       "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
-        "CAMERA"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ],
       "config": {
         "googleMaps": {
-          "apiKey": ""
+          "apiKey": "AIzaSyDyY-uCxPDkDX7LDflzk83cIWXkJcFOKmQ"
         }
       }
     },
@@ -53,8 +57,10 @@
     "extra": {
       "steplessApi": "https://www.stepless.lat",
       "eas": {
-        "projectId": ""
+        "projectId": "c0d8eded-098c-4ae0-8029-25fa6120fc8d"
       }
-    }
+    },
+    "owner": "acarlosrs-team",
+    "icon": "./assets/icon.png"
   }
 }

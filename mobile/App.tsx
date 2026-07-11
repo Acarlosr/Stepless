@@ -12,6 +12,7 @@
  */
 
 import 'react-native-get-random-values'; // polyfill de crypto p/ viem (deve vir 1º)
+import 'fast-text-encoding'; // polyfill de TextEncoder/TextDecoder p/ viem (Hermes não tem nativo)
 import React, { useEffect, useState } from 'react';
 import {
   StatusBar,
@@ -30,6 +31,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as Localization from 'expo-localization';
 import { useTranslation } from 'react-i18next';
 import './src/i18n/translations';
+import { Colors } from './src/config/colors';
+import { ARC_TESTNET_CONFIG } from './src/config/arc';
 
 // Services
 import { WalletProvider, useWallet } from './src/services/wallet';
@@ -41,59 +44,14 @@ import RewardsScreen from './src/screens/RewardsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import LoginScreen from './src/screens/LoginScreen';
 
-// ─── WCAG AA Color Palette ────────────────────────────────────────────
-// All color combinations meet WCAG AA contrast ratio (≥4.5:1 for text)
-export const Colors = {
-  light: {
-    primary: '#1A56DB',        // Blue 700 — contrast 7.4:1 on white
-    primaryLight: '#3B82F6',   // Blue 500
-    secondary: '#7C3AED',      // Violet 600
-    success: '#15803D',        // Green 700 — 5.9:1 on white
-    warning: '#B45309',        // Amber 700 — 5.9:1 on white
-    error: '#B91C1C',          // Red 700 — 6.3:1 on white
-    background: '#FFFFFF',
-    surface: '#F8FAFC',        // Slate 50
-    surfaceAlt: '#F1F5F9',     // Slate 100
-    text: '#0F172A',           // Slate 900 — 18:1 on white
-    textSecondary: '#475569',  // Slate 600 — 7.3:1 on white
-    textMuted: '#64748B',      // Slate 500 — 4.6:1 on white
-    border: '#CBD5E1',         // Slate 300
-    onPrimary: '#FFFFFF',
-    mapAccent: '#2563EB',
-  },
-  dark: {
-    primary: '#60A5FA',        // Blue 400 — 8.2:1 on slate 950
-    primaryLight: '#93C5FD',
-    secondary: '#A78BFA',      // Violet 400
-    success: '#4ADE80',        // Green 400 — 7.1:1 on slate 950
-    warning: '#FBBF24',        // Amber 400 — 10.1:1 on slate 950
-    error: '#F87171',          // Red 400 — 6.5:1 on slate 950
-    background: '#0F172A',     // Slate 950
-    surface: '#1E293B',        // Slate 800
-    surfaceAlt: '#334155',     // Slate 700
-    text: '#F1F5F9',           // Slate 100 — 16:1 on slate 950
-    textSecondary: '#CBD5E1',  // Slate 300 — 11:1 on slate 950
-    textMuted: '#94A3B8',      // Slate 400 — 6.5:1 on slate 950
-    border: '#475569',         // Slate 600
-    onPrimary: '#0F172A',
-    mapAccent: '#60A5FA',
-  },
-};
-
-// ─── Arc Testnet Configuration ────────────────────────────────────────
-export const ARC_TESTNET_CONFIG = {
-  chainId: 5042002,
-  name: 'Arc Testnet',
-  rpcUrl: 'https://rpc.testnet.arc.network',
-  blockExplorerUrl: 'https://testnet.arcscan.app',
-  // USDC on Arc is dual: native (18 dec gas) AND ERC-20 (6 dec transfers)
-  usdcNativeDecimals: 18,
-  usdcErc20Decimals: 6,
-  usdcErc20Address: '0x3600000000000000000000000000000000000000',
-  memoContractAddress: '0x5294E9927c3306DcBaDb03fe70b92e01cCede505',
-  // Gas Station sponsors gas — transparent to the app
-  gasStationEnabled: true,
-};
+// ─── WCAG AA Color Palette / Arc Testnet Configuration ────────────────
+// Movidas para src/config/colors.ts e src/config/arc.ts para evitar import
+// circular (telas e services importavam de volta daqui, causando valores
+// `undefined` no Hermes dependendo da ordem de inicialização dos módulos).
+// Importadas acima e re-exportadas aqui só por compatibilidade — outros
+// módulos devem importar diretamente de 'src/config/colors' / 'src/config/arc',
+// nunca de './App'.
+export { Colors, ARC_TESTNET_CONFIG };
 
 // ─── Theme ────────────────────────────────────────────────────────────
 const useAppTheme = () => {
