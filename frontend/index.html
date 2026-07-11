@@ -551,9 +551,9 @@
       if (!tbody) return;
       const strings = I18N[currentLang];
       const tiers = [
-        { tier: 0, label: strings.reward_basic, amount: '0.50', desc: strings.reward_basic_desc },
-        { tier: 1, label: strings.reward_standard, amount: '1.00', desc: strings.reward_standard_desc },
-        { tier: 2, label: strings.reward_premium, amount: '2.50', desc: strings.reward_premium_desc },
+        { tier: 0, label: strings.reward_basic, amount: '0.10', desc: strings.reward_basic_desc },
+        { tier: 1, label: strings.reward_standard, amount: '0.05', desc: strings.reward_standard_desc },
+        { tier: 2, label: strings.reward_premium, amount: '0.02', desc: strings.reward_premium_desc },
         { tier: 3, label: strings.reward_critical, amount: '5.00', desc: strings.reward_critical_desc },
       ];
       tbody.innerHTML = tiers.map(t => `
