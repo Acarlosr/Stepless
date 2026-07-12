@@ -869,6 +869,82 @@ export const SteplessOracle = {
   },
 };
 
+// ─── Oracle v3 — leitura global (mesmo caminho do dApp web/buscar.html) ──
+// O contrato v3 indexa locais por hash (locationCount + allLocationHashes +
+// getLocation(bytes32)). Nome/categoria/lat/lng vêm do backend via
+// /api/location-meta — a chain guarda só o hash.
+const SteplessOracleV3ReadABI = [
+  {
+    type: 'function', name: 'locationCount',
+    inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view',
+  },
+  {
+    type: 'function', name: 'allLocationHashes',
+    inputs: [{ name: '', type: 'uint256' }],
+    outputs: [{ type: 'bytes32' }], stateMutability: 'view',
+  },
+  {
+    type: 'function', name: 'getLocation',
+    inputs: [{ name: 'locationHash', type: 'bytes32' }],
+    outputs: [
+      { name: 'locationHash', type: 'bytes32' },
+      { name: 'firstContributor', type: 'address' },
+      { name: 'registeredBlock', type: 'uint256' },
+      { name: 'verificationCount', type: 'uint256' },
+      { name: 'exists', type: 'bool' },
+    ],
+    stateMutability: 'view',
+  },
+] as const;
+
+export interface OnchainLocationV3 {
+  locationHash: string;
+  contributor: Address;
+  verifications: number;
+}
+
+/**
+ * Lê TODOS os locais registrados na chain (cap `max`, igual ao dApp web).
+ */
+export async function fetchAllOnchainLocations(max = 100): Promise<OnchainLocationV3[]> {
+  const count = Number(
+    await publicClient.readContract({
+      address: CONTRACT_ADDRESSES.STEPLESS_ORACLE,
+      abi: SteplessOracleV3ReadABI,
+      functionName: 'locationCount',
+    }) as bigint
+  );
+  if (count === 0) return [];
+
+  const locations: OnchainLocationV3[] = [];
+  for (let i = 0; i < Math.min(count, max); i++) {
+    try {
+      const hash = await publicClient.readContract({
+        address: CONTRACT_ADDRESSES.STEPLESS_ORACLE,
+        abi: SteplessOracleV3ReadABI,
+        functionName: 'allLocationHashes',
+        args: [BigInt(i)],
+      }) as string;
+
+      const loc = await publicClient.readContract({
+        address: CONTRACT_ADDRESSES.STEPLESS_ORACLE,
+        abi: SteplessOracleV3ReadABI,
+        functionName: 'getLocation',
+        args: [hash as `0x${string}`],
+      }) as readonly [string, Address, bigint, bigint, boolean];
+
+      locations.push({
+        locationHash: hash,
+        contributor: loc[1],
+        verifications: Number(loc[3]),
+      });
+    } catch {
+      // pula índice com falha de leitura
+    }
+  }
+  return locations;
+}
+
 // ─── X402API Service ──────────────────────────────────────────────────
 export const X402API = {
   address: CONTRACT_ADDRESSES.X402_API,

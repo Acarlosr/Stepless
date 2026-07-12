@@ -39,6 +39,7 @@ import {
   LocationCategory,
   packCoordinate,
   ArcContractError,
+  fetchAllOnchainLocations,
 } from '../services/contracts';
 import {
   registerLocation as apiRegisterLocation,
@@ -158,6 +159,8 @@ export default function MapScreen() {
   // ─── Request location permissions ─────────────────────────────────
   useEffect(() => {
     requestLocationPermission();
+    // Locais são globais — carrega mesmo sem permissão de GPS
+    fetchNearbyLocations();
   }, []);
 
   const requestLocationPermission = async () => {
@@ -200,55 +203,43 @@ export default function MapScreen() {
     }
   };
 
-  // ─── Fetch nearby already-mapped locations ────────────────────────
-  const fetchNearbyLocations = useCallback(async (lat: number, lng: number) => {
+  // ─── Fetch ALL mapped locations (global — mesmo caminho do dApp web) ──
+  // Chain: locationCount → allLocationHashes → getLocation(hash).
+  // Backend (/api/location-meta): nome, categorias e lat/lng confiáveis,
+  // salvos no momento do registro. Locais sem coordenadas ficam fora do mapa
+  // mas os demais aparecem em qualquer cidade — 100% sincronizado com o web.
+  const fetchNearbyLocations = useCallback(async (_lat?: number, _lng?: number) => {
     try {
-      const locationIds = await SteplessOracle.getNearbyLocations(
-        lat,
-        lng,
-        5000n // 5km radius
-      );
+      const onchain = await fetchAllOnchainLocations(100);
+      if (onchain.length === 0) {
+        setNearbyLocations([]);
+        return;
+      }
+
+      const meta = await fetchLocationMeta(onchain.map((l) => l.locationHash));
 
       const locations: AccessibleLocation[] = [];
-      for (const id of locationIds.slice(0, 50)) {
-        try {
-          const loc = await SteplessOracle.getLocation(id);
-          locations.push({
-            id,
-            name: `Location #${id.toString()}`,
-            category: LocationCategory.Ramp, // Would come from dataHash metadata
-            lat: loc.lat,
-            lng: loc.lng,
-            verified: loc.verified,
-            contributor: loc.contributor,
-            dataHash: loc.dataHash,
-          });
-        } catch (e) {
-          // Skip locations that fail to load
+      onchain.forEach((l, i) => {
+        const m = meta[l.locationHash.toLowerCase()];
+        if (!m || typeof m.lat !== 'number' || typeof m.lng !== 'number') {
+          return; // sem coordenadas salvas — não dá pra plotar
         }
-      }
-
-      // Nome + categorias reais (salvos fora da chain no registro, via Upstash)
-      try {
-        const hashes = locations
-          .map((l) => l.dataHash)
-          .filter((h): h is string => !!h);
-        const meta = await fetchLocationMeta(hashes);
-        for (const l of locations) {
-          const m = l.dataHash ? meta[l.dataHash.toLowerCase()] : undefined;
-          if (m) {
-            if (m.name) l.name = m.name;
-            l.category = categoryFromMeta(m.categories);
-          }
-        }
-      } catch {
-        // Sem metadados o mapa segue com nomes genéricos
-      }
+        locations.push({
+          id: BigInt(i + 1),
+          name: m.name || `Location #${i + 1}`,
+          category: categoryFromMeta(m.categories),
+          lat: m.lat,
+          lng: m.lng,
+          verified: l.verifications > 0,
+          contributor: l.contributor,
+          dataHash: l.locationHash,
+        });
+      });
 
       setNearbyLocations(locations);
     } catch (error) {
-      console.error('Failed to fetch nearby locations:', error);
-      // Non-critical — map still works without nearby locations
+      console.error('Failed to fetch locations:', error);
+      // Non-critical — map still works without locations
     }
   }, []);
 
