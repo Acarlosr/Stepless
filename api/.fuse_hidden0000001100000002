@@ -12,6 +12,8 @@ import { privateKeyToAccount } from 'viem/accounts';
 // para colocar um nó dedicado no topo da lista.
 const ARC_RPC_URLS = [
   process.env.ARC_RPC_URL,
+  'https://rpc.blockdaemon.testnet.arc.network',
+  'https://rpc.drpc.testnet.arc.network',
   'https://rpc.testnet.arc.network',
 ].filter(Boolean);
 

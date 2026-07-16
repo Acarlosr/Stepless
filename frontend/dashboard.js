@@ -172,19 +172,19 @@ async function _completeConnection(address, provider) {
 
   const viem = await loadViem();
 
-  // Lista de RPCs tentados em ordem — se um falhar (429/timeout/erro), o viem
-  // cai para o próximo automaticamente. drpc entra como reserva do nó oficial.
+  // RPCs tentados em ordem (fallback) — se um falhar (429/timeout), tenta o
+  // próximo. Só o nó oficial por ora (os proxies da doc devolvem 400).
   const ARC_RPC_URLS = (cfg.chain?.rpcUrls?.default?.http?.length
     ? cfg.chain.rpcUrls.default.http
-    : ['https://rpc.blockdaemon.testnet.arc.network', 'https://rpc.drpc.testnet.arc.network', 'https://rpc.testnet.arc.network']);
+    : ['https://rpc.testnet.arc.network']);
 
   publicClient = viem.createPublicClient({
     chain: cfg.chain,
-    // Resiliência: fallback entre vários RPCs + batch (junta leituras numa só
-    // requisição HTTP) + retry/backoff em cada endpoint.
+    // Resiliência: fallback entre vários RPCs + retry/backoff em cada endpoint.
+    // (Sem `batch`: os nós proxy da Arc — blockdaemon/drpc — devolvem 400 Bad
+    //  Request para o corpo JSON-RPC em array/batch.)
     transport: viem.fallback(
       ARC_RPC_URLS.map((url) => viem.http(url, {
-        batch: true,
         retryCount: 3,
         retryDelay: 800,
         timeout: 20_000,
@@ -812,13 +812,28 @@ async function loadMapMarkers() {
   leafletMarkersLayer.clearLayers();
 
   try {
-    const logs = await publicClient.getContractEvents({
-      address: cfg.contracts.SteplessOracle,
-      abi: cfg.abis.SteplessOracle,
-      eventName: 'LocationRegistered',
-      fromBlock: 0n,
-      toBlock: 'latest',
-    });
+    // Varre eventos em JANELAS de blocos (o RPC da Arc rejeita eth_getLogs de
+    // 0→latest com "unknown RPC error"). Mesmo padrão da página de busca:
+    // volta em janelas de 5000 blocos a partir de `latest` até o bloco de
+    // deploy do Oracle, acumulando os LocationRegistered.
+    const latest = await publicClient.getBlockNumber();
+    const DEPLOY_BLOCK = 49700000n; // Oracle v3 deployado ~bloco 49.72M
+    const WINDOW = 5000n;
+    const MAX_WINDOWS = 60;
+    const logs = [];
+    let to = latest;
+    for (let w = 0; w < MAX_WINDOWS && to > DEPLOY_BLOCK; w++) {
+      const from = to - WINDOW + 1n > DEPLOY_BLOCK ? to - WINDOW + 1n : DEPLOY_BLOCK;
+      const chunk = await publicClient.getContractEvents({
+        address: cfg.contracts.SteplessOracle,
+        abi: cfg.abis.SteplessOracle,
+        eventName: 'LocationRegistered',
+        fromBlock: from,
+        toBlock: to,
+      });
+      logs.push(...chunk);
+      to = from - 1n;
+    }
 
     const hint = document.getElementById('map-empty-hint');
     if (logs.length === 0) {

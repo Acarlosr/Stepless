@@ -57,6 +57,8 @@ async function saveLocationMeta(locationHash, meta) {
 // ─── RPC endpoints (fallback em ordem) ──────────────────────────────────────
 const ARC_RPC_URLS = [
   process.env.ARC_RPC_URL,
+  'https://rpc.blockdaemon.testnet.arc.network',
+  'https://rpc.drpc.testnet.arc.network',
   'https://rpc.testnet.arc.network',
 ].filter(Boolean);
 

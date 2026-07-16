@@ -13,6 +13,13 @@ export const ARC_TESTNET_CONFIG = {
   chainId: 5042002,
   name: 'Arc Testnet',
   rpcUrl: 'https://rpc.testnet.arc.network',
+  // RPCs tentados em ordem via viem `fallback`. Só o nó oficial por enquanto:
+  // os proxies (blockdaemon/drpc) da doc devolvem 400 Bad Request para
+  // requisição JSON-RPC anônima, então foram removidos. Se conseguir um
+  // endpoint dedicado (Alchemy/QuickNode com key), coloque-o primeiro aqui.
+  rpcUrls: [
+    'https://rpc.testnet.arc.network',
+  ],
   blockExplorerUrl: 'https://testnet.arcscan.app',
   // USDC on Arc is dual: native (18 dec gas) AND ERC-20 (6 dec transfers)
   usdcNativeDecimals: 18,

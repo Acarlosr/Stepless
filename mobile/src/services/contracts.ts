@@ -13,6 +13,7 @@ import {
   createPublicClient,
   createWalletClient,
   http,
+  fallback,
   type Address,
   type Abi,
   type Chain,
@@ -36,7 +37,7 @@ export const arcTestnet: Chain = {
     decimals: ARC_TESTNET_CONFIG.usdcNativeDecimals,
   },
   rpcUrls: {
-    default: { http: [ARC_TESTNET_CONFIG.rpcUrl] },
+    default: { http: ARC_TESTNET_CONFIG.rpcUrls },
   },
   blockExplorers: {
     default: { name: 'Arc Explorer', url: ARC_TESTNET_CONFIG.blockExplorerUrl },
@@ -345,7 +346,14 @@ export enum LocationCategory {
 // ─── Public Client (read-only) ────────────────────────────────────────
 export const publicClient = createPublicClient({
   chain: arcTestnet,
-  transport: http(ARC_TESTNET_CONFIG.rpcUrl),
+  // Fallback entre vários RPCs oficiais + retry: se o nó da vez cair, o viem
+  // tenta o próximo automaticamente, evitando o mapa travar por RPC instável.
+  transport: fallback(
+    ARC_TESTNET_CONFIG.rpcUrls.map((url) =>
+      http(url, { retryCount: 3, retryDelay: 800, timeout: 20000 }),
+    ),
+    { rank: false },
+  ),
 });
 
 // ─── Arc-Specific Error Handling ──────────────────────────────────────

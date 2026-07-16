@@ -29,6 +29,7 @@ import {
   createPublicClient,
   createWalletClient,
   http,
+  fallback,
   formatUnits,
   parseUnits,
   type Address,
@@ -72,13 +73,19 @@ const arcChain = {
     symbol: 'USDC',
     decimals: ARC_TESTNET_CONFIG.usdcNativeDecimals,
   },
-  rpcUrls: { default: { http: [ARC_TESTNET_CONFIG.rpcUrl] } },
+  rpcUrls: { default: { http: ARC_TESTNET_CONFIG.rpcUrls } },
   blockExplorers: { default: { name: 'ArcScan', url: ARC_TESTNET_CONFIG.blockExplorerUrl } },
 } as const;
 
 const arcPublicClient = createPublicClient({
   chain: arcChain as any,
-  transport: http(ARC_TESTNET_CONFIG.rpcUrl),
+  // Fallback multi-RPC: se um nó cair, tenta o próximo automaticamente.
+  transport: fallback(
+    ARC_TESTNET_CONFIG.rpcUrls.map((url) =>
+      http(url, { retryCount: 3, retryDelay: 800, timeout: 20000 }),
+    ),
+    { rank: false },
+  ),
 });
 
 // ─── USDC ERC-20 ABI (mínimo p/ saldo) ────────────────────────────────
