@@ -17,8 +17,10 @@ const ARC_TESTNET = {
   name: "Arc Testnet",
   nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 }, // MetaMask exige 18; formatação real usa 6 decimais separadamente
   rpcUrls: {
-    default: { http: ["https://rpc.testnet.arc.network"] },
-    public: { http: ["https://rpc.testnet.arc.network"] },
+    // Ordem = ordem de tentativa no fallback. drpc primeiro porque o nó oficial
+    // vem apresentando instabilidade ("RPC Request failed"/"unknown RPC error").
+    default: { http: ["https://rpc.blockdaemon.testnet.arc.network", "https://rpc.drpc.testnet.arc.network", "https://rpc.testnet.arc.network"] },
+    public: { http: ["https://rpc.blockdaemon.testnet.arc.network", "https://rpc.drpc.testnet.arc.network", "https://rpc.testnet.arc.network"] },
   },
   wsUrls: {
     default: { webSocket: ["wss://rpc.testnet.arc.network"] },

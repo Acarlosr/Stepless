@@ -3,20 +3,34 @@
  * (Prefixo "_" impede a Vercel de expor este arquivo como endpoint.)
  */
 
-import { createWalletClient, createPublicClient, http, getAddress, keccak256, toBytes } from 'viem';
+import { createWalletClient, createPublicClient, http, fallback, getAddress, keccak256, toBytes } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
+
+// ─── RPC endpoints ───────────────────────────────────────────────────────────
+// Lista de RPCs tentados em ordem. Se o primeiro falhar (429/timeout/erro),
+// o viem cai para o próximo automaticamente. Configure ARC_RPC_URL na Vercel
+// para colocar um nó dedicado no topo da lista.
+const ARC_RPC_URLS = [
+  process.env.ARC_RPC_URL,
+  'https://rpc.blockdaemon.testnet.arc.network',
+  'https://rpc.drpc.testnet.arc.network',
+  'https://rpc.testnet.arc.network',
+].filter(Boolean);
 
 // ─── Chain ───────────────────────────────────────────────────────────────────
 export const arcTestnet = {
   id: 5042002,
   name: 'Arc Testnet',
   nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 }, // native = 18 dec
-  rpcUrls: { default: { http: [process.env.ARC_RPC_URL || 'https://rpc.testnet.arc.network'] } },
+  rpcUrls: { default: { http: ARC_RPC_URLS } },
   blockExplorers: { default: { name: 'ArcScan', url: 'https://testnet.arcscan.app' } },
 };
 
-// Transport resiliente: repete em 429/5xx do RPC público com backoff antes de falhar.
-const arcTransport = () => http(undefined, { retryCount: 6, retryDelay: 1000, timeout: 25_000 });
+// Transport resiliente: fallback entre vários RPCs + retry/backoff em cada um.
+const arcTransport = () => fallback(
+  ARC_RPC_URLS.map((url) => http(url, { retryCount: 3, retryDelay: 1000, timeout: 20_000 })),
+  { rank: false }, // mantém a ordem da lista (não re-ranqueia por latência)
+);
 
 export function publicClient() {
   return createPublicClient({ chain: arcTestnet, transport: arcTransport() });

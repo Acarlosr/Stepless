@@ -18,7 +18,7 @@
  *   RELAYER_PRIVATE_KEY, ORACLE_ADDRESS, ARC_RPC_URL
  */
 
-import { createWalletClient, createPublicClient, http, keccak256, encodePacked, getAddress } from 'viem';
+import { createWalletClient, createPublicClient, http, fallback, keccak256, encodePacked, getAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { createHash } from 'crypto';
 import { store, contribKey, PENDING_LIST_KEY, clientIp } from './_stepless.js';
@@ -54,13 +54,21 @@ async function saveLocationMeta(locationHash, meta) {
   }
 }
 
+// ─── RPC endpoints (fallback em ordem) ──────────────────────────────────────
+const ARC_RPC_URLS = [
+  process.env.ARC_RPC_URL,
+  'https://rpc.blockdaemon.testnet.arc.network',
+  'https://rpc.drpc.testnet.arc.network',
+  'https://rpc.testnet.arc.network',
+].filter(Boolean);
+
 // ─── Arc Testnet chain config ───────────────────────────────────────────────
 const arcTestnet = {
   id: 5042002,
   name: 'Arc Testnet',
   nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 6 },
   rpcUrls: {
-    default: { http: [process.env.ARC_RPC_URL || 'https://rpc.testnet.arc.network'] },
+    default: { http: ARC_RPC_URLS },
   },
   blockExplorers: {
     default: { name: 'ArcScan', url: 'https://testnet.arcscan.app' },
@@ -220,9 +228,11 @@ export default async function handler(req, res) {
       : `0x${process.env.RELAYER_PRIVATE_KEY}`;
 
     const account = privateKeyToAccount(pk);
-    // Resiliência contra 429/5xx do RPC público da Arc: repete com backoff
-    // antes de desistir, para uma leitura/escrita não falhar por rate-limit.
-    const rpcTransport = () => http(undefined, { retryCount: 6, retryDelay: 1000, timeout: 25_000 });
+    // Resiliência: tenta vários RPCs em ordem (fallback) + retry/backoff em cada.
+    const rpcTransport = () => fallback(
+      ARC_RPC_URLS.map((url) => http(url, { retryCount: 3, retryDelay: 1000, timeout: 20_000 })),
+      { rank: false },
+    );
     const publicClient = createPublicClient({ chain: arcTestnet, transport: rpcTransport() });
     const walletClient = createWalletClient({ account, chain: arcTestnet, transport: rpcTransport() });
     const oracleAddress = getAddress(process.env.ORACLE_ADDRESS.toLowerCase());

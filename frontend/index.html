@@ -607,9 +607,10 @@
       // Lê saldo USDC via Viem
       try {
         const viem = await import('https://esm.sh/viem@2.21.0');
-        const { createPublicClient, http, formatUnits, getContract } = viem;
+        const { createPublicClient, http, fallback, formatUnits, getContract } = viem;
         const cfg = window.SteplessConfig;
-        const publicClient = createPublicClient({ chain: cfg.chain, transport: http(undefined, { batch: true, retryCount: 5, retryDelay: 800, timeout: 20000 }) });
+        const _rpcs = cfg.chain?.rpcUrls?.default?.http?.length ? cfg.chain.rpcUrls.default.http : ['https://rpc.blockdaemon.testnet.arc.network', 'https://rpc.drpc.testnet.arc.network', 'https://rpc.testnet.arc.network'];
+        const publicClient = createPublicClient({ chain: cfg.chain, transport: fallback(_rpcs.map(u => http(u, { batch: true, retryCount: 3, retryDelay: 800, timeout: 20000 })), { rank: false }) });
         const usdcContract = getContract({
           address: cfg.tokens.USDC.address,
           abi: cfg.abis.ERC20,

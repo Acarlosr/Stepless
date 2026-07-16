@@ -172,18 +172,25 @@ async function _completeConnection(address, provider) {
 
   const viem = await loadViem();
 
+  // Lista de RPCs tentados em ordem — se um falhar (429/timeout/erro), o viem
+  // cai para o próximo automaticamente. drpc entra como reserva do nó oficial.
+  const ARC_RPC_URLS = (cfg.chain?.rpcUrls?.default?.http?.length
+    ? cfg.chain.rpcUrls.default.http
+    : ['https://rpc.blockdaemon.testnet.arc.network', 'https://rpc.drpc.testnet.arc.network', 'https://rpc.testnet.arc.network']);
+
   publicClient = viem.createPublicClient({
     chain: cfg.chain,
-    // Resiliência contra o rate-limit (429) do RPC público da Arc:
-    //  · batch: junta várias leituras (eth_call) numa única requisição HTTP
-    //    via multicall/JSON-RPC batch → menos chamadas, menos 429.
-    //  · retryCount/retryDelay: repete automaticamente em 429/5xx com backoff.
-    transport: viem.http(undefined, {
-      batch: true,
-      retryCount: 5,
-      retryDelay: 800, // ms; viem aplica backoff exponencial a partir daqui
-      timeout: 20_000,
-    }),
+    // Resiliência: fallback entre vários RPCs + batch (junta leituras numa só
+    // requisição HTTP) + retry/backoff em cada endpoint.
+    transport: viem.fallback(
+      ARC_RPC_URLS.map((url) => viem.http(url, {
+        batch: true,
+        retryCount: 3,
+        retryDelay: 800,
+        timeout: 20_000,
+      })),
+      { rank: false },
+    ),
   });
 
   walletClient = viem.createWalletClient({
