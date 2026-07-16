@@ -609,7 +609,7 @@
         const viem = await import('https://esm.sh/viem@2.21.0');
         const { createPublicClient, http, formatUnits, getContract } = viem;
         const cfg = window.SteplessConfig;
-        const publicClient = createPublicClient({ chain: cfg.chain, transport: http() });
+        const publicClient = createPublicClient({ chain: cfg.chain, transport: http(undefined, { batch: true, retryCount: 5, retryDelay: 800, timeout: 20000 }) });
         const usdcContract = getContract({
           address: cfg.tokens.USDC.address,
           abi: cfg.abis.ERC20,

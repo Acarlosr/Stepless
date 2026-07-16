@@ -197,6 +197,9 @@
                 <button type="button" id="btn-address-search" class="btn btn-secondary" style="white-space:nowrap; flex-shrink:0;" data-i18n="reg_search_btn">🔍</button>
               </div>
               <div id="reg-location-status" style="margin-top:0.5rem; font-size:0.85rem; color:var(--text-muted); min-height:1.2em;"></div>
+              <!-- Mapa interativo: clique ou arraste o marcador para definir a coordenada exata (igual ao app Android) -->
+              <div id="reg-map" style="height:280px; margin-top:0.5rem; border-radius:10px; overflow:hidden; border:1px solid var(--border, #d0d5dd);" role="application" aria-label="Mapa para marcar o local — clique ou arraste o marcador"></div>
+              <div style="margin-top:0.35rem; font-size:0.78rem; color:var(--text-muted);" data-i18n="reg_map_hint">Toque no mapa ou arraste o marcador para ajustar o local exato.</div>
             </div>
 
             <div class="form-group">
@@ -337,6 +340,7 @@
         register_title:"Mapear Novo Local", register_subtitle:"Registre um local acessível na Arc Testnet. Você será recompensado em USDC após verificação.",
         reg_location:"Localização", reg_gps_btn:"📍 Usar minha localização", reg_address_placeholder:"Ou busque um endereço...", reg_search_btn:"🔍",
         reg_name:"Nome do Local", reg_category:"Categoria", reg_category_hint:"Marque todas as opções que se aplicam.", reg_photo:"Foto do Local", reg_submit:"Registrar Local",
+        reg_map_hint:"Toque no mapa ou arraste o marcador para ajustar o local exato.",
         reg_missing_name:"Preencha o nome do local.", reg_missing_category:"Marque pelo menos uma categoria.",
         reg_gps_detecting:"Detectando sua localização...", reg_gps_ok:"📍 Localização detectada!", reg_gps_error:"Não foi possível obter localização. Busque pelo endereço.",
         reg_other_desc:"Descreva o recurso de acessibilidade",
@@ -380,6 +384,7 @@
         register_title:"Map New Location", register_subtitle:"Register an accessible location on Arc Testnet. You'll be rewarded in USDC after verification.",
         reg_location:"Location", reg_gps_btn:"📍 Use my location", reg_address_placeholder:"Or search an address...", reg_search_btn:"🔍",
         reg_name:"Location Name", reg_category:"Category", reg_category_hint:"Check all that apply.", reg_photo:"Location Photo", reg_submit:"Register Location",
+        reg_map_hint:"Tap the map or drag the marker to set the exact spot.",
         reg_missing_name:"Enter the location name.", reg_missing_category:"Check at least one category.",
         reg_gps_detecting:"Detecting your location...", reg_gps_ok:"📍 Location detected!", reg_gps_error:"Could not get location. Search by address instead.",
         reg_other_desc:"Describe the accessibility feature",
@@ -422,6 +427,7 @@
         event_log_title:"Eventos en Tiempo Real", event_log_desc:"Actualizaciones en vivo de Arc Testnet vía WebSocket.", event_log_empty:"Esperando eventos...",
         register_title:"Mapear Nuevo Lugar", register_subtitle:"Registra un lugar accesible en Arc Testnet. Serás recompensado en USDC después de la verificación.",
         reg_lat:"Latitud", reg_lng:"Longitud", reg_name:"Nombre del Lugar", reg_category:"Categoría", reg_category_hint:"Marca todas las opciones que apliquen.", reg_photo:"Foto del Lugar", reg_submit:"Registrar Lugar",
+        reg_map_hint:"Toca el mapa o arrastra el marcador para ajustar el lugar exacto.",
         reg_missing_name:"Completa el nombre del lugar.", reg_missing_category:"Marca al menos una categoría.",
         verify_title:"Verificar Contribución", verify_subtitle:"Solo verificadores aprobados pueden validar contribuciones.",
         verify_denied:"No eres un verificador aprobado. Solo verificadores pueden validar contribuciones.",

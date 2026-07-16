@@ -27,6 +27,8 @@ let activeUnwatch = [];
 let isConnected = false;
 let leafletMap = null;
 let leafletMarkersLayer = null;
+let regPickerMap = null;      // mapa interativo do formulário (marcar local)
+let regPickerMarker = null;
 
 /* ═══════════════════════════════════════════════════════════════
  *  Viem loading (CDN esm.sh)
@@ -172,7 +174,16 @@ async function _completeConnection(address, provider) {
 
   publicClient = viem.createPublicClient({
     chain: cfg.chain,
-    transport: viem.http(),
+    // Resiliência contra o rate-limit (429) do RPC público da Arc:
+    //  · batch: junta várias leituras (eth_call) numa única requisição HTTP
+    //    via multicall/JSON-RPC batch → menos chamadas, menos 429.
+    //  · retryCount/retryDelay: repete automaticamente em 429/5xx com backoff.
+    transport: viem.http(undefined, {
+      batch: true,
+      retryCount: 5,
+      retryDelay: 800, // ms; viem aplica backoff exponencial a partir daqui
+      timeout: 20_000,
+    }),
   });
 
   walletClient = viem.createWalletClient({
@@ -702,6 +713,75 @@ function initLeafletMap() {
   return leafletMap;
 }
 
+/* ───────────────────────────────────────────────────────────────
+ *  Mapa interativo do formulário: clicar ou arrastar o marcador
+ *  define a coordenada exata do local (equivalente ao Google Map do
+ *  app Android). Alimenta os campos ocultos reg-lat / reg-lng.
+ * ─────────────────────────────────────────────────────────────── */
+function initRegPickerMap() {
+  if (regPickerMap) { setTimeout(() => regPickerMap.invalidateSize(), 0); return regPickerMap; }
+  if (!window.L) return null;
+  const el = document.getElementById('reg-map');
+  if (!el) return null;
+
+  regPickerMap = window.L.map(el, { scrollWheelZoom: true }).setView([-14.2, -51.9], 4);
+  window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19,
+  }).addTo(regPickerMap);
+
+  // Clique no mapa → posiciona/move o marcador e grava a coordenada.
+  regPickerMap.on('click', (e) => setRegLocationFromMap(e.latlng.lat, e.latlng.lng, true));
+
+  // Corrige o render quando o container estava oculto/tab trocada.
+  setTimeout(() => regPickerMap.invalidateSize(), 200);
+  return regPickerMap;
+}
+
+// Coloca/atualiza o marcador arrastável e grava lat/lng. Se geocode=true,
+// resolve o nome do endereço (Nominatim) de forma assíncrona.
+function setRegLocationFromMap(lat, lng, geocode) {
+  if (!initRegPickerMap()) return;
+  if (!regPickerMarker) {
+    regPickerMarker = window.L.marker([lat, lng], { draggable: true }).addTo(regPickerMap);
+    regPickerMarker.on('dragend', () => {
+      const p = regPickerMarker.getLatLng();
+      setRegLocationFromMap(p.lat, p.lng, true);
+    });
+  } else {
+    regPickerMarker.setLatLng([lat, lng]);
+  }
+  // Grava os campos ocultos direto (não chama setDetectedLocation p/ evitar loop).
+  document.getElementById('reg-lat').value = lat;
+  document.getElementById('reg-lng').value = lng;
+  const status = document.getElementById('reg-location-status');
+  if (status) status.innerHTML = `<span style="color:var(--success)">✅ ${lat.toFixed(5)}, ${lng.toFixed(5)}</span>`;
+  if (typeof estimateRegisterGas === 'function') estimateRegisterGas();
+
+  if (geocode) {
+    reverseGeocode(lat, lng).then((label) => {
+      if (status && label) status.innerHTML = `<span style="color:var(--success)">✅ ${label}</span>`;
+    }).catch(() => {});
+  }
+}
+
+// Move o mapa/marcador quando a coordenada vem do GPS ou da busca de endereço.
+function syncRegPickerMap(lat, lng) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+  if (!initRegPickerMap()) return;
+  regPickerMap.setView([lat, lng], 17);
+  if (!regPickerMarker) {
+    regPickerMarker = window.L.marker([lat, lng], { draggable: true }).addTo(regPickerMap);
+    regPickerMarker.on('dragend', () => {
+      const p = regPickerMarker.getLatLng();
+      setRegLocationFromMap(p.lat, p.lng, true);
+    });
+  } else {
+    regPickerMarker.setLatLng([lat, lng]);
+  }
+  setTimeout(() => regPickerMap.invalidateSize(), 0);
+}
+
 function categoryLabel(id) {
   return cfg.locationCategories.find(c => c.id === Number(id))?.label?.[getLang()] || null;
 }
@@ -1118,6 +1198,7 @@ function setDetectedLocation(lat, lng, label) {
   const status = document.getElementById('reg-location-status');
   const s = getStrings();
   if (status) status.innerHTML = `<span style="color:var(--success)">✅ ${label}</span>`;
+  syncRegPickerMap(parseFloat(lat), parseFloat(lng)); // move o marcador no mapa interativo
   estimateRegisterGas();
 }
 
@@ -1145,6 +1226,14 @@ function initEventListeners() {
   const regForm = document.getElementById('register-form');
   if (regForm) {
     regForm.addEventListener('submit', handleRegisterLocation);
+    // Inicializa o mapa interativo de marcação (tenta de novo se o Leaflet
+    // do CDN ainda não carregou).
+    if (!initRegPickerMap()) {
+      let tries = 0;
+      const t = setInterval(() => {
+        if (initRegPickerMap() || ++tries > 20) clearInterval(t);
+      }, 300);
+    }
   }
 
   // GPS button

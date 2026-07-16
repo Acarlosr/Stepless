@@ -220,8 +220,11 @@ export default async function handler(req, res) {
       : `0x${process.env.RELAYER_PRIVATE_KEY}`;
 
     const account = privateKeyToAccount(pk);
-    const publicClient = createPublicClient({ chain: arcTestnet, transport: http() });
-    const walletClient = createWalletClient({ account, chain: arcTestnet, transport: http() });
+    // Resiliência contra 429/5xx do RPC público da Arc: repete com backoff
+    // antes de desistir, para uma leitura/escrita não falhar por rate-limit.
+    const rpcTransport = () => http(undefined, { retryCount: 6, retryDelay: 1000, timeout: 25_000 });
+    const publicClient = createPublicClient({ chain: arcTestnet, transport: rpcTransport() });
+    const walletClient = createWalletClient({ account, chain: arcTestnet, transport: rpcTransport() });
     const oracleAddress = getAddress(process.env.ORACLE_ADDRESS.toLowerCase());
 
     // ── Auto-autorização: verifica e autoriza o relayer se necessário ─────

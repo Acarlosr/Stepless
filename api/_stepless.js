@@ -15,8 +15,11 @@ export const arcTestnet = {
   blockExplorers: { default: { name: 'ArcScan', url: 'https://testnet.arcscan.app' } },
 };
 
+// Transport resiliente: repete em 429/5xx do RPC público com backoff antes de falhar.
+const arcTransport = () => http(undefined, { retryCount: 6, retryDelay: 1000, timeout: 25_000 });
+
 export function publicClient() {
-  return createPublicClient({ chain: arcTestnet, transport: http() });
+  return createPublicClient({ chain: arcTestnet, transport: arcTransport() });
 }
 
 function normalizePk(pk) {
@@ -43,7 +46,7 @@ export function verifierAccount() {
 }
 
 export function walletFor(account) {
-  return createWalletClient({ account, chain: arcTestnet, transport: http() });
+  return createWalletClient({ account, chain: arcTestnet, transport: arcTransport() });
 }
 
 export function oracleAddress() {
