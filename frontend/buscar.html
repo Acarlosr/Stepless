@@ -7,6 +7,8 @@
   <meta name="theme-color" content="#1a56c4" />
   <title>Stepless — Buscar Locais Acessíveis</title>
   <link rel="stylesheet" href="styles.css" />
+  <!-- Leaflet (mapa com pins nos resultados da busca) — grátis, sem API key -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♿</text></svg>" />
 
   <style>
@@ -350,6 +352,7 @@
       <div id="radius-all-notice" class="hidden" style="margin:0 0 12px; padding:10px 14px; border-radius:8px; background:var(--bg-alt); border:1px solid var(--border); font-size:.85rem; color:var(--text-muted);" data-i18n="radius_all_notice">
         ⚠️ Raio "Todos" selecionado: a lista abaixo mostra todos os locais cadastrados no sistema, não apenas os próximos da sua busca. Escolha um raio (ex: 5 km) para ver só o que está perto.
       </div>
+      <div id="results-map" style="height:340px; margin:0 0 16px; border-radius:12px; overflow:hidden; border:1px solid var(--border);" role="application" aria-label="Mapa com os locais acessíveis encontrados"></div>
       <div class="results-grid" id="results-grid" role="list" aria-label="Locais acessíveis encontrados" data-i18n-aria-label="results_aria"></div>
     </div>
 
@@ -368,6 +371,7 @@
   </footer>
 
   <!-- ════════════════════ Scripts ════════════════════ -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script type="module">
     import { createPublicClient, http } from 'https://esm.sh/viem@2.21.0';
 
@@ -930,6 +934,45 @@
           </article>
         `;
       }).join('');
+
+      // Plota os locais encontrados no mapa (pins). Só os que têm coordenada.
+      renderResultsMap(filtered);
+    }
+
+    // ── Mapa de resultados (Leaflet) ──────────────────────
+    let resultsMap = null, resultsMarkers = null;
+    function renderResultsMap(locs) {
+      const el = document.getElementById('results-map');
+      if (!el || !window.L) return;
+
+      // Inicializa o mapa uma vez
+      if (!resultsMap) {
+        resultsMap = window.L.map(el, { scrollWheelZoom: false }).setView([-14.2, -51.9], 4);
+        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+          maxZoom: 19,
+        }).addTo(resultsMap);
+        resultsMarkers = window.L.layerGroup().addTo(resultsMap);
+      }
+      resultsMarkers.clearLayers();
+
+      const pts = [];
+      locs.forEach(loc => {
+        if (loc.lat == null || loc.lng == null) return;
+        const cat = (loc.categories && loc.categories.length)
+          ? (CATEGORY_LABELS[loc.categories[0]] || '') : '';
+        const title = loc.name ? escapeHtml(loc.name) : escapeHtml(t('fallback_location', { index: loc.index }));
+        const popup = `<strong>♿ ${title}</strong><br/>${cat ? escapeHtml(cat) + '<br/>' : ''}<span style="color:#667">${shortAddr(loc.contributor)}</span>`;
+        window.L.marker([loc.lat, loc.lng]).addTo(resultsMarkers).bindPopup(popup);
+        pts.push([loc.lat, loc.lng]);
+      });
+
+      // Se nenhum local tem coordenada, esconde o mapa (evita mapa vazio).
+      el.style.display = pts.length ? 'block' : 'none';
+      if (pts.length === 1) resultsMap.setView(pts[0], 15);
+      else if (pts.length > 1) resultsMap.fitBounds(pts, { padding: [30, 30] });
+      // Corrige render quando o container estava oculto (troca de estado).
+      setTimeout(() => resultsMap.invalidateSize(), 60);
     }
 
     // ── Buscar com localização ────────────────────────────
