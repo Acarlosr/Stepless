@@ -422,6 +422,15 @@ export default async function handler(req, res) {
     if (/Unauthorized/i.test(msg)) {
       return res.status(403).json({ success: false, error: 'Relayer não autorizado para essa ação no contrato.' });
     }
+    // Revert genérico no registro (viem não decodificou o motivo, comum sob RPC
+    // instável): o caso de longe mais frequente é DUPLICATA — o mesmo local
+    // (coordenada + nome) já foi registrado, e o contrato rejeita repetição.
+    if (action === 'registerLocation' && /revert/i.test(msg)) {
+      return res.status(409).json({
+        success: false,
+        error: 'Não deu pra registrar. Motivo mais provável: este local (mesma coordenada e nome) já foi registrado antes — tente um nome um pouco diferente. Se o RPC estiver instável, aguarde alguns segundos e tente de novo.',
+      });
+    }
     return res.status(500).json({ success: false, error: msg });
   }
 }
