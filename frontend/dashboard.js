@@ -963,7 +963,19 @@ async function handleRegisterLocation(e) {
       }),
     });
 
-    const result = await resp.json();
+    // O servidor pode devolver uma página de erro HTML (timeout/crash do Vercel)
+    // em vez de JSON quando o RPC está muito lento — sem isso, o JSON.parse
+    // quebra com "Unexpected token" e some a mensagem real do problema.
+    let result;
+    try {
+      result = await resp.json();
+    } catch (_) {
+      throw new Error(
+        resp.status === 429
+          ? 'Servidor sobrecarregado (muitas requisições). Aguarde ~30s e tente de novo.'
+          : `O servidor demorou demais para responder (RPC da Arc lento agora). Aguarde e tente de novo. [HTTP ${resp.status}]`
+      );
+    }
 
     if (!result.success) {
       throw new Error(result.error || 'Relayer error');

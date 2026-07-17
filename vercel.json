@@ -3,6 +3,10 @@
   "buildCommand": null,
   "outputDirectory": "frontend",
 
+  "functions": {
+    "api/*.js": { "maxDuration": 30 }
+  },
+
   "routes": [
     {
       "src": "/api/(.*)",

@@ -25,8 +25,11 @@ export const arcTestnet = {
 };
 
 // Transport resiliente: fallback entre vários RPCs + retry/backoff em cada um.
+// Timeouts curtos de propósito — ver nota em api/relay.js sobre o limite de
+// execução da função serverless da Vercel (evita "Unexpected token" no cliente
+// quando a Vercel mata a função por timeout e devolve HTML em vez de JSON).
 const arcTransport = () => fallback(
-  ARC_RPC_URLS.map((url) => http(url, { retryCount: 3, retryDelay: 1000, timeout: 20_000 })),
+  ARC_RPC_URLS.map((url) => http(url, { retryCount: 1, retryDelay: 400, timeout: 6_000 })),
   { rank: false }, // mantém a ordem da lista (não re-ranqueia por latência)
 );
 

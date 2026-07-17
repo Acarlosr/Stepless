@@ -227,8 +227,13 @@ export default async function handler(req, res) {
 
     const account = privateKeyToAccount(pk);
     // Resiliência: tenta vários RPCs em ordem (fallback) + retry/backoff em cada.
+    // Timeouts CURTOS de propósito: a função serverless da Vercel tem um limite
+    // de execução (10s no Hobby, configurável em vercel.json). Se o retry total
+    // ultrapassar esse limite, a Vercel mata a função e devolve uma página HTML
+    // de erro — o frontend recebe "Unexpected token" ao tentar parsear como
+    // JSON. Preferimos falhar rápido com uma mensagem JSON clara.
     const rpcTransport = () => fallback(
-      ARC_RPC_URLS.map((url) => http(url, { retryCount: 3, retryDelay: 1000, timeout: 20_000 })),
+      ARC_RPC_URLS.map((url) => http(url, { retryCount: 1, retryDelay: 400, timeout: 6_000 })),
       { rank: false },
     );
     const publicClient = createPublicClient({ chain: arcTestnet, transport: rpcTransport() });
