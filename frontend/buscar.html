@@ -347,6 +347,9 @@
         </div>
         <a href="dashboard.html" class="btn btn-primary btn-sm" data-i18n="register_new">+ Registrar novo local</a>
       </div>
+      <div id="radius-all-notice" class="hidden" style="margin:0 0 12px; padding:10px 14px; border-radius:8px; background:var(--bg-alt); border:1px solid var(--border); font-size:.85rem; color:var(--text-muted);" data-i18n="radius_all_notice">
+        ⚠️ Raio "Todos" selecionado: a lista abaixo mostra todos os locais cadastrados no sistema, não apenas os próximos da sua busca. Escolha um raio (ex: 5 km) para ver só o que está perto.
+      </div>
       <div class="results-grid" id="results-grid" role="list" aria-label="Locais acessíveis encontrados" data-i18n-aria-label="results_aria"></div>
     </div>
 
@@ -406,6 +409,7 @@
         empty_title: 'Nenhum local encontrado',
         empty_desc: 'Nenhum local acessível registrado nessa área ainda.',
         empty_cta: 'Seja o primeiro a mapear!',
+        radius_all_notice: '⚠️ Raio "Todos" selecionado: a lista abaixo mostra todos os locais cadastrados no sistema, não apenas os próximos da sua busca. Escolha um raio (ex: 5 km) para ver só o que está perto.',
         onchain_badge: 'On-chain',
         register_new: '+ Registrar novo local',
         results_aria: 'Locais acessíveis encontrados',
@@ -474,6 +478,7 @@
         empty_title: 'No places found',
         empty_desc: 'No accessible places have been registered in this area yet.',
         empty_cta: 'Be the first to map one!',
+        radius_all_notice: '⚠️ "All" radius selected: the list below shows every location registered in the system, not just the ones near your search. Pick a radius (e.g. 5 km) to see only nearby places.',
         onchain_badge: 'On-chain',
         register_new: '+ Register new place',
         results_aria: 'Accessible places found',
@@ -542,6 +547,7 @@
         empty_title: 'No se encontraron lugares',
         empty_desc: 'Todavía no hay lugares accesibles registrados en esta área.',
         empty_cta: '¡Sé el primero en mapear!',
+        radius_all_notice: '⚠️ Radio "Todos" seleccionado: la lista muestra todos los lugares registrados en el sistema, no solo los cercanos a tu búsqueda. Elige un radio (ej: 5 km) para ver solo lo cercano.',
         onchain_badge: 'On-chain',
         register_new: '+ Registrar nuevo lugar',
         results_aria: 'Lugares accesibles encontrados',
@@ -629,7 +635,14 @@
     const CATEGORY_ICONS = { 0:'♿', 1:'🛗', 2:'🚻', 3:'🅿️', 4:'🔔', 5:'🔊', 6:'✋', 7:'✨' };
     let CATEGORY_LABELS = {};
 
-    const publicClient = createPublicClient({ chain: ARC_CHAIN, transport: http() });
+    // A busca faz muitas leituras sequenciais (locationCount + allLocationHashes +
+    // getLocation por item + varredura de eventos), o que estoura o rate-limit do
+    // RPC público (429 "request limit reached"). retryCount/retryDelay repetem com
+    // backoff automático até o nó liberar, em vez de falhar de cara.
+    const publicClient = createPublicClient({
+      chain: ARC_CHAIN,
+      transport: http(undefined, { retryCount: 6, retryDelay: 1200, timeout: 20000 }),
+    });
 
     // ── Helpers ──────────────────────────────────────────
     function t(key, vars = {}) {
@@ -864,6 +877,14 @@
       showState('results');
       countEl.textContent =
         filtered.length === 1 ? t('result_count_one') : t('result_count_many', { count: filtered.length });
+
+      // Avisa quando o raio "Todos" está ativo junto com uma busca por endereço/GPS —
+      // sem isso, a lista mostra locais de qualquer cidade sem deixar claro que não
+      // foram filtrados por distância (ex: buscar "Paris" e ver locais do Brasil).
+      const radiusNotice = document.getElementById('radius-all-notice');
+      if (radiusNotice) {
+        radiusNotice.classList.toggle('hidden', !(userLat !== null && radiusKm >= 9999));
+      }
 
       grid.innerHTML = filtered.map(loc => {
         const distLabel = loc._dist != null

@@ -22,7 +22,7 @@ Quem tem qualquer dificuldade de locomoção conhece a cena: você quer sair, vi
 
 O Stepless ataca esse problema de um jeito simples: **paga as pessoas, em USDC, pra mapear e verificar locais acessíveis.** Cada contribuição vira um registro on-chain (coordenadas, categoria, foto). Com o tempo, isso forma um mapa aberto que prefeituras, apps de mobilidade e ONGs podem consumir. A recompensa é a ponta visível; por baixo, é um bem público que pode se sustentar por quem usa os dados.
 
-**De onde vem o dinheiro:** as recompensas saem de uma **tesouraria em USDC pré-financiada** no contrato RewardDistributor — não do bolso de novos usuários (nada de ponzinomics). Como é testnet, hoje a tesouraria é abastecida pelo **faucet de USDC da Circle** + fundos meus. A sustentabilidade de longo prazo vem da demanda: **receita da API x402** (quem consome os dados paga) e grants.
+**De onde vem o dinheiro:** as recompensas saem de uma **tesouraria em USDC pré-financiada** no contrato RewardDistributor — não do bolso de novos usuários (nada de ponzinomics). Como é testnet, hoje a tesouraria é abastecida pelo **faucet de USDC da Circle** + fundos meus. A sustentabilidade de longo prazo vem da demanda: **receita da API x402** — quem consome os dados (apps de mobilidade, cidades, empresas) paga, e isso realimenta a tesouraria.
 
 ## Para quem é
 
