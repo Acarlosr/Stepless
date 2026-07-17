@@ -11,8 +11,9 @@ import { privateKeyToAccount } from 'viem/accounts';
 // o viem cai para o próximo automaticamente. Configure ARC_RPC_URL na Vercel
 // para colocar um nó dedicado no topo da lista.
 const ARC_RPC_URLS = [
-  process.env.ARC_RPC_URL,
-  'https://rpc.testnet.arc.network',
+  process.env.ARC_RPC_URL, // Vercel: idealmente a URL da Alchemy
+  'https://arc-testnet.g.alchemy.com/v2/mWSIuYQGpJwP6Tz75vC47', // garantia no código
+  'https://rpc.testnet.arc.network', // fallback público
 ].filter(Boolean);
 
 // ─── Chain ───────────────────────────────────────────────────────────────────

@@ -17,10 +17,12 @@ const ARC_TESTNET = {
   name: "Arc Testnet",
   nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 }, // MetaMask exige 18; formatação real usa 6 decimais separadamente
   rpcUrls: {
-    // Nó oficial da Arc. Os proxies blockdaemon/drpc da doc devolvem 400 para
-    // requisição anônima, por isso não entram na lista de fallback.
-    default: { http: ["https://rpc.testnet.arc.network"] },
-    public: { http: ["https://rpc.testnet.arc.network"] },
+    // Alchemy (nó dedicado) PRIMEIRO — tira o navegador da fila do nó público
+    // lotado, que estava gerando 429 em massa. Oficial fica como fallback.
+    // Nota: a URL fica visível no site (app estático); aceitável p/ testnet —
+    // regenerar a key na Alchemy se necessário.
+    default: { http: ["https://arc-testnet.g.alchemy.com/v2/mWSIuYQGpJwP6Tz75vC47", "https://rpc.testnet.arc.network"] },
+    public: { http: ["https://arc-testnet.g.alchemy.com/v2/mWSIuYQGpJwP6Tz75vC47", "https://rpc.testnet.arc.network"] },
   },
   wsUrls: {
     default: { webSocket: ["wss://rpc.testnet.arc.network"] },
