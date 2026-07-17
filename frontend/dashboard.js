@@ -29,6 +29,10 @@ let leafletMap = null;
 let leafletMarkersLayer = null;
 let regPickerMap = null;      // mapa interativo do formulário (marcar local)
 let regPickerMarker = null;
+// Cache: a varredura de eventos do mapa (dezenas de getLogs) roda UMA vez por
+// sessão. Novos locais entram em tempo real pelo watcher de LocationRegistered,
+// então não é preciso re-varrer a cada refreshAll (evita tempestade de 429).
+let mapMarkersLoaded = false;
 
 /* ═══════════════════════════════════════════════════════════════
  *  Viem loading (CDN esm.sh)
@@ -180,14 +184,17 @@ async function _completeConnection(address, provider) {
 
   publicClient = viem.createPublicClient({
     chain: cfg.chain,
+    // pollingInterval alto: os "eventos em tempo real" usam watchContractEvent,
+    // que faz POLLING no RPC (não é WebSocket real). O padrão de 4s × 3 watchers
+    // martela o nó público e gera 429 em massa. 15s reduz isso em ~4x mantendo
+    // a sensação de tempo real aceitável para a demo.
+    pollingInterval: 15_000,
     // Resiliência: fallback entre vários RPCs + retry/backoff em cada endpoint.
-    // (Sem `batch`: os nós proxy da Arc — blockdaemon/drpc — devolvem 400 Bad
-    //  Request para o corpo JSON-RPC em array/batch.)
     transport: viem.fallback(
       ARC_RPC_URLS.map((url) => viem.http(url, {
-        retryCount: 3,
+        retryCount: 2,
         retryDelay: 800,
-        timeout: 20_000,
+        timeout: 12_000,
       })),
       { rank: false },
     ),
@@ -309,17 +316,18 @@ async function checkRelayerSetup() {
   if (!panel) return;
   try {
     const resp = await fetch('/api/setup');
-    if (!resp.ok) { panel.style.display = 'block'; return; }
-    const data = await resp.json();
-    // /api/setup não retorna um campo "isAuthorized" — o status real está em
-    // data.checks (um mapa de booleans). Antes disso o banner aparecia SEMPRE
-    // (data.isAuthorized era undefined pra qualquer visitante), mesmo com tudo
-    // já configurado, pedindo pra conectar uma wallet admin que ninguém além
-    // do dono do projeto tem.
+    // FAIL-SAFE: se a verificação falhar (429/500/HTML sob RPC saturado), NÃO
+    // mostra o aviso de "autorizar relayer". Clicar nele dispara escritas
+    // on-chain e, sob RPC lento, trava — e o relayer já está autorizado. Só
+    // mostramos o aviso quando conseguimos ler o status E algo está de fato
+    // faltando.
+    if (!resp.ok) { panel.style.display = 'none'; return; }
+    let data;
+    try { data = await resp.json(); } catch { panel.style.display = 'none'; return; }
     const allOk = data.checks && Object.values(data.checks).every(Boolean);
     panel.style.display = allOk ? 'none' : 'block';
   } catch (_) {
-    panel.style.display = 'block'; // mostra se não conseguir verificar
+    panel.style.display = 'none'; // falha de rede → não assusta com aviso falso
   }
 }
 
@@ -807,33 +815,45 @@ function addMapMarker({ lat, lng, name, categories, contributor, txHash }) {
   window.L.marker([lat, lng]).addTo(leafletMarkersLayer).bindPopup(popup);
 }
 
-async function loadMapMarkers() {
+async function loadMapMarkers(force = false) {
   if (!initLeafletMap()) return; // Leaflet ainda não carregou (script CDN) — refreshAll() tenta de novo depois
+  // Já varrido nesta sessão? Não re-varre (o watcher de LocationRegistered
+  // adiciona os novos pins em tempo real). Evita dezenas de getLogs por refresh.
+  if (mapMarkersLoaded && !force) return;
   leafletMarkersLayer.clearLayers();
 
   try {
     // Varre eventos em JANELAS de blocos (o RPC da Arc rejeita eth_getLogs de
-    // 0→latest com "unknown RPC error"). Mesmo padrão da página de busca:
-    // volta em janelas de 5000 blocos a partir de `latest` até o bloco de
-    // deploy do Oracle, acumulando os LocationRegistered.
+    // 0→latest com "unknown RPC error"). Volta em janelas a partir de `latest`.
+    // MAX_WINDOWS baixo de propósito: cobre os locais recentes (varridos
+    // primeiro) sem estourar o rate-limit do RPC público. Locais muito antigos
+    // aparecem pela página de Busca, que varre mais fundo sob demanda.
     const latest = await publicClient.getBlockNumber();
     const DEPLOY_BLOCK = 49700000n; // Oracle v3 deployado ~bloco 49.72M
     const WINDOW = 5000n;
-    const MAX_WINDOWS = 60;
+    const MAX_WINDOWS = 12;
     const logs = [];
     let to = latest;
     for (let w = 0; w < MAX_WINDOWS && to > DEPLOY_BLOCK; w++) {
       const from = to - WINDOW + 1n > DEPLOY_BLOCK ? to - WINDOW + 1n : DEPLOY_BLOCK;
-      const chunk = await publicClient.getContractEvents({
-        address: cfg.contracts.SteplessOracle,
-        abi: cfg.abis.SteplessOracle,
-        eventName: 'LocationRegistered',
-        fromBlock: from,
-        toBlock: to,
-      });
+      let chunk = [];
+      try {
+        chunk = await publicClient.getContractEvents({
+          address: cfg.contracts.SteplessOracle,
+          abi: cfg.abis.SteplessOracle,
+          eventName: 'LocationRegistered',
+          fromBlock: from,
+          toBlock: to,
+        });
+      } catch (winErr) {
+        // Uma janela falhou (429/timeout) — segue com as demais em vez de
+        // descartar tudo e deixar o mapa em branco.
+        console.warn('[map] janela de blocos falhou, continuando:', winErr?.shortMessage || winErr?.message);
+      }
       logs.push(...chunk);
       to = from - 1n;
     }
+    mapMarkersLoaded = true; // marca como carregado mesmo se parcial
 
     const hint = document.getElementById('map-empty-hint');
     if (logs.length === 0) {
