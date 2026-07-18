@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  FOUNDRY_PROFILE: ci
-
 jobs:
   # ─────────────────────────────────────────────
   # Job 1: Solidity compile + test (Foundry)
@@ -26,6 +23,10 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
+
+      - name: Install Solidity dependencies
+        working-directory: contracts
+        run: forge install foundry-rs/forge-std --no-git
 
       - name: Cache Foundry
         uses: actions/cache@v4
