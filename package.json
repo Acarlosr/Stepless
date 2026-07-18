@@ -1,13 +1,19 @@
 {
-  "name": "stepless",
-  "version": "1.0.0",
-  "type": "module",
-  "description": "Stepless — Decentralized accessibility mapping on Arc Testnet",
-  "dependencies": {
-    "viem": "^2.21.0",
-    "exifr": "^7.1.3"
-  },
-  "engines": {
-    "node": ">=18"
-  }
+    "name":  "stepless",
+    "version":  "1.0.0",
+    "type":  "module",
+    "description":  "Stepless — Decentralized accessibility mapping on Arc Testnet",
+    "scripts":  {
+                    "test":  "node --test",
+                    "check":  "node --check api/_stepless.js \u0026\u0026 node --check api/rpc.js \u0026\u0026 node --check api/relay.js \u0026\u0026 node --check frontend/dashboard.js \u0026\u0026 node scripts/sync-distributor-bytecode.mjs --check",
+                    "sync:bytecode":  "node scripts/sync-distributor-bytecode.mjs",
+                    "preview":  "node scripts/preview.mjs"
+                },
+    "dependencies":  {
+                         "viem":  "^2.21.0",
+                         "exifr":  "^7.1.3"
+                     },
+    "engines":  {
+                    "node":  "\u003e=18"
+                }
 }

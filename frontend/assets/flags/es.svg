@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 24" role="img" aria-label="España">
+  <rect width="36" height="24" rx="2" fill="#aa151b"/>
+  <path d="M0 6h36v12H0Z" fill="#f1bf00"/>
+  <g transform="translate(9 9)"><rect x="0" y="1" width="3" height="5" rx=".5" fill="#aa151b"/><path d="M-.6 0h4.2v1H-.6Z" fill="#aa151b"/><path d="M.6 6h1.8v1H.6Z" fill="#aa151b"/></g>
+</svg>

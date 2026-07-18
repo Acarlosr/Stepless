@@ -14,7 +14,7 @@
 import {
   publicClient, walletFor, relayerAccount, verifierAccount,
   oracleAddress, distributorAddress, ORACLE_ABI, DISTRIBUTOR_ABI,
-  REWARD_TYPE, store, contribKey, PENDING_LIST_KEY, cors, clientIp, translateError,
+  REWARD_TYPE, store, contribKey, PENDING_LIST_KEY, cors, clientIp, translateError, requireAdminSecret,
 } from './_stepless.js';
 
 export default async function handler(req, res) {
@@ -26,10 +26,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Relayer/Oracle não configurados no Vercel.' });
   }
 
-  // Proteção opcional do endpoint
-  if (process.env.VERIFY_SECRET && req.headers['x-verify-secret'] !== process.env.VERIFY_SECRET) {
-    return res.status(401).json({ success: false, error: 'X-Verify-Secret inválido.' });
-  }
+  if (!requireAdminSecret(req, res)) return;
 
   if (!(await store.rateLimit(`verify:${clientIp(req)}`, 10, 60))) {
     return res.status(429).json({ success: false, error: 'Muitas requisições. Aguarde um minuto.' });

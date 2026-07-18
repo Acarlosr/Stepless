@@ -39,10 +39,15 @@ jobs:
             foundry-${{ runner.os }}-
 
       - name: Compile contracts
+        working-directory: contracts
         run: forge build
 
       - name: Run tests
+        working-directory: contracts
         run: forge test -vvv
+
+      - name: Verify deployment bytecode is current
+        run: node scripts/sync-distributor-bytecode.mjs --check
 
       - name: Upload coverage
         if: always()

@@ -17,12 +17,10 @@ const ARC_TESTNET = {
   name: "Arc Testnet",
   nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 }, // MetaMask exige 18; formatação real usa 6 decimais separadamente
   rpcUrls: {
-    // Alchemy (nó dedicado) PRIMEIRO — tira o navegador da fila do nó público
-    // lotado, que estava gerando 429 em massa. Oficial fica como fallback.
-    // Nota: a URL fica visível no site (app estático); aceitável p/ testnet —
-    // regenerar a key na Alchemy se necessário.
-    default: { http: ["https://arc-testnet.g.alchemy.com/v2/mWSIuYQGpJwP6Tz75vC47", "https://rpc.testnet.arc.network"] },
-    public: { http: ["https://arc-testnet.g.alchemy.com/v2/mWSIuYQGpJwP6Tz75vC47", "https://rpc.testnet.arc.network"] },
+    // O nó dedicado fica atrás do proxy serverless; a credencial não é
+    // publicada no JavaScript. O nó oficial continua como fallback.
+    default: { http: [`${window.location.origin}/api/rpc`, "https://rpc.testnet.arc.network"] },
+    public: { http: [`${window.location.origin}/api/rpc`, "https://rpc.testnet.arc.network"] },
   },
   wsUrls: {
     default: { webSocket: ["wss://rpc.testnet.arc.network"] },

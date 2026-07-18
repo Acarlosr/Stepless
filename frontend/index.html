@@ -40,11 +40,11 @@
           <li><a href="buscar.html" data-i18n="nav_search">🔍 Buscar</a></li>
           <li><a href="dashboard.html" data-i18n="nav_dashboard">Dashboard</a></li>
         </ul>
-        <select class="lang-select" id="lang-select" aria-label="Selecionar idioma">
-          <option value="pt">PT/BR</option>
-          <option value="en">EN</option>
-          <option value="es">ES</option>
-        </select>
+        <div class="lang-selector" role="group" aria-label="Selecionar idioma">
+          <button type="button" class="lang-btn" data-lang="pt" aria-label="Português do Brasil" title="Português do Brasil" aria-pressed="false"><img src="assets/flags/br.svg" alt="" aria-hidden="true"></button>
+          <button type="button" class="lang-btn" data-lang="en" aria-label="English" title="English" aria-pressed="false"><img src="assets/flags/us.svg" alt="" aria-hidden="true"></button>
+          <button type="button" class="lang-btn" data-lang="es" aria-label="Español" title="Español" aria-pressed="false"><img src="assets/flags/es.svg" alt="" aria-hidden="true"></button>
+        </div>
         <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Dark mode">
           <span id="theme-icon">🌙</span>
         </button>
@@ -114,19 +114,43 @@
           </svg>
         </div>
 
+        <p class="hero-eyebrow" data-i18n="hero_eyebrow">Acessibilidade para sua vida real</p>
         <h1 class="hero-title" id="hero-title" data-i18n="hero_title">
-          Acessibilidade descentralizada para todos
+          Encontre lugares onde você pode entrar, circular e ser atendido com autonomia
         </h1>
         <p class="hero-subtitle" data-i18n="hero_subtitle">
-          Stepless é uma infraestrutura de mapeamento de acessibilidade na Arc Testnet,
-          onde contribuidores são recompensados em USDC por mapear e verificar locais acessíveis.
+          Consulte rampas, elevadores, banheiros acessíveis, vagas PCD e outros recursos antes de sair de casa.
         </p>
-        <div class="hero-actions">
-          <a href="dashboard.html" class="btn btn-primary btn-lg" data-i18n="hero_cta_dashboard">Abrir Dashboard</a>
+
+        <form class="accessible-search" action="buscar.html" method="get" role="search">
+          <label for="home-accessible-search" data-i18n="home_search_label">Onde você quer ir?</label>
+          <div class="accessible-search-row">
+            <input id="home-accessible-search" name="q" type="search" autocomplete="street-address"
+                   placeholder="Digite um local, endereço, bairro ou cidade"
+                   data-i18n-placeholder="home_search_placeholder" />
+            <button type="submit" class="btn btn-primary" data-i18n="home_search_button">Buscar locais acessíveis</button>
+          </div>
+        </form>
+
+        <div class="accessibility-highlights" aria-label="Recursos de acessibilidade disponíveis">
+          <span>♿ <span data-i18n="highlight_ramp">Entrada e rampa</span></span>
+          <span>🛗 <span data-i18n="highlight_elevator">Elevador</span></span>
+          <span>🚻 <span data-i18n="highlight_restroom">Banheiro acessível</span></span>
+          <span>🅿️ <span data-i18n="highlight_parking">Vaga PCD</span></span>
+          <span>✋ <span data-i18n="highlight_braille">Braille e piso tátil</span></span>
+        </div>
+
+        <div class="hero-actions hero-actions-secondary">
+          <a href="buscar.html" class="btn btn-secondary btn-lg" data-i18n="hero_cta_search">Ver todos os locais</a>
+          <a href="dashboard.html" class="btn btn-secondary btn-lg" data-i18n="hero_cta_contribute">Contribuir com o mapa</a>
           <a href="https://github.com/Acarlosr/Stepless/releases/download/v1.0.0/stepless-v1.0.0.apk"
-             target="_blank" rel="noopener" class="btn btn-primary btn-lg" id="download-apk-btn"
-             data-i18n="hero_cta_download">📱 Baixar App Android (APK)</a>
-          <a href="#how" class="btn btn-secondary btn-lg" data-i18n="hero_cta_learn">Saiba Como Funciona</a>
+             target="_blank" rel="noopener" class="btn btn-secondary btn-lg" id="download-apk-btn"
+             data-i18n="hero_cta_download">Baixar aplicativo Android</a>
+        </div>
+        <div class="hero-arc-badge">
+          <span data-i18n="built_on_arc">Built on</span>
+          <img class="arc-logo-light" src="assets/arc/Arc_Logo_Navy.svg" alt="Arc" />
+          <img class="arc-logo-dark" src="assets/arc/Arc_Logo_White.svg" alt="Arc" />
         </div>
         <p style="margin-top:0.75rem; font-size:0.85rem; color:var(--text-light); max-width:560px;"
            data-i18n="download_security_note">
@@ -351,7 +375,11 @@
         <a href="dashboard.html" data-i18n="footer_dashboard">Dashboard</a>
       </div>
       <p data-i18n="footer_text">Stepless — Infraestrutura de acessibilidade descentralizada na Arc Testnet. Open-source, sem tokens de governança, recompensas em USDC.</p>
-      <p class="mt-1" style="font-size:0.8rem; color:var(--text-light);" data-i18n="footer_disclaimer">Projeto para Circle Developer Grants. Não é aconselhamento financeiro.</p>
+      <div class="arc-badge mt-1">
+        <span data-i18n="built_on_arc">Built on</span>
+        <img class="arc-logo-light" src="assets/arc/Arc_Icon_Navy.svg" alt="Arc" />
+        <img class="arc-logo-dark" src="assets/arc/Arc_Icon_White.svg" alt="Arc" />
+      </div>
     </div>
   </footer>
 
@@ -374,9 +402,9 @@
         nav_problem: "Problema", nav_solution: "Solução", nav_how: "Como Funciona",
         nav_rewards: "Recompensas", nav_tech: "Tecnologia", nav_roadmap: "Roadmap",
         nav_search: "Busca", nav_dashboard: "Dashboard", connect_wallet: "Conectar Wallet", disconnect_wallet: "Desconectar",
-        hero_title: "Acessibilidade descentralizada para todos",
-        hero_subtitle: "Stepless é uma infraestrutura de mapeamento de acessibilidade na Arc Testnet, onde contribuidores são recompensados em USDC por mapear e verificar locais acessíveis.",
-        hero_cta_dashboard: "Abrir Dashboard", hero_cta_learn: "Saiba Como Funciona",
+        hero_eyebrow: "Acessibilidade para sua vida real", hero_title: "Encontre lugares onde você pode entrar, circular e ser atendido com autonomia",
+        hero_subtitle: "Consulte rampas, elevadores, banheiros acessíveis, vagas PCD e outros recursos antes de sair de casa.", home_search_label: "Onde você quer ir?", home_search_placeholder: "Digite um local, endereço, bairro ou cidade", home_search_button: "Buscar locais acessíveis", highlight_ramp: "Entrada e rampa", highlight_elevator: "Elevador", highlight_restroom: "Banheiro acessível", highlight_parking: "Vaga PCD", highlight_braille: "Braille e piso tátil", hero_cta_search: "Ver todos os locais", hero_cta_contribute: "Contribuir com o mapa",
+        hero_cta_dashboard: "Abrir Dashboard", hero_cta_learn: "Saiba Como Funciona", built_on_arc: "Built on",
         hero_cta_download: "\ud83d\udcf1 Baixar App Android (APK)",
         download_security_note: "\u26a0\ufe0f Ao instalar, o Android (Play Protect) pode exibir um aviso por o app n\u00e3o vir da Play Store. Toque em \"Mais detalhes\" \u2192 \"Instalar mesmo assim\" e, se aparecer a op\u00e7\u00e3o de an\u00e1lise de seguran\u00e7a, desmarque o envio e marque o app como confi\u00e1vel. O APK \u00e9 o app oficial do Stepless (Arc Testnet).",
         problem_title: "O Problema",
@@ -410,7 +438,6 @@
         contrib_3_title: "Verificadores", contrib_3_desc: "Torne-se um verificador aprovado para validar contribuições e ganhar recompensas adicionais.", contrib_3_btn: "Saber Mais",
         footer_explorer: "ArcScan", footer_faucet: "Faucet", footer_github: "GitHub", footer_dashboard: "Dashboard",
         footer_text: "Stepless — Infraestrutura de acessibilidade descentralizada na Arc Testnet. Open-source, sem tokens de governança, recompensas em USDC.",
-        footer_disclaimer: "Projeto para Circle Developer Grants. Não é aconselhamento financeiro.",
         wallet_connected: "Conectado", wallet_disconnected: "Desconectado", wallet_connecting: "Conectando...",
         wallet_no_provider: "Nenhuma wallet detectada. Instale MetaMask ou outra wallet compatível.",
         wallet_wrong_chain: "Rede incorreta. Conecte-se à Arc Testnet (Chain ID: 5042002).",
@@ -423,9 +450,9 @@
         nav_problem: "Problem", nav_solution: "Solution", nav_how: "How It Works",
         nav_rewards: "Rewards", nav_tech: "Tech", nav_roadmap: "Roadmap",
         nav_search: "Search", nav_dashboard: "Dashboard", connect_wallet: "Connect Wallet", disconnect_wallet: "Disconnect",
-        hero_title: "Decentralized accessibility for everyone",
-        hero_subtitle: "Stepless is an accessibility mapping infrastructure on Arc Testnet, where contributors are rewarded in USDC for mapping and verifying accessible locations.",
-        hero_cta_dashboard: "Open Dashboard", hero_cta_learn: "Learn How It Works",
+        hero_eyebrow: "Accessibility for real life", hero_title: "Find places where you can enter, move around, and be served independently",
+        hero_subtitle: "Check ramps, elevators, accessible restrooms, disabled parking, and other features before leaving home.", home_search_label: "Where do you want to go?", home_search_placeholder: "Enter a place, address, neighborhood, or city", home_search_button: "Find accessible places", highlight_ramp: "Entrance and ramp", highlight_elevator: "Elevator", highlight_restroom: "Accessible restroom", highlight_parking: "Disabled parking", highlight_braille: "Braille and tactile paving", hero_cta_search: "View all places", hero_cta_contribute: "Contribute to the map",
+        hero_cta_dashboard: "Open Dashboard", hero_cta_learn: "Learn How It Works", built_on_arc: "Built on",
         hero_cta_download: "\ud83d\udcf1 Download Android App (APK)",
         download_security_note: "\u26a0\ufe0f When installing, Android (Play Protect) may warn you because the app is not from the Play Store. Tap \"More details\" \u2192 \"Install anyway\" and, if a security-scan option appears, opt out and mark the app as trusted. The APK is the official Stepless app (Arc Testnet).",
         problem_title: "The Problem",
@@ -459,7 +486,6 @@
         contrib_3_title: "Verifiers", contrib_3_desc: "Become an approved verifier to validate contributions and earn additional rewards.", contrib_3_btn: "Learn More",
         footer_explorer: "ArcScan", footer_faucet: "Faucet", footer_github: "GitHub", footer_dashboard: "Dashboard",
         footer_text: "Stepless — Decentralized accessibility infrastructure on Arc Testnet. Open-source, no governance tokens, rewards in USDC.",
-        footer_disclaimer: "Project for Circle Developer Grants. Not financial advice.",
         wallet_connected: "Connected", wallet_disconnected: "Disconnected", wallet_connecting: "Connecting...",
         wallet_no_provider: "No wallet detected. Install MetaMask or another compatible wallet.",
         wallet_wrong_chain: "Wrong network. Connect to Arc Testnet (Chain ID: 5042002).",
@@ -472,9 +498,9 @@
         nav_problem: "Problema", nav_solution: "Solución", nav_how: "Cómo Funciona",
         nav_rewards: "Recompensas", nav_tech: "Tecnología", nav_roadmap: "Roadmap",
         nav_search: "Buscar", nav_dashboard: "Dashboard", connect_wallet: "Conectar Wallet", disconnect_wallet: "Desconectar",
-        hero_title: "Accesibilidad descentralizada para todos",
-        hero_subtitle: "Stepless es una infraestructura de mapeo de accesibilidad en Arc Testnet, donde los contribuidores son recompensados en USDC por mapear y verificar lugares accesibles.",
-        hero_cta_dashboard: "Abrir Dashboard", hero_cta_learn: "Cómo Funciona",
+        hero_eyebrow: "Accesibilidad para la vida real", hero_title: "Encuentra lugares donde puedas entrar, desplazarte y ser atendido con autonomía",
+        hero_subtitle: "Consulta rampas, ascensores, baños accesibles, estacionamiento PCD y otros recursos antes de salir de casa.", home_search_label: "¿A dónde quieres ir?", home_search_placeholder: "Escribe un lugar, dirección, barrio o ciudad", home_search_button: "Buscar lugares accesibles", highlight_ramp: "Entrada y rampa", highlight_elevator: "Ascensor", highlight_restroom: "Baño accesible", highlight_parking: "Estacionamiento PCD", highlight_braille: "Braille y pavimento táctil", hero_cta_search: "Ver todos los lugares", hero_cta_contribute: "Contribuir al mapa",
+        hero_cta_dashboard: "Abrir Dashboard", hero_cta_learn: "Cómo Funciona", built_on_arc: "Built on",
         hero_cta_download: "📱 Descargar App Android (APK)",
         download_security_note: "⚠️ Al instalar, Android (Play Protect) puede mostrar una advertencia porque la app no viene de Play Store. Toca \"Más detalles\" → \"Instalar de todos modos\" y, si aparece la opción de análisis de seguridad, desmárcala y marca la app como confiable. El APK es la app oficial de Stepless (Arc Testnet).",
         problem_title: "El Problema",
@@ -508,7 +534,6 @@
         contrib_3_title: "Verificadores", contrib_3_desc: "Conviértete en verificador aprobado para validar contribuciones y ganar recompensas adicionales.", contrib_3_btn: "Saber Más",
         footer_explorer: "ArcScan", footer_faucet: "Faucet", footer_github: "GitHub", footer_dashboard: "Dashboard",
         footer_text: "Stepless — Infraestructura de accesibilidad descentralizada en Arc Testnet. Open-source, sin tokens de gobernanza, recompensas en USDC.",
-        footer_disclaimer: "Proyecto para Circle Developer Grants. No es asesoramiento financiero.",
         wallet_connected: "Conectado", wallet_disconnected: "Desconectado", wallet_connecting: "Conectando...",
         wallet_no_provider: "No se detectó wallet. Instala MetaMask u otra wallet compatible.",
         wallet_wrong_chain: "Red incorrecta. Conéctate a Arc Testnet (Chain ID: 5042002).",
@@ -540,8 +565,15 @@
         const key = el.getAttribute('data-i18n');
         if (strings[key]) el.textContent = strings[key];
       });
-      const langSel = document.getElementById('lang-select');
-      if (langSel) langSel.value = lang;
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (strings[key]) el.setAttribute('placeholder', strings[key]);
+      });
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        const active = btn.dataset.lang === lang;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-pressed', String(active));
+      });
       renderRewardTable();
     }
 
@@ -554,7 +586,7 @@
         { tier: 0, label: strings.reward_basic, amount: '0.10', desc: strings.reward_basic_desc },
         { tier: 1, label: strings.reward_standard, amount: '0.05', desc: strings.reward_standard_desc },
         { tier: 2, label: strings.reward_premium, amount: '0.02', desc: strings.reward_premium_desc },
-        { tier: 3, label: strings.reward_critical, amount: '5.00', desc: strings.reward_critical_desc },
+        { tier: 3, label: strings.reward_critical, amount: '1.00', desc: strings.reward_critical_desc },
       ];
       tbody.innerHTML = tiers.map(t => `
         <tr>
@@ -718,8 +750,9 @@
       document.getElementById('connect-wallet-btn').addEventListener('click', connectWallet);
       document.getElementById('disconnect-wallet-btn').addEventListener('click', disconnectWallet);
 
-      const ls = document.getElementById('lang-select');
-      if (ls) ls.addEventListener('change', e => setLanguage(e.target.value));
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
+      });
 
       tryAutoConnectWallet();
     });

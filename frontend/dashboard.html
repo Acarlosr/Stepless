@@ -39,11 +39,11 @@
           <li><a href="#verify" data-i18n="nav_verify">Verificar</a></li>
           <li><a href="index.html" data-i18n="nav_home">Início</a></li>
         </ul>
-        <select class="lang-select" id="lang-select" aria-label="Selecionar idioma">
-          <option value="pt">PT/BR</option>
-          <option value="en">EN</option>
-          <option value="es">ES</option>
-        </select>
+        <div class="lang-selector" role="group" aria-label="Selecionar idioma">
+          <button type="button" class="lang-btn" data-lang="pt" aria-label="Português do Brasil" title="Português do Brasil" aria-pressed="false"><img src="assets/flags/br.svg" alt="" aria-hidden="true"></button>
+          <button type="button" class="lang-btn" data-lang="en" aria-label="English" title="English" aria-pressed="false"><img src="assets/flags/us.svg" alt="" aria-hidden="true"></button>
+          <button type="button" class="lang-btn" data-lang="es" aria-label="Español" title="Español" aria-pressed="false"><img src="assets/flags/es.svg" alt="" aria-hidden="true"></button>
+        </div>
         <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Dark mode">
           <span id="theme-icon">🌙</span>
         </button>
@@ -313,6 +313,11 @@
         <a href="index.html" data-i18n="footer_home">Início</a>
       </div>
       <p data-i18n="footer_text">Stepless Dashboard — Arc Testnet. Recompensas em USDC.</p>
+      <div class="arc-badge mt-1">
+        <span data-i18n="built_on_arc">Built on</span>
+        <img class="arc-logo-light" src="assets/arc/Arc_Icon_Navy.svg" alt="Arc" />
+        <img class="arc-logo-dark" src="assets/arc/Arc_Icon_White.svg" alt="Arc" />
+      </div>
     </div>
   </footer>
 
@@ -358,7 +363,7 @@
         rewards_col_tx:"Transação", rewards_col_amount:"Valor (USDC)", rewards_col_tier:"Nível", rewards_col_contrib:"Contribuição", rewards_col_time:"Data/Hora",
         rewards_empty:"Carregando recompensas...",
         footer_explorer:"ArcScan", footer_faucet:"Faucet", footer_home:"Início",
-        footer_text:"Stepless Dashboard — Arc Testnet. Recompensas em USDC.",
+        footer_text:"Stepless Dashboard — Arc Testnet. Recompensas em USDC.", built_on_arc:"Built on",
         cat_ramp:"Rampa", cat_elevator:"Elevador", cat_restroom:"Banheiro Acessível", cat_parking:"Vaga PCD", cat_signage:"Sinalização", cat_audio:"Áudio Descrição", cat_braille:"Braile", cat_other:"Outro",
         err_no_wallet:"Nenhuma wallet detectada. Instale MetaMask ou outra wallet compatível.",
         err_wrong_chain:"Rede incorreta. Conecte-se à Arc Testnet (Chain ID: 5042002).",
@@ -402,7 +407,7 @@
         rewards_col_tx:"Transaction", rewards_col_amount:"Amount (USDC)", rewards_col_tier:"Tier", rewards_col_contrib:"Contribution", rewards_col_time:"Date/Time",
         rewards_empty:"Loading rewards...",
         footer_explorer:"ArcScan", footer_faucet:"Faucet", footer_home:"Home",
-        footer_text:"Stepless Dashboard — Arc Testnet. Rewards in USDC.",
+        footer_text:"Stepless Dashboard — Arc Testnet. Rewards in USDC.", built_on_arc:"Built on",
         cat_ramp:"Ramp", cat_elevator:"Elevator", cat_restroom:"Accessible Restroom", cat_parking:"Accessible Parking", cat_signage:"Signage", cat_audio:"Audio Description", cat_braille:"Braille", cat_other:"Other",
         err_no_wallet:"No wallet detected. Install MetaMask or another compatible wallet.",
         err_wrong_chain:"Wrong network. Connect to Arc Testnet (Chain ID: 5042002).",
@@ -438,7 +443,7 @@
         rewards_col_tx:"Transacción", rewards_col_amount:"Valor (USDC)", rewards_col_tier:"Nivel", rewards_col_contrib:"Contribución", rewards_col_time:"Fecha/Hora",
         rewards_empty:"Cargando recompensas...",
         footer_explorer:"ArcScan", footer_faucet:"Faucet", footer_home:"Inicio",
-        footer_text:"Stepless Dashboard — Arc Testnet. Recompensas en USDC.",
+        footer_text:"Stepless Dashboard — Arc Testnet. Recompensas en USDC.", built_on_arc:"Built on",
         cat_ramp:"Rampa", cat_elevator:"Ascensor", cat_restroom:"Baño Accesible", cat_parking:"Estacionamiento Accesible", cat_signage:"Señalización", cat_audio:"Audiodescripción", cat_braille:"Braille", cat_other:"Otro",
         err_no_wallet:"No se detectó wallet. Instala MetaMask u otra wallet compatible.",
         err_wrong_chain:"Red incorrecta. Conéctate a Arc Testnet (Chain ID: 5042002).",
@@ -473,8 +478,11 @@
         const key = el.getAttribute('data-i18n');
         if (strings[key]) el.textContent = strings[key];
       });
-      const langSel = document.getElementById('lang-select');
-      if (langSel) langSel.value = lang;
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        const active = btn.dataset.lang === lang;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-pressed', String(active));
+      });
       // Populate category checkboxes (multi-select — a location can have several features)
       const catGroup = document.getElementById('reg-category-group');
       if (catGroup) {
@@ -541,8 +549,9 @@
       initNav();
       setLanguage(detectLanguage());
       document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
-      const ls = document.getElementById('lang-select');
-      if (ls) ls.addEventListener('change', e => setLanguage(e.target.value));
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
+      });
       // Connect wallet buttons
       document.getElementById('connect-wallet-btn').addEventListener('click', () => window.SteplessDashboard?.connect());
       document.getElementById('connect-wallet-btn-large').addEventListener('click', () => window.SteplessDashboard?.connect());

@@ -3,6 +3,7 @@
  * (Prefixo "_" impede a Vercel de expor este arquivo como endpoint.)
  */
 
+import { timingSafeEqual } from 'node:crypto';
 import { createWalletClient, createPublicClient, http, fallback, getAddress, keccak256, toBytes } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
@@ -12,7 +13,6 @@ import { privateKeyToAccount } from 'viem/accounts';
 // para colocar um nó dedicado no topo da lista.
 const ARC_RPC_URLS = [
   process.env.ARC_RPC_URL, // Vercel: idealmente a URL da Alchemy
-  'https://arc-testnet.g.alchemy.com/v2/mWSIuYQGpJwP6Tz75vC47', // garantia no código
   'https://rpc.testnet.arc.network', // fallback público
 ].filter(Boolean);
 
@@ -181,16 +181,17 @@ export const store = {
     return mem.list.slice(0, limit);
   },
   /** Rate limit: retorna true se DENTRO do limite. */
-  async rateLimit(id, limit, windowSec) {
+  async rateLimit(id, limit, windowSec, cost = 1) {
+    if (!Number.isSafeInteger(cost) || cost < 1) return false;
     const key = `stepless:rl:${id}:${Math.floor(Date.now() / (windowSec * 1000))}`;
     try {
-      const n = await redis(['INCR', key]);
+      const n = await redis(['INCRBY', key, String(cost)]);
       if (n !== null && n !== undefined) {
         if (n === 1) await redis(['EXPIRE', key, String(windowSec)]).catch(() => {});
         return n <= limit;
       }
     } catch (_) {}
-    const cur = (mem.kv.get(key) || 0) + 1;
+    const cur = (mem.kv.get(key) || 0) + cost;
     mem.kv.set(key, cur);
     setTimeout(() => mem.kv.delete(key), windowSec * 1000).unref?.();
     return cur <= limit;
@@ -204,7 +205,31 @@ export const contribKey = (id) => `stepless:contrib:${id.toLowerCase()}`;
 export function cors(res, methods = 'POST, OPTIONS') {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', methods);
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Verify-Secret');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Secret, X-Verify-Secret, X-Rotate-Secret');
+}
+
+function secretsEqual(actual, expected) {
+  if (typeof actual !== 'string' || typeof expected !== 'string') return false;
+  const actualBuffer = Buffer.from(actual);
+  const expectedBuffer = Buffer.from(expected);
+  return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer);
+}
+
+/** Bloqueia mutações administrativas quando não há segredo server-side. */
+export function requireAdminSecret(req, res, options = {}) {
+  const envNames = options.envNames || ['ADMIN_API_SECRET', 'VERIFY_SECRET'];
+  const headerNames = options.headerNames || ['x-admin-secret', 'x-verify-secret'];
+  const expected = envNames.map((name) => process.env[name]).find(Boolean);
+  if (!expected) {
+    res.status(503).json({ success: false, error: `Endpoint administrativo desativado: configure ${envNames[0]} no servidor.` });
+    return false;
+  }
+  const actual = headerNames.map((name) => req.headers?.[name]).find((value) => typeof value === 'string');
+  if (!secretsEqual(actual, expected)) {
+    res.status(401).json({ success: false, error: 'Credencial administrativa inválida.' });
+    return false;
+  }
+  return true;
 }
 
 export function clientIp(req) {

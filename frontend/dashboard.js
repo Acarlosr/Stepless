@@ -310,6 +310,11 @@ async function disconnect() {
 
 const RELAYER_ADDRESS = '0xd299358Db4e263d95Fdc0B72970373470921c53A'; // relayer atual (verificado no ArcScan em 2026-07-06 — autorizado pelo admin 0xbc8aE412... às 19:56); admin continua sendo 0xbc8aE412f4F6aFA21aDf4A18DEfFabbFB21304aE
 
+function requestAdminSecret() {
+  const secret = window.prompt('Informe a credencial administrativa para confirmar esta operação:');
+  return secret?.trim() || null;
+}
+
 // Verifica se relayer está autorizado e mostra banner de setup se não estiver
 async function checkRelayerSetup() {
   const panel = document.getElementById('admin-setup-panel');
@@ -338,7 +343,13 @@ window.setupRelayer = async function() {
   if (btn) btn.disabled = true;
   if (status) status.textContent = 'Autorizando...';
   try {
-    const resp = await fetch('/api/setup', { method: 'POST' });
+    const adminSecret = requestAdminSecret();
+    if (!adminSecret) {
+      if (status) status.textContent = 'Operação cancelada.';
+      if (btn) btn.disabled = false;
+      return;
+    }
+    const resp = await fetch('/api/setup', { method: 'POST', headers: { 'X-Admin-Secret': adminSecret } });
     const data = await resp.json();
     if (data.success) {
       if (status) status.textContent = '✅ Autorizado! Pode registrar locais agora.';
@@ -536,14 +547,12 @@ async function checkVerifierStatus() {
     const denied = document.getElementById('verify-access-denied');
     const content = document.getElementById('verify-content');
 
-    // A verificação on-chain agora é feita pela chave verificadora do backend
-    // (/api/verify) — o painel fica visível para qualquer wallet conectada.
-    // O badge continua indicando se a wallet conectada é verificadora on-chain.
-    denied?.classList.add('hidden');
-    content?.classList.remove('hidden');
-    if (isVerifier) badge?.classList.remove('hidden');
-    else badge?.classList.add('hidden');
-    await loadPendingContributions();
+    // Somente wallets verificadoras podem acessar o painel. O backend ainda
+    // exige uma credencial administrativa para executar a mutação.
+    denied?.classList.toggle('hidden', Boolean(isVerifier));
+    content?.classList.toggle('hidden', !isVerifier);
+    badge?.classList.toggle('hidden', !isVerifier);
+    if (isVerifier) await loadPendingContributions();
   } catch (err) {
     console.error('Verifier check error:', err);
   }
@@ -1033,12 +1042,14 @@ async function handleVerify(approved, idFromTable) {
   }
 
   try {
+    const adminSecret = requestAdminSecret();
+    if (!adminSecret) return;
     // Verificação + pagamento acontecem no backend (/api/verify):
     // a chave verificadora aprova on-chain e o relayer paga o USDC
     // direto para a wallet do contribuidor real.
     const resp = await fetch('/api/verify', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': adminSecret },
       body: JSON.stringify({ contributionId, approve: approved, reason: approved ? '' : 'Rejeitado pelo verificador' }),
     });
     const result = await resp.json();

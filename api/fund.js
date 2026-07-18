@@ -7,7 +7,7 @@
  *                             relayer para o RewardDistributor
  */
 
-import { publicClient, walletFor, relayerAccount, distributorAddress, cors, translateError } from './_stepless.js';
+import { publicClient, walletFor, relayerAccount, distributorAddress, cors, translateError, requireAdminSecret } from './_stepless.js';
 
 const USDC_ERC20 = '0x3600000000000000000000000000000000000000';
 const ERC20_ABI = [
@@ -24,9 +24,8 @@ export default async function handler(req, res) {
   if (!process.env.RELAYER_PRIVATE_KEY) {
     return res.status(500).json({ success: false, error: 'Relayer não configurado.' });
   }
-  if (process.env.VERIFY_SECRET && req.method === 'POST' && req.headers['x-verify-secret'] !== process.env.VERIFY_SECRET) {
-    return res.status(401).json({ success: false, error: 'X-Verify-Secret inválido.' });
-  }
+  if (!['GET', 'POST'].includes(req.method)) return res.status(405).json({ success: false, error: 'Method not allowed' });
+  if (req.method === 'POST' && !requireAdminSecret(req, res)) return;
 
   const pub = publicClient();
   const relayer = relayerAccount();

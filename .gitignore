@@ -21,3 +21,4 @@ contracts/broadcast/
 .DS_Store
 *.log
 *.zip
+.fuse_hidden*

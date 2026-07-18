@@ -32,7 +32,7 @@
 import {
   publicClient, walletFor, relayerAccount,
   oracleAddress, distributorAddress, ORACLE_ABI, DISTRIBUTOR_ABI,
-  cors, translateError,
+  cors, translateError, requireAdminSecret,
 } from './_stepless.js';
 
 export default async function handler(req, res) {
@@ -42,11 +42,11 @@ export default async function handler(req, res) {
   if (!process.env.RELAYER_PRIVATE_KEY || !process.env.ORACLE_ADDRESS) {
     return res.status(500).json({ success: false, error: 'RELAYER_PRIVATE_KEY / ORACLE_ADDRESS não configurados.' });
   }
-  // Proteção opcional — recomendado configurar ROTATE_ADMIN_SECRET na Vercel
-  // já que este endpoint move poder administrativo dos contratos.
-  if (process.env.ROTATE_ADMIN_SECRET && req.headers['x-rotate-secret'] !== process.env.ROTATE_ADMIN_SECRET) {
-    return res.status(401).json({ success: false, error: 'X-Rotate-Secret inválido.' });
-  }
+  if (!['GET', 'POST'].includes(req.method)) return res.status(405).json({ success: false, error: 'Method not allowed' });
+  if (req.method === 'POST' && !requireAdminSecret(req, res, {
+    envNames: ['ROTATE_ADMIN_SECRET', 'ADMIN_API_SECRET'],
+    headerNames: ['x-rotate-secret', 'x-admin-secret'],
+  })) return;
 
   const pub = publicClient();
   const signer = relayerAccount(); // sempre a chave ATUAL da env, seja a antiga (fase 1) ou a nova (fase 2)

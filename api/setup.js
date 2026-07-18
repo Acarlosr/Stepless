@@ -19,7 +19,7 @@
 import { parseEther } from 'viem';
 import {
   publicClient, walletFor, relayerAccount, verifierAccount,
-  oracleAddress, distributorAddress, ORACLE_ABI, DISTRIBUTOR_ABI, cors, translateError,
+  oracleAddress, distributorAddress, ORACLE_ABI, DISTRIBUTOR_ABI, cors, translateError, requireAdminSecret,
 } from './_stepless.js';
 
 const MIN_VERIFIER_GAS = parseEther('0.05'); // USDC nativo (18 dec) p/ gas
@@ -32,6 +32,8 @@ export default async function handler(req, res) {
   if (!process.env.RELAYER_PRIVATE_KEY || !process.env.ORACLE_ADDRESS) {
     return res.status(500).json({ success: false, error: 'Configure RELAYER_PRIVATE_KEY e ORACLE_ADDRESS no Vercel.' });
   }
+  if (!['GET', 'POST'].includes(req.method)) return res.status(405).json({ success: false, error: 'Method not allowed' });
+  if (req.method === 'POST' && !requireAdminSecret(req, res)) return;
 
   const pub = publicClient();
   const relayer = relayerAccount();
