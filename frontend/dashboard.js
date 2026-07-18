@@ -565,160 +565,31 @@ async function checkVerifierStatus() {
 async function loadRewardHistory() {
   const tbody = document.getElementById('rewards-table-body');
   if (!tbody) return;
-  const s = getStrings();
-
-  tbody.innerHTML = `<tr><td colspan="5" class="table-empty">⏳ Buscando na blockchain...</td></tr>`;
-
+  const strings = getStrings();
+  tbody.innerHTML = `<tr><td colspan="5" class="table-empty">Buscando na blockchain...</td></tr>`;
   try {
-    const rows = [];
     const explorerBase = cfg.chain.blockExplorers.default.url;
-
-    // ── 1. Tenta getLogs (últimos 2000 blocos — range pequeno, mais provável de funcionar) ──
-    let usedLogs = false;
-    try {
-      const latestBlock = await publicClient.getBlockNumber();
-      const fromBlock = latestBlock > 2000n ? latestBlock - 2000n : 0n;
-
-      const [locationLogs, rewardLogs] = await Promise.all([
-        publicClient.getContractEvents({
-          address: cfg.contracts.SteplessOracle,
-          abi: cfg.abis.SteplessOracle,
-          eventName: 'LocationRegistered',
-          fromBlock,
-          toBlock: 'latest',
-        }),
-        publicClient.getContractEvents({
-          address: cfg.contracts.RewardDistributor,
-          abi: cfg.abis.RewardDistributor,
-          eventName: 'RewardPaid',
-          fromBlock,
-          toBlock: 'latest',
-        }),
-      ]);
-
-      const myLocations = locationLogs.filter(
-        l => l.args.contributor?.toLowerCase() === walletAddress.toLowerCase()
-      );
-      const myRewards = rewardLogs.filter(
-        l => l.args.contributor?.toLowerCase() === walletAddress.toLowerCase()
-      );
-
-      const allLogs = [
-        ...myLocations.map(l => ({ type: 'location', blockNumber: l.blockNumber, txHash: l.transactionHash, ...l.args })),
-        ...myRewards.map(l => ({ type: 'reward', blockNumber: l.blockNumber, txHash: l.transactionHash, ...l.args })),
-      ].sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber));
-
-      for (const ev of allLogs) {
-        const txUrl = `${explorerBase}/tx/${ev.txHash}`;
-        if (ev.type === 'location') {
-          // Evento on-chain não emite name/category (só existem no getLocation) — mostra local genérico.
-          rows.push(`<tr>
-            <td><a href="${txUrl}" target="_blank" rel="noopener">${shortHash(ev.txHash)}</a></td>
-            <td style="color:var(--text-muted)">—</td>
-            <td><span class="badge badge-info">📍 Local</span></td>
-            <td style="font-family:monospace;font-size:.85rem">${shortHash(ev.locationId)}</td>
-            <td>#${ev.blockNumber}</td>
-          </tr>`);
-        } else {
-          const tier = cfg.rewardTiers.find(t => t.tier === Number(ev.tier))?.label || `T${ev.tier}`;
-          rows.push(`<tr>
-            <td><a href="${txUrl}" target="_blank" rel="noopener">${shortHash(ev.txHash)}</a></td>
-            <td><span class="reward-amount">${formatUsdc(ev.amount)} USDC</span></td>
-            <td><span class="badge badge-success">💰 ${tier}</span></td>
-            <td style="font-family:monospace;font-size:.85rem">${shortHash(ev.contributionId)}</td>
-            <td>#${ev.blockNumber}</td>
-          </tr>`);
-        }
-      }
-      usedLogs = true;
-    } catch (logsErr) {
-      console.warn('[history] getLogs não suportado, usando leitura de estado:', logsErr?.message);
+    const count = Number(await publicClient.readContract({ address: cfg.contracts.SteplessOracle, abi: cfg.abis.SteplessOracle, functionName: 'locationCount' }));
+    const total = Math.min(count, 50);
+    const indices = Array.from({ length: total }, (_, n) => BigInt(count - 1 - n));
+    const hashes = total ? await publicClient.multicall({ multicallAddress: cfg.contracts.Multicall3, allowFailure: false, contracts: indices.map(index => ({ address: cfg.contracts.SteplessOracle, abi: cfg.abis.SteplessOracle, functionName: 'allLocationHashes', args: [index] })) }) : [];
+    const locations = hashes.length ? await publicClient.multicall({ multicallAddress: cfg.contracts.Multicall3, allowFailure: false, contracts: hashes.map(locationHash => ({ address: cfg.contracts.SteplessOracle, abi: cfg.abis.SteplessOracle, functionName: 'getLocation', args: [locationHash] })) }) : [];
+    const rows = [];
+    for (let i = 0; i < hashes.length; i++) {
+      const locationHash = hashes[i];
+      const [, firstContributor, registeredBlock, verificationCount] = locations[i];
+      if (firstContributor?.toLowerCase() !== walletAddress.toLowerCase()) continue;
+      const addrUrl = `${explorerBase}/address/${cfg.contracts.SteplessOracle}`;
+      const verBadge = Number(verificationCount) > 0 ? `<span class="badge badge-success">${verificationCount} verif.</span>` : `<span class="badge badge-info">Aguardando</span>`;
+      rows.push(`<tr><td><a href="${addrUrl}" target="_blank" rel="noopener">${shortHash(locationHash)}</a></td><td>Bloco #${registeredBlock}</td><td>${verBadge}</td><td>${shortHash(locationHash)}</td><td>On-chain</td></tr>`);
     }
-
-    // ── 2. Fallback: leitura direta via locationCount + allLocationHashes + getLocation ──
-    //    Usa apenas eth_call — sempre funciona em qualquer RPC EVM
-    if (!usedLogs) {
-      const count = await publicClient.readContract({
-        address: cfg.contracts.SteplessOracle,
-        abi: cfg.abis.SteplessOracle,
-        functionName: 'locationCount',
-      });
-
-      const total = Number(count);
-      // Checa os últimos 50 (ou todos se < 50)
-      const start = Math.max(0, total - 50);
-
-      // ABI mínima para o array público e getLocation real do contrato deployado
-      const ARRAY_ABI = [
-        { type:'function', name:'allLocationHashes',
-          inputs:[{name:'',type:'uint256'}], outputs:[{type:'bytes32'}], stateMutability:'view' },
-        { type:'function', name:'getLocation',
-          inputs:[{name:'locationHash',type:'bytes32'}],
-          outputs:[
-            {name:'locationHash',      type:'bytes32'},
-            {name:'firstContributor',  type:'address'},
-            {name:'registeredBlock',   type:'uint256'},
-            {name:'verificationCount', type:'uint256'},
-            {name:'exists',            type:'bool'},
-          ], stateMutability:'view' },
-      ];
-
-      for (let i = total - 1; i >= start; i--) {
-        // allLocationHashes(uint256) — array público do Oracle
-        const locationHash = await publicClient.readContract({
-          address: cfg.contracts.SteplessOracle,
-          abi: ARRAY_ABI,
-          functionName: 'allLocationHashes',
-          args: [BigInt(i)],
-        });
-
-        // getLocation tem múltiplos outputs — viem retorna como ARRAY:
-        // [locationHash, firstContributor, registeredBlock, verificationCount, exists]
-        const loc = await publicClient.readContract({
-          address: cfg.contracts.SteplessOracle,
-          abi: ARRAY_ABI,
-          functionName: 'getLocation',
-          args: [locationHash],
-        });
-        const [, firstContributor, registeredBlock, verificationCount] = loc;
-
-        const contributor = firstContributor;
-        if (contributor?.toLowerCase() !== walletAddress.toLowerCase()) continue;
-
-        const addrUrl = `${explorerBase}/address/${cfg.contracts.SteplessOracle}`;
-        const verBadge = Number(verificationCount) > 0
-          ? `<span class="badge badge-success">✅ ${verificationCount} verif.</span>`
-          : `<span class="badge badge-info">⏳ Aguardando</span>`;
-
-        rows.push(`<tr>
-          <td><a href="${addrUrl}" target="_blank" rel="noopener">${shortHash(locationHash)}</a></td>
-          <td style="color:var(--text-muted)">Bloco #${registeredBlock}</td>
-          <td>${verBadge}</td>
-          <td style="font-family:monospace;font-size:.85rem">${shortHash(locationHash)}</td>
-          <td>✅ On-chain</td>
-        </tr>`);
-      }
-    }
-
-    if (rows.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" class="table-empty">${s.rewards_empty || 'Nenhuma contribuição registrada ainda.'}</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = rows.join('');
-
+    tbody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="5" class="table-empty">${strings.rewards_empty || 'Nenhuma contribuicao registrada ainda.'}</td></tr>`;
   } catch (err) {
     console.error('Reward history error:', err);
-    tbody.innerHTML = `<tr><td colspan="5" class="table-empty">❌ ${err?.shortMessage || err?.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="table-empty">${err?.shortMessage || err?.message}</td></tr>`;
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════
- *  Mapa (Leaflet + OpenStreetMap — grátis, sem API key)
- * ═══════════════════════════════════════════════════════════════ */
-
-// Desfaz o empacotamento usado no registerLocation: (lat+90)*1e6 / (lng+180)*1e6.
-// Precisa ser o inverso exato do que api/relay.js faz antes de mandar pro contrato.
 function unpackLat(latPacked) { return Number(latPacked) / 1e6 - 90; }
 function unpackLng(lngPacked) { return Number(lngPacked) / 1e6 - 180; }
 
@@ -825,89 +696,39 @@ function addMapMarker({ lat, lng, name, categories, contributor, txHash }) {
 }
 
 async function loadMapMarkers(force = false) {
-  if (!initLeafletMap()) return; // Leaflet ainda não carregou (script CDN) — refreshAll() tenta de novo depois
-  // Já varrido nesta sessão? Não re-varre (o watcher de LocationRegistered
-  // adiciona os novos pins em tempo real). Evita dezenas de getLogs por refresh.
+  if (!initLeafletMap()) return;
   if (mapMarkersLoaded && !force) return;
   leafletMarkersLayer.clearLayers();
-
   try {
-    // Varre eventos em JANELAS de blocos (o RPC da Arc rejeita eth_getLogs de
-    // 0→latest com "unknown RPC error"). Volta em janelas a partir de `latest`.
-    // MAX_WINDOWS baixo de propósito: cobre os locais recentes (varridos
-    // primeiro) sem estourar o rate-limit do RPC público. Locais muito antigos
-    // aparecem pela página de Busca, que varre mais fundo sob demanda.
-    const latest = await publicClient.getBlockNumber();
-    const DEPLOY_BLOCK = 49700000n; // Oracle v3 deployado ~bloco 49.72M
-    const WINDOW = 5000n;
-    const MAX_WINDOWS = 12;
-    const logs = [];
-    let to = latest;
-    for (let w = 0; w < MAX_WINDOWS && to > DEPLOY_BLOCK; w++) {
-      const from = to - WINDOW + 1n > DEPLOY_BLOCK ? to - WINDOW + 1n : DEPLOY_BLOCK;
-      let chunk = [];
-      try {
-        chunk = await publicClient.getContractEvents({
-          address: cfg.contracts.SteplessOracle,
-          abi: cfg.abis.SteplessOracle,
-          eventName: 'LocationRegistered',
-          fromBlock: from,
-          toBlock: to,
-        });
-      } catch (winErr) {
-        // Uma janela falhou (429/timeout) — segue com as demais em vez de
-        // descartar tudo e deixar o mapa em branco.
-        console.warn('[map] janela de blocos falhou, continuando:', winErr?.shortMessage || winErr?.message);
-      }
-      logs.push(...chunk);
-      to = from - 1n;
-    }
-    mapMarkersLoaded = true; // marca como carregado mesmo se parcial
-
+    const count = Number(await publicClient.readContract({ address: cfg.contracts.SteplessOracle, abi: cfg.abis.SteplessOracle, functionName: 'locationCount' }));
+    const total = Math.min(count, 100);
+    const hashes = total ? await publicClient.multicall({ multicallAddress: cfg.contracts.Multicall3, allowFailure: false, contracts: Array.from({ length: total }, (_, index) => ({ address: cfg.contracts.SteplessOracle, abi: cfg.abis.SteplessOracle, functionName: 'allLocationHashes', args: [BigInt(index)] })) }) : [];
+    const locations = hashes.length ? await publicClient.multicall({ multicallAddress: cfg.contracts.Multicall3, allowFailure: false, contracts: hashes.map(locationHash => ({ address: cfg.contracts.SteplessOracle, abi: cfg.abis.SteplessOracle, functionName: 'getLocation', args: [locationHash] })) }) : [];
+    mapMarkersLoaded = true;
     const hint = document.getElementById('map-empty-hint');
-    if (logs.length === 0) {
-      if (hint) hint.style.display = 'block';
-      return;
-    }
-    if (hint) hint.style.display = 'none';
-
-    // Busca nome/categorias salvos fora da chain, em lote, pelos locationHash
-    const hashes = logs.map(l => l.args.locationId).filter(Boolean);
+    if (!hashes.length) { if (hint) hint.style.display = 'block'; return; }
     let metaMap = {};
     try {
-      const metaRes = await fetch('/api/location-meta', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hashes }),
-      });
-      const metaJson = await metaRes.json();
-      metaMap = metaJson.meta || {};
-    } catch (_) { /* segue sem nome/categoria — marcador ainda aparece */ }
-
+      const response = await fetch('/api/location-meta', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hashes }) });
+      const data = await response.json();
+      metaMap = data.meta || {};
+    } catch (_) {}
     const points = [];
-    for (const log of logs) {
-      const lat = unpackLat(log.args.latPacked);
-      const lng = unpackLng(log.args.lngPacked);
-      const meta = metaMap[log.args.locationId?.toLowerCase()] || {};
-      addMapMarker({
-        lat, lng,
-        name: meta.name,
-        categories: meta.categories,
-        contributor: log.args.contributor,
-        txHash: log.transactionHash,
-      });
+    for (let i = 0; i < hashes.length; i++) {
+      const meta = metaMap[hashes[i].toLowerCase()] || {};
+      const lat = Number(meta.lat), lng = Number(meta.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      const [, contributor] = locations[i];
+      addMapMarker({ lat, lng, name: meta.name, categories: meta.categories, contributor, txHash: null });
       points.push([lat, lng]);
     }
-
+    if (hint) hint.style.display = points.length ? 'none' : 'block';
     if (points.length === 1) leafletMap.setView(points[0], 13);
     else if (points.length > 1) leafletMap.fitBounds(points, { padding: [30, 30] });
   } catch (err) {
     console.warn('[map] Falha ao carregar locais:', err?.shortMessage || err?.message);
   }
 }
-
-/* ═══════════════════════════════════════════════════════════════
- *  Write: Register Location
- * ═══════════════════════════════════════════════════════════════ */
 
 async function handleRegisterLocation(e) {
   e.preventDefault();

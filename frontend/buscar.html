@@ -1070,7 +1070,6 @@
         if (!searchDone) {
           allLocations = await fetchAllLocations();
           await enrichWithMeta(allLocations);
-          await enrichWithEventCoords(allLocations);
           searchDone = true;
         }
         autoExpandRadiusIfEmpty();
@@ -1118,7 +1117,6 @@
         if (!searchDone) {
           allLocations = await fetchAllLocations();
           await enrichWithMeta(allLocations);
-          await enrichWithEventCoords(allLocations);
           searchDone = true;
         }
         renderResults();
