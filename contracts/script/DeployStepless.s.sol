@@ -14,9 +14,9 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Script.sol";
-import "../src/SteplessOracle.sol";
-import "../src/RewardDistributor.sol";
-import "../src/X402API.sol";
+import {SteplessOracle} from "../src/SteplessOracle.sol";
+import {RewardDistributor} from "../src/RewardDistributor.sol";
+import {X402API} from "../src/X402API.sol";
 
 contract DeployStepless is Script {
     function run() external {
