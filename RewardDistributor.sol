@@ -434,7 +434,8 @@ contract RewardDistributor {
     /// @dev    Verifiers must wait VERIFIER_COOLDOWN_BLOCKS between verifications.
     function canVerify(address verifier) external view returns (bool) {
         if (!verifiers[verifier]) return false;
-        return block.number >= lastVerificationBlock[verifier] + VERIFIER_COOLDOWN_BLOCKS;
+        uint256 lastBlock = lastVerificationBlock[verifier];
+        return lastBlock == 0 || block.number >= lastBlock + VERIFIER_COOLDOWN_BLOCKS;
     }
 
     /// @notice Record that a verifier verified a contribution (called by oracle).
@@ -446,8 +447,9 @@ contract RewardDistributor {
     ) external onlyAuthorized {
         if (!verifiers[verifier]) revert Unauthorized();
         if (verifier == contributor) revert DuplicateVerifier(verifier, contributionId);
-        if (block.number < lastVerificationBlock[verifier] + VERIFIER_COOLDOWN_BLOCKS) {
-            revert CooldownActive(block.number, lastVerificationBlock[verifier] + VERIFIER_COOLDOWN_BLOCKS);
+        uint256 lastBlock = lastVerificationBlock[verifier];
+        if (lastBlock != 0 && block.number < lastBlock + VERIFIER_COOLDOWN_BLOCKS) {
+            revert CooldownActive(block.number, lastBlock + VERIFIER_COOLDOWN_BLOCKS);
         }
 
         contributionVerifier[contributionId] = verifier;

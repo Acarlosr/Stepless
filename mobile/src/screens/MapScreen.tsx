@@ -72,7 +72,6 @@ interface AddLocationForm {
   lat: number;
   lng: number;
   photoUri: string | null;
-  photoHash: string | null;
 }
 
 // ─── Category Metadata ────────────────────────────────────────────────
@@ -115,12 +114,6 @@ function categoryFromMeta(cats: (string | number)[] | undefined): LocationCatego
   return LocationCategory.Ramp;
 }
 
-// ─── IPFS Upload Configuration ────────────────────────────────────────
-const PINATA_API_KEY = process.env.EXPO_PUBLIC_PINATA_API_KEY || '';
-const PINATA_SECRET_KEY = process.env.EXPO_PUBLIC_PINATA_SECRET_KEY || '';
-const PINATA_API_URL = 'https://api.pinata.cloud/pinning/pinFileToIPFS';
-const WEB3_STORAGE_TOKEN = process.env.EXPO_PUBLIC_WEB3_STORAGE_TOKEN || '';
-
 // ─── Component ────────────────────────────────────────────────────────
 export default function MapScreen() {
   const { t } = useTranslation();
@@ -137,7 +130,6 @@ export default function MapScreen() {
   const [nearbyLocations, setNearbyLocations] = useState<AccessibleLocation[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [submissionStatus, setSubmissionStatus] = useState<'idle' | 'uploading' | 'registering' | 'success' | 'error'>('idle');
   const [pendingReward, setPendingReward] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
@@ -153,7 +145,6 @@ export default function MapScreen() {
     lat: 0,
     lng: 0,
     photoUri: null,
-    photoHash: null,
   });
 
   // ─── Request location permissions ─────────────────────────────────
@@ -262,7 +253,6 @@ export default function MapScreen() {
       lat: userLocation.lat,
       lng: userLocation.lng,
       photoUri: null,
-      photoHash: null,
     });
     setSubmissionStatus('idle');
     setPendingReward(null);
@@ -293,74 +283,6 @@ export default function MapScreen() {
       console.error('Camera error:', error);
       Alert.alert(t('errors.cameraError'), t('errors.cameraErrorMessage'));
     }
-  };
-
-  // ─── Upload photo to IPFS via Pinata ──────────────────────────────
-  const uploadToIPFS = async (photoUri: string): Promise<string> => {
-    setIsUploadingPhoto(true);
-    try {
-      // Create form data for file upload
-      const formDataObj = new FormData();
-      formDataObj.append('file', {
-        uri: photoUri,
-        type: 'image/jpeg',
-        name: 'accessibility-photo.jpg',
-      } as any);
-
-      // Pinata upload
-      const response = await fetch(PINATA_API_URL, {
-        method: 'POST',
-        headers: {
-          'pinata_api_key': PINATA_API_KEY,
-          'pinata_secret_api_key': PINATA_SECRET_KEY,
-        },
-        body: formDataObj,
-      });
-
-      if (!response.ok) {
-        // Fallback to Web3.Storage if Pinata fails
-        if (WEB3_STORAGE_TOKEN) {
-          return await uploadToWeb3Storage(photoUri);
-        }
-        throw new Error(`IPFS upload failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const hash = data.IpfsHash;
-
-      // Return IPFS URI
-      return `ipfs://${hash}`;
-    } catch (error) {
-      console.error('IPFS upload error:', error);
-      // Fallback: generate a deterministic hash from photo URI
-      // In production, this should always use a real IPFS provider
-      throw new Error(t('errors.ipfsUploadFailed'));
-    } finally {
-      setIsUploadingPhoto(false);
-    }
-  };
-
-  // ─── Fallback: Web3.Storage upload ────────────────────────────────
-  const uploadToWeb3Storage = async (photoUri: string): Promise<string> => {
-    const formDataObj = new FormData();
-    formDataObj.append('file', {
-      uri: photoUri,
-      type: 'image/jpeg',
-      name: 'accessibility-photo.jpg',
-    } as any);
-
-    const response = await fetch('https://api.web3.storage/upload', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${WEB3_STORAGE_TOKEN}`,
-      },
-      body: formDataObj,
-    });
-
-    if (!response.ok) throw new Error('Web3.Storage upload failed');
-
-    const data = await response.json();
-    return `ipfs://${data.cid}`;
   };
 
   // ─── Submit location to on-chain oracle ───────────────────────────
@@ -441,32 +363,6 @@ export default function MapScreen() {
         { text: t('common.ok'), onPress: () => setSubmissionStatus('idle') },
       ]);
       setIsSubmitting(false);
-    }
-  };
-
-  // ─── Upload metadata JSON to IPFS ─────────────────────────────────
-  const uploadMetadataToIPFS = async (metadata: object): Promise<string> => {
-    try {
-      const response = await fetch(PINATA_API_URL.replace('pinFileToIPFS', 'pinJSONToIPFS'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'pinata_api_key': PINATA_API_KEY,
-          'pinata_secret_api_key': PINATA_SECRET_KEY,
-        },
-        body: JSON.stringify({
-          pinataContent: metadata,
-          pinataMetadata: { name: 'stepless-location-metadata.json' },
-        }),
-      });
-
-      if (!response.ok) throw new Error('Metadata upload failed');
-      const data = await response.json();
-      return `ipfs://${data.IpfsHash}`;
-    } catch (error) {
-      console.error('Metadata IPFS upload error:', error);
-      // Return a placeholder hash — in production this must succeed
-      return `ipfs://Qm${'0'.repeat(44)}`;
     }
   };
 

@@ -25,6 +25,6 @@ runs = 64
 depth = 128
 
 # Fork Arc Testnet for integration tests:
-# forge test --fork-url https://rpc.testnet.arc.network
-[profile.arc-testnet]
-fork_url = "https://rpc.testnet.arc.network"
+# ARC_RPC_URL=https://... forge test --fork-url arc-testnet
+[rpc_endpoints]
+arc-testnet = "${ARC_RPC_URL}"
