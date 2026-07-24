@@ -12,12 +12,11 @@
 export const ARC_TESTNET_CONFIG = {
   chainId: 5042002,
   name: 'Arc Testnet',
-  rpcUrl: 'https://rpc.testnet.arc.network',
-  // RPCs tentados em ordem via viem `fallback`. Só o nó oficial por enquanto:
-  // os proxies (blockdaemon/drpc) da doc devolvem 400 Bad Request para
-  // requisição JSON-RPC anônima, então foram removidos. Se conseguir um
-  // endpoint dedicado (Alchemy/QuickNode com key), coloque-o primeiro aqui.
+  rpcUrl: process.env.EXPO_PUBLIC_ARC_RPC_URL || 'https://www.stepless.lat/api/rpc',
+  // O proxy de produção usa o nó dedicado sem expor sua credencial no APK.
+  // O oficial permanece como fallback para resiliência.
   rpcUrls: [
+    process.env.EXPO_PUBLIC_ARC_RPC_URL || 'https://www.stepless.lat/api/rpc',
     'https://rpc.testnet.arc.network',
   ],
   blockExplorerUrl: 'https://testnet.arcscan.app',

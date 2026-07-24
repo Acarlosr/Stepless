@@ -62,6 +62,8 @@ interface WalletContextValue extends WalletState {
   signMessage: (message: string) => Promise<string>;
   exportPrivateKey: () => Promise<string | null>;
   getBalance: () => Promise<{ erc20: string; native: string }>;
+  /** Envia USDC para outro endereço na Arc Testnet. Retorna o tx hash. */
+  sendUSDC: (to: Address, amount: string) => Promise<Hex>;
 }
 
 // ─── Arc Testnet chain (viem) ─────────────────────────────────────────
@@ -88,13 +90,23 @@ const arcPublicClient = createPublicClient({
   ),
 });
 
-// ─── USDC ERC-20 ABI (mínimo p/ saldo) ────────────────────────────────
+// ─── USDC ERC-20 ABI (saldo + transferência) ──────────────────────────
 const USDC_ABI = [
   {
     inputs: [{ name: 'account', type: 'address' }],
     name: 'balanceOf',
     outputs: [{ name: '', type: 'uint256' }],
     stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { name: 'to', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    name: 'transfer',
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'nonpayable',
     type: 'function',
   },
 ] as const;
@@ -244,6 +256,81 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     return SecureStore.getItemAsync(STORAGE_KEYS.PRIVATE_KEY);
   }, []);
 
+  // ─── Envia USDC (ERC-20 6 casas; fallback p/ saldo nativo 18 casas) ──
+  // O gas na Arc é pago no USDC nativo da própria carteira — nenhum outro
+  // token é necessário. Erros são lançados com códigos estáveis para a UI
+  // traduzir: WALLET_NOT_CONNECTED | INSUFFICIENT_FUNDS | SEND_FAILED.
+  const sendUSDC = useCallback(
+    async (to: Address, amount: string): Promise<Hex> => {
+      const pk = await SecureStore.getItemAsync(STORAGE_KEYS.PRIVATE_KEY);
+      if (!pk) throw new Error('WALLET_NOT_CONNECTED');
+      const account = privateKeyToAccount(pk as Hex);
+
+      const walletClient = createWalletClient({
+        account,
+        chain: arcChain as any,
+        transport: fallback(
+          ARC_TESTNET_CONFIG.rpcUrls.map((url) =>
+            http(url, { retryCount: 3, retryDelay: 800, timeout: 20000 }),
+          ),
+          { rank: false },
+        ),
+      });
+
+      try {
+        const erc20Value = parseUnits(amount, ARC_TESTNET_CONFIG.usdcErc20Decimals);
+        if (erc20Value <= 0n) throw new Error('INSUFFICIENT_FUNDS');
+
+        let erc20Balance = 0n;
+        try {
+          erc20Balance = (await arcPublicClient.readContract({
+            address: ARC_TESTNET_CONFIG.usdcErc20Address as Address,
+            abi: USDC_ABI,
+            functionName: 'balanceOf',
+            args: [account.address],
+          })) as bigint;
+        } catch { /* sem leitura ERC-20 — tenta o nativo */ }
+
+        let hash: Hex;
+        if (erc20Balance >= erc20Value) {
+          hash = await walletClient.writeContract({
+            address: ARC_TESTNET_CONFIG.usdcErc20Address as Address,
+            abi: USDC_ABI,
+            functionName: 'transfer',
+            args: [to, erc20Value],
+            chain: arcChain as any,
+          });
+        } else {
+          const nativeValue = parseUnits(amount, ARC_TESTNET_CONFIG.usdcNativeDecimals);
+          const nativeBalance = await arcPublicClient.getBalance({ address: account.address });
+          if (nativeBalance < nativeValue) throw new Error('INSUFFICIENT_FUNDS');
+          hash = await walletClient.sendTransaction({
+            to,
+            value: nativeValue,
+            chain: arcChain as any,
+          });
+        }
+
+        // Aguarda confirmação (sem travar a UI se o RPC demorar)
+        await arcPublicClient
+          .waitForTransactionReceipt({ hash, timeout: 60_000 })
+          .catch(() => { /* o hash já é rastreável no ArcScan */ });
+
+        fetchBalances(account.address);
+        return hash;
+      } catch (e: any) {
+        const msg = String(e?.message || '');
+        if (msg.includes('WALLET_NOT_CONNECTED') || msg.includes('INSUFFICIENT_FUNDS')) throw e;
+        if (/insufficient|exceeds balance|gas required/i.test(msg)) {
+          throw new Error('INSUFFICIENT_FUNDS');
+        }
+        console.error('sendUSDC error:', e);
+        throw new Error('SEND_FAILED');
+      }
+    },
+    [fetchBalances],
+  );
+
   const getBalance = useCallback(async () => {
     if (!state.walletAddress) return { erc20: '0', native: '0' };
     await fetchBalances(state.walletAddress);
@@ -258,6 +345,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     signMessage,
     exportPrivateKey,
     getBalance,
+    sendUSDC,
   };
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;

@@ -16,7 +16,7 @@ interface IERC20 {
 
 interface ISteplessOracle {
     function getLocation(bytes32 locationHash) external view returns (
-        bytes32 locationHash,
+        bytes32 storedLocationHash,
         address firstContributor,
         uint256 registeredBlock,
         uint256 verificationCount,

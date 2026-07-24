@@ -53,6 +53,17 @@ contract RewardDistributorTest is Test {
         oracle = new MockOracle();
         distributor = new RewardDistributor(address(oracle), admin);
 
+        vm.mockCall(
+            USDC,
+            abi.encodeWithSelector(IERC20.balanceOf.selector, address(distributor)),
+            abi.encode(1_000_000_000)
+        );
+        vm.mockCall(
+            USDC,
+            abi.encodeWithSelector(IERC20.transfer.selector),
+            abi.encode(true)
+        );
+
         // Register verifier
         vm.prank(admin);
         distributor.registerVerifier(verifier);
@@ -205,7 +216,6 @@ contract RewardDistributorTest is Test {
         distributor.recordVerification(CONTRIB_1, verifier, contributor);
 
         // Try again immediately — should fail cooldown
-        bytes32 CONTRIB_2 = keccak256("contribution_2");
         vm.prank(admin);
         vm.expectRevert();
         distributor.recordVerification(CONTRIB_2, verifier, contributor);
