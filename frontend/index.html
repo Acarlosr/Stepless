@@ -147,17 +147,13 @@
              target="_blank" rel="noopener" class="btn btn-secondary btn-lg" id="download-apk-btn"
              data-i18n="hero_cta_download">Baixar aplicativo Android</a>
         </div>
-        <div class="hero-arc-badge">
-          <span data-i18n="built_on_arc">Built on</span>
-          <img class="arc-logo-light" src="assets/arc/Arc_Logo_Navy.svg" alt="Arc" />
-          <img class="arc-logo-dark" src="assets/arc/Arc_Logo_White.svg" alt="Arc" />
-        </div>
-        <p style="margin-top:0.75rem; font-size:0.85rem; color:var(--text-light); max-width:560px;"
-           data-i18n="download_security_note">
-          ⚠️ Ao instalar, o Android (Play Protect) pode exibir um aviso por o app não vir da Play Store.
-          Toque em "Mais detalhes" → "Instalar mesmo assim" e, se aparecer a opção de análise de segurança,
-          desmarque o envio e marque o app como confiável. O APK é o app oficial do Stepless (Arc Testnet).
+        <p class="hero-note" data-i18n="download_security_note">
+          ⚠️ O Android pode alertar que o app não vem da Play Store — normal em fase de testes.
+          Pode manter o Play Protect ativado e instalar normalmente.
         </p>
+        <a href="como-sacar-recompensas.html" class="rewards-guide-cta" data-i18n="rewards_guide_link">
+          💸 Como sacar suas recompensas em USDC →
+        </a>
       </div>
     </section>
 
@@ -223,7 +219,7 @@
             <div class="card-icon" aria-hidden="true">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             </div>
-            <h3 class="card-title" data-i18n="solution_3_title">Verificação Descentralizada</h3>
+            <h3 class="card-title" data-i18n="solution_3_title">Verificação Comunitária</h3>
             <p class="card-text" data-i18n="solution_3_desc">Verificadores aprovados validam contribuições. O sistema de reputação on-chain garante qualidade e previne spam, com recompensas escalonadas por tipo de contribuição.</p>
           </div>
           <div class="card">
@@ -346,7 +342,7 @@
           <div class="card">
             <h3 class="card-title" data-i18n="contrib_1_title">Desenvolvedores</h3>
             <p class="card-text mb-2" data-i18n="contrib_1_desc">Contribua com smart contracts, frontend, mobile app ou API. Issues e PRs são bem-vindos no GitHub.</p>
-            <a href="https://github.com" class="btn btn-secondary btn-sm" data-i18n="contrib_1_btn">Ver no GitHub</a>
+            <a href="https://github.com/Acarlosr/Stepless" class="btn btn-secondary btn-sm" data-i18n="contrib_1_btn">Ver no GitHub</a>
           </div>
           <div class="card">
             <h3 class="card-title" data-i18n="contrib_2_title">Mapeadores</h3>
@@ -371,7 +367,7 @@
       <div class="footer-links">
         <a href="https://testnet.arcscan.app" target="_blank" rel="noopener" data-i18n="footer_explorer">ArcScan</a>
         <a href="https://faucet.circle.com" target="_blank" rel="noopener" data-i18n="footer_faucet">Faucet</a>
-        <a href="https://github.com" target="_blank" rel="noopener" data-i18n="footer_github">GitHub</a>
+        <a href="https://github.com/Acarlosr/Stepless" target="_blank" rel="noopener" data-i18n="footer_github">GitHub</a>
         <a href="dashboard.html" data-i18n="footer_dashboard">Dashboard</a>
       </div>
       <p data-i18n="footer_text">Stepless — Infraestrutura de acessibilidade descentralizada na Arc Testnet. Open-source, sem tokens de governança, recompensas em USDC.</p>
@@ -406,7 +402,8 @@
         hero_subtitle: "Consulte rampas, elevadores, banheiros acessíveis, vagas PCD e outros recursos antes de sair de casa.", home_search_label: "Onde você quer ir?", home_search_placeholder: "Digite um local, endereço, bairro ou cidade", home_search_button: "Buscar locais acessíveis", highlight_ramp: "Entrada e rampa", highlight_elevator: "Elevador", highlight_restroom: "Banheiro acessível", highlight_parking: "Vaga PCD", highlight_braille: "Braille e piso tátil", hero_cta_search: "Ver todos os locais", hero_cta_contribute: "Contribuir com o mapa",
         hero_cta_dashboard: "Abrir Dashboard", hero_cta_learn: "Saiba Como Funciona", built_on_arc: "Built on",
         hero_cta_download: "\ud83d\udcf1 Baixar App Android (APK)",
-        download_security_note: "\u26a0\ufe0f Ao instalar, o Android (Play Protect) pode exibir um aviso por o app n\u00e3o vir da Play Store. Toque em \"Mais detalhes\" \u2192 \"Instalar mesmo assim\" e, se aparecer a op\u00e7\u00e3o de an\u00e1lise de seguran\u00e7a, desmarque o envio e marque o app como confi\u00e1vel. O APK \u00e9 o app oficial do Stepless (Arc Testnet).",
+        download_security_note: "\u26a0\ufe0f O Android pode alertar que o app n\u00e3o vem da Play Store \u2014 normal em fase de testes. Pode manter o Play Protect ativado e instalar normalmente.",
+        rewards_guide_link: "Como sacar suas recompensas em USDC \u2192",
         problem_title: "O Problema",
         problem_subtitle: "Mais de 1 bilhão de pessoas vivem com alguma deficiência. A informação sobre acessibilidade é escassa, desatualizada e centralizada.",
         problem_1_title: "Dados Inexistentes", problem_1_desc: "A maioria dos locais não tem informação de acessibilidade disponível. Pessoas com deficiência não sabem se podem acessar um local antes de chegar lá.",
@@ -417,7 +414,7 @@
         solution_subtitle: "Stepless combina blockchain, incentivos econômicos e comunidade para criar um mapa de acessibilidade global, descentralizado e sempre atualizado.",
         solution_1_title: "Recompensas em USDC", solution_1_desc: "Contribuidores recebem USDC diretamente na Arc Testnet por mapear locais, verificar acessibilidade e reportar problemas. Pagamentos instantâneos, sem intermediários.",
         solution_2_title: "Oracle On-Chain", solution_2_desc: "O contrato SteplessOracle registra locais e contribuições on-chain. Cada local tem coordenadas, categoria, foto (IPFS/Arweave) e status de verificação imutável.",
-        solution_3_title: "Verificação Descentralizada", solution_3_desc: "Verificadores aprovados validam contribuições. O sistema de reputação on-chain garante qualidade e previne spam, com recompensas escalonadas por tipo de contribuição.",
+        solution_3_title: "Verificação Comunitária", solution_3_desc: "Verificadores aprovados validam contribuições (permissionado na fase testnet). O sistema de reputação on-chain garante qualidade e previne spam, com recompensas escalonadas por tipo de contribuição.",
         solution_4_title: "API x402", solution_4_desc: "API de consulta via protocolo HTTP 402. Aplicativos podem buscar locais acessíveis e pagar por assinatura em USDC — micropagamentos nativos na Arc.",
         how_title: "Como Funciona", how_subtitle: "Do mapeamento à recompensa em 4 passos simples.",
         step_1_title: "Mapear Local", step_1_desc: "O contribuidor encontra um local acessível (rampa, elevador, banheiro), tira uma foto e registra as coordenadas GPS no SteplessOracle.",
@@ -454,7 +451,8 @@
         hero_subtitle: "Check ramps, elevators, accessible restrooms, disabled parking, and other features before leaving home.", home_search_label: "Where do you want to go?", home_search_placeholder: "Enter a place, address, neighborhood, or city", home_search_button: "Find accessible places", highlight_ramp: "Entrance and ramp", highlight_elevator: "Elevator", highlight_restroom: "Accessible restroom", highlight_parking: "Disabled parking", highlight_braille: "Braille and tactile paving", hero_cta_search: "View all places", hero_cta_contribute: "Contribute to the map",
         hero_cta_dashboard: "Open Dashboard", hero_cta_learn: "Learn How It Works", built_on_arc: "Built on",
         hero_cta_download: "\ud83d\udcf1 Download Android App (APK)",
-        download_security_note: "\u26a0\ufe0f When installing, Android (Play Protect) may warn you because the app is not from the Play Store. Tap \"More details\" \u2192 \"Install anyway\" and, if a security-scan option appears, opt out and mark the app as trusted. The APK is the official Stepless app (Arc Testnet).",
+        download_security_note: "\u26a0\ufe0f Android may warn this app isn't from the Play Store \u2014 expected during testing. You can leave Play Protect on and install normally.",
+        rewards_guide_link: "How to withdraw your USDC rewards \u2192",
         problem_title: "The Problem",
         problem_subtitle: "Over 1 billion people live with some form of disability. Accessibility information is scarce, outdated, and centralized.",
         problem_1_title: "Missing Data", problem_1_desc: "Most places have no accessibility information available. People with disabilities don't know if they can access a location before arriving.",
@@ -465,7 +463,7 @@
         solution_subtitle: "Stepless combines blockchain, economic incentives, and community to create a global, decentralized, always-updated accessibility map.",
         solution_1_title: "USDC Rewards", solution_1_desc: "Contributors receive USDC directly on Arc Testnet for mapping locations, verifying accessibility, and reporting issues. Instant payments, no intermediaries.",
         solution_2_title: "On-Chain Oracle", solution_2_desc: "The SteplessOracle contract records locations and contributions on-chain. Each location has coordinates, category, photo (IPFS/Arweave), and immutable verification status.",
-        solution_3_title: "Decentralized Verification", solution_3_desc: "Approved verifiers validate contributions. The on-chain reputation system ensures quality and prevents spam, with tiered rewards by contribution type.",
+        solution_3_title: "Community Verification", solution_3_desc: "Approved verifiers validate contributions (permissioned during the testnet phase). The on-chain reputation system ensures quality and prevents spam, with tiered rewards by contribution type.",
         solution_4_title: "x402 API", solution_4_desc: "Query API via HTTP 402 protocol. Apps can search accessible locations and pay for subscriptions in USDC — native micropayments on Arc.",
         how_title: "How It Works", how_subtitle: "From mapping to reward in 4 simple steps.",
         step_1_title: "Map Location", step_1_desc: "The contributor finds an accessible location (ramp, elevator, restroom), takes a photo, and records GPS coordinates in SteplessOracle.",
@@ -502,7 +500,8 @@
         hero_subtitle: "Consulta rampas, ascensores, baños accesibles, estacionamiento PCD y otros recursos antes de salir de casa.", home_search_label: "¿A dónde quieres ir?", home_search_placeholder: "Escribe un lugar, dirección, barrio o ciudad", home_search_button: "Buscar lugares accesibles", highlight_ramp: "Entrada y rampa", highlight_elevator: "Ascensor", highlight_restroom: "Baño accesible", highlight_parking: "Estacionamiento PCD", highlight_braille: "Braille y pavimento táctil", hero_cta_search: "Ver todos los lugares", hero_cta_contribute: "Contribuir al mapa",
         hero_cta_dashboard: "Abrir Dashboard", hero_cta_learn: "Cómo Funciona", built_on_arc: "Built on",
         hero_cta_download: "📱 Descargar App Android (APK)",
-        download_security_note: "⚠️ Al instalar, Android (Play Protect) puede mostrar una advertencia porque la app no viene de Play Store. Toca \"Más detalles\" → \"Instalar de todos modos\" y, si aparece la opción de análisis de seguridad, desmárcala y marca la app como confiable. El APK es la app oficial de Stepless (Arc Testnet).",
+        download_security_note: "⚠️ Android puede advertir que la app no viene de Play Store — normal en fase de pruebas. Puedes dejar Play Protect activo e instalar con normalidad.",
+        rewards_guide_link: "Cómo retirar tus recompensas en USDC →",
         problem_title: "El Problema",
         problem_subtitle: "Más de 1 mil millones de personas viven con alguna discapacidad. La información sobre accesibilidad es escasa, desactualizada y centralizada.",
         problem_1_title: "Datos Inexistentes", problem_1_desc: "La mayoría de los lugares no tienen información de accesibilidad disponible. Las personas con discapacidad no saben si pueden acceder a un lugar antes de llegar.",
@@ -513,7 +512,7 @@
         solution_subtitle: "Stepless combina blockchain, incentivos económicos y comunidad para crear un mapa de accesibilidad global, descentralizado y siempre actualizado.",
         solution_1_title: "Recompensas en USDC", solution_1_desc: "Los contribuidores reciben USDC directamente en Arc Testnet por mapear lugares, verificar accesibilidad y reportar problemas. Pagos instantáneos, sin intermediarios.",
         solution_2_title: "Oracle On-Chain", solution_2_desc: "El contrato SteplessOracle registra lugares y contribuciones on-chain. Cada lugar tiene coordenadas, categoría, foto (IPFS/Arweave) y estado de verificación inmutable.",
-        solution_3_title: "Verificación Descentralizada", solution_3_desc: "Verificadores aprobados validan contribuciones. El sistema de reputación on-chain garantiza calidad y previene spam, con recompensas escalonadas por tipo de contribución.",
+        solution_3_title: "Verificación Comunitaria", solution_3_desc: "Verificadores aprobados validan contribuciones (con permiso durante la fase testnet). El sistema de reputación on-chain garantiza calidad y previene spam, con recompensas escalonadas por tipo de contribución.",
         solution_4_title: "API x402", solution_4_desc: "API de consulta vía protocolo HTTP 402. Las apps pueden buscar lugares accesibles y pagar suscripción en USDC — micropagos nativos en Arc.",
         how_title: "Cómo Funciona", how_subtitle: "Del mapeo a la recompensa en 4 pasos simples.",
         step_1_title: "Mapear Lugar", step_1_desc: "El contribuidor encuentra un lugar accesible (rampa, ascensor, baño), toma una foto y registra las coordenadas GPS en SteplessOracle.",
