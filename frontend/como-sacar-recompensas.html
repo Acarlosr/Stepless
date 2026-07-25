@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Stepless — Como sacar suas recompensas em USDC: enviar para outra carteira, levar para uma exchange ou exportar sua wallet. Guia sem jargão." />
+  <meta name="theme-color" content="#1a56c4" />
+  <title>Stepless — Como sacar suas recompensas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦿</text></svg>" />
+
+  <style>
+    .guide-hero {
+      background: linear-gradient(135deg, var(--primary) 0%, #1e40af 100%);
+      color: #fff;
+      padding: 44px 0 36px;
+      text-align: center;
+    }
+    .guide-hero h1 { font-size: clamp(1.5rem, 4vw, 2.1rem); margin: 0 0 8px; color: #fff; }
+    .guide-hero p { opacity: .9; margin: 0 auto; max-width: 34rem; font-size: 1.02rem; }
+
+    .guide-main { max-width: 46rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+
+    .reassure {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-left: 5px solid var(--success, #16a34a);
+      border-radius: 10px; padding: 1rem 1.25rem; margin: 0 0 2rem;
+      color: var(--text);
+    }
+    .reassure strong { color: var(--success, #16a34a); }
+
+    .guide-section { margin-bottom: 2.4rem; }
+    .guide-section h2 {
+      font-size: 1.25rem; line-height: 1.3;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: .4rem; margin: 0 0 .9rem;
+      color: var(--text);
+    }
+    .guide-section h2 .step-badge {
+      display: inline-block; background: var(--primary); color: #fff;
+      border-radius: 999px; width: 1.7em; height: 1.7em; line-height: 1.7em;
+      text-align: center; font-size: .8em; margin-right: .5rem;
+    }
+    .guide-section p, .guide-section li { color: var(--text); }
+    .guide-section ol, .guide-section ul { padding-left: 1.3rem; }
+    .guide-section li { margin-bottom: .4rem; }
+
+    .guide-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1rem 1.25rem; margin-top: .75rem;
+    }
+    .guide-warn {
+      /* Fundo amarelo fixo em qualquer tema — por isso o texto também é fixo
+         (não usa var(--text), que vira quase branco no dark mode e perde
+         contraste sobre amarelo claro). */
+      background: #fef3c7;
+      border: 1px solid #b45309;
+      border-radius: 10px; padding: 1rem 1.25rem; margin: 2rem 0;
+      color: #78350f;
+    }
+    .guide-warn strong { color: #92400e; }
+
+    dfn { font-style: normal; font-weight: 600; border-bottom: 1px dotted var(--text-light); cursor: help; }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip-link">Pular para o conteúdo / Skip to content / Saltar al contenido</a>
+
+  <!-- ════════════════════════════════════════════════
+       Header (mesmo padrão de todas as páginas)
+       ════════════════════════════════════════════════ -->
+  <header class="header" role="banner">
+    <div class="container">
+      <a href="index.html" class="logo" aria-label="Stepless home">
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="20" cy="20" r="18" fill="var(--primary)" />
+          <path d="M12 26 L20 14 L28 26" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="20" cy="20" r="3" fill="#fff"/>
+        </svg>
+        <span>Stepless</span>
+      </a>
+      <nav class="nav" role="navigation" aria-label="Navegação principal" data-i18n-aria-label="nav_aria">
+        <button class="nav-toggle" aria-label="Abrir menu" data-i18n-aria-label="nav_toggle" aria-expanded="false" aria-controls="main-nav-links">
+          <span></span><span></span><span></span>
+        </button>
+        <ul class="nav-links" id="main-nav-links">
+          <li><a href="dashboard.html" data-i18n="nav_dashboard">Dashboard</a></li>
+          <li><a href="buscar.html" data-i18n="nav_search">Busca</a></li>
+          <li><a href="index.html" data-i18n="nav_home">Início</a></li>
+        </ul>
+        <div class="lang-selector" role="group" aria-label="Selecionar idioma">
+          <button type="button" class="lang-btn" data-lang="pt" aria-label="Português do Brasil" title="Português do Brasil" aria-pressed="false"><img src="assets/flags/br.svg" alt="" aria-hidden="true"></button>
+          <button type="button" class="lang-btn" data-lang="en" aria-label="English" title="English" aria-pressed="false"><img src="assets/flags/us.svg" alt="" aria-hidden="true"></button>
+          <button type="button" class="lang-btn" data-lang="es" aria-label="Español" title="Español" aria-pressed="false"><img src="assets/flags/es.svg" alt="" aria-hidden="true"></button>
+        </div>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Alternar modo escuro" data-i18n-aria-label="theme_toggle" data-i18n-title="theme_toggle">
+          <span id="theme-icon">🌙</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ════════════════════════════════════════════════
+       Hero
+       ════════════════════════════════════════════════ -->
+  <section class="guide-hero">
+    <div class="container">
+      <h1 data-i18n="g_h1">Você recebeu USDC. E agora?</h1>
+      <p data-i18n="g_sub">Suas recompensas são suas de verdade. Este guia mostra, sem jargão, os caminhos para sacar esse dinheiro.</p>
+    </div>
+  </section>
+
+  <main id="main" role="main" class="guide-main">
+
+    <div class="reassure">
+      <strong data-i18n="g_reassure_strong">Fique tranquilo:</strong>
+      <span data-i18n="g_reassure_text">o saldo que aparece no seu dashboard está numa carteira que pertence a você — criada automaticamente quando você entrou com seu e-mail. O Stepless não guarda o seu dinheiro. Ele não expira, não some e ninguém pode mexer nele além de você.</span>
+    </div>
+
+    <section class="guide-section" aria-labelledby="s0">
+      <h2 id="s0" data-i18n="g_s0_title">Antes de tudo: o que é essa carteira?</h2>
+      <p data-i18n="g_s0_p1">Quando você entrou com seu e-mail, o Stepless criou para você uma <dfn title="Uma conta digital que guarda moedas como o USDC">carteira digital</dfn> — parecida com uma conta, mas que só você controla. O endereço dela é aquele código longo começando com <code>0x…</code> que aparece no dashboard. É como o número da sua conta: você pode compartilhá-lo para receber, sem risco.</p>
+      <p data-i18n="g_s0_p2">Suas recompensas chegam em <strong>USDC</strong>, uma moeda digital em que 1 USDC vale sempre cerca de 1 dólar americano.</p>
+    </section>
+
+    <section class="guide-section" aria-labelledby="s1">
+      <h2 id="s1"><span class="step-badge" aria-hidden="true">1</span><span data-i18n="g_s1_title">Enviar para outra pessoa ou carteira</span></h2>
+      <p data-i18n="g_s1_p1">O caminho mais simples. Você pode enviar USDC para qualquer outro endereço — de um amigo, de outra carteira sua (como MetaMask), ou de um serviço que aceite USDC na rede Arc.</p>
+      <div class="guide-card">
+        <ol>
+          <li data-i18n="g_s1_step1">No dashboard ou no app, use a opção <strong>Enviar USDC</strong>.</li>
+          <li data-i18n="g_s1_step2">Cole o endereço de destino (o código <code>0x…</code> de quem vai receber).</li>
+          <li data-i18n="g_s1_step3">Informe o valor e confirme.</li>
+        </ol>
+        <p data-i18n="g_s1_p2">Na rede Arc, a pequena taxa da transação é paga no próprio USDC — você não precisa comprar nenhuma outra moeda para conseguir enviar.</p>
+      </div>
+    </section>
+
+    <section class="guide-section" aria-labelledby="s2">
+      <h2 id="s2"><span class="step-badge" aria-hidden="true">2</span><span data-i18n="g_s2_title">Levar para uma corretora (exchange) e converter em dinheiro</span></h2>
+      <p data-i18n="g_s2_p1">Para transformar USDC em dinheiro na sua conta bancária, o caminho hoje passa por uma corretora de criptomoedas (como Binance, Coinbase, Mercado Bitcoin e outras):</p>
+      <div class="guide-card">
+        <ol>
+          <li data-i18n="g_s2_step1">Crie uma conta na corretora de sua preferência e localize a opção <strong>Depositar USDC</strong>.</li>
+          <li data-i18n="g_s2_step2">Veja quais redes a corretora aceita para depósito de USDC (por exemplo: Ethereum, Base, Arbitrum).</li>
+          <li data-i18n="g_s2_step3">Se a corretora ainda não aceitar depósitos pela rede Arc, use a <a href="https://docs.arc.io/app-kit/bridge" rel="noopener">ponte oficial da Arc</a> para mover seu USDC até uma rede que ela aceite. "Ponte" (bridge) é só isso: transferir a mesma moeda de uma rede para outra.</li>
+          <li data-i18n="g_s2_step4">Envie o USDC para o endereço de depósito que a corretora mostrar, <strong>na rede certa</strong>.</li>
+          <li data-i18n="g_s2_step5">Na corretora, venda o USDC e saque para sua conta bancária.</li>
+        </ol>
+        <p data-i18n="g_s2_p2"><strong>Atenção:</strong> enviar para a rede errada pode causar a perda dos fundos. Sempre confira se a rede escolhida no envio é a mesma que a corretora indicou.</p>
+      </div>
+    </section>
+
+    <section class="guide-section" aria-labelledby="s3">
+      <h2 id="s3"><span class="step-badge" aria-hidden="true">3</span><span data-i18n="g_s3_title">Levar sua carteira com você (avançado)</span></h2>
+      <p data-i18n="g_s3_p1">A carteira criada com seu e-mail é portátil. Se um dia você quiser usá-la em outro aplicativo — como o MetaMask — é possível exportar a chave da carteira pelo provedor de login e importá-la onde preferir. Seu endereço e seu saldo continuam os mesmos.</p>
+      <p data-i18n="g_s3_p2">Esse passo é opcional e voltado a quem já conhece carteiras cripto. Se você não precisa disso, os caminhos 1 e 2 resolvem tudo.</p>
+    </section>
+
+    <div class="guide-warn">
+      <strong data-i18n="g_warn_strong">Fase de testes (Arc Testnet):</strong>
+      <span data-i18n="g_warn_text">no momento, o Stepless roda na rede de testes da Arc. O USDC recebido aqui é de teste e não tem valor real — serve para demonstrar que todo o ciclo funciona. Quando o Stepless for para a rede principal (mainnet), as recompensas passarão a ter valor real e estes mesmos caminhos se aplicarão.</span>
+    </div>
+
+    <section class="guide-section" aria-labelledby="s4">
+      <h2 id="s4" data-i18n="g_s4_title">Perguntas rápidas</h2>
+      <div class="guide-card">
+        <p><strong data-i18n="g_faq1_q">Meu saldo pode sumir se eu ficar tempo sem entrar?</strong><br><span data-i18n="g_faq1_a">Não. O saldo fica registrado na blockchain, não no site do Stepless.</span></p>
+        <p><strong data-i18n="g_faq2_q">Preciso pagar algo para receber recompensas?</strong><br><span data-i18n="g_faq2_a">Não. O registro das contribuições é patrocinado pelo Stepless e a recompensa chega direto na sua carteira.</span></p>
+        <p><strong data-i18n="g_faq3_q">Onde confiro se recebi mesmo?</strong><br><span data-i18n="g_faq3_a">Toda transação pode ser verificada publicamente no</span> <a href="https://testnet.arcscan.app" rel="noopener">ArcScan</a> <span data-i18n="g_faq3_a2">— basta colar o endereço da sua carteira na busca.</span></p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ════════════════════════════════════════════════
+       Footer
+       ════════════════════════════════════════════════ -->
+  <footer class="footer" role="contentinfo">
+    <div class="container">
+      <div class="footer-links">
+        <a href="https://testnet.arcscan.app" target="_blank" rel="noopener" data-i18n="footer_explorer">ArcScan</a>
+        <a href="https://faucet.circle.com" target="_blank" rel="noopener" data-i18n="footer_faucet">Faucet</a>
+        <a href="https://github.com/Acarlosr/Stepless" target="_blank" rel="noopener" data-i18n="footer_github">GitHub</a>
+        <a href="dashboard.html" data-i18n="footer_dashboard">Dashboard</a>
+      </div>
+      <p data-i18n="footer_text">Stepless — Dados de acessibilidade on-chain na Arc Testnet.</p>
+    </div>
+  </footer>
+
+  <script type="module">
+    /* ── i18n ── */
+    const I18N = {
+      pt: {
+        nav_dashboard: "Dashboard", nav_search: "Busca", nav_home: "Início",
+        footer_explorer: "ArcScan", footer_faucet: "Faucet", footer_github: "GitHub", footer_dashboard: "Dashboard",
+        footer_text: "Stepless — Dados de acessibilidade on-chain na Arc Testnet.",
+        g_h1: "Você recebeu USDC. E agora?",
+        g_sub: "Suas recompensas são suas de verdade. Este guia mostra, sem jargão, os caminhos para sacar esse dinheiro.",
+        g_reassure_strong: "Fique tranquilo:",
+        g_reassure_text: "o saldo que aparece no seu dashboard está numa carteira que pertence a você — criada automaticamente quando você entrou com seu e-mail. O Stepless não guarda o seu dinheiro. Ele não expira, não some e ninguém pode mexer nele além de você.",
+        g_s0_title: "Antes de tudo: o que é essa carteira?",
+        g_s0_p1: 'Quando você entrou com seu e-mail, o Stepless criou para você uma <dfn title="Uma conta digital que guarda moedas como o USDC">carteira digital</dfn> — parecida com uma conta, mas que só você controla. O endereço dela é aquele código longo começando com <code>0x…</code> que aparece no dashboard. É como o número da sua conta: você pode compartilhá-lo para receber, sem risco.',
+        g_s0_p2: "Suas recompensas chegam em <strong>USDC</strong>, uma moeda digital em que 1 USDC vale sempre cerca de 1 dólar americano.",
+        g_s1_title: "Enviar para outra pessoa ou carteira",
+        g_s1_p1: "O caminho mais simples. Você pode enviar USDC para qualquer outro endereço — de um amigo, de outra carteira sua (como MetaMask), ou de um serviço que aceite USDC na rede Arc.",
+        g_s1_step1: "No dashboard ou no app, use a opção <strong>Enviar USDC</strong>.",
+        g_s1_step2: "Cole o endereço de destino (o código <code>0x…</code> de quem vai receber).",
+        g_s1_step3: "Informe o valor e confirme.",
+        g_s1_p2: "Na rede Arc, a pequena taxa da transação é paga no próprio USDC — você não precisa comprar nenhuma outra moeda para conseguir enviar.",
+        g_s2_title: "Levar para uma corretora (exchange) e converter em dinheiro",
+        g_s2_p1: "Para transformar USDC em dinheiro na sua conta bancária, o caminho hoje passa por uma corretora de criptomoedas (como Binance, Coinbase, Mercado Bitcoin e outras):",
+        g_s2_step1: "Crie uma conta na corretora de sua preferência e localize a opção <strong>Depositar USDC</strong>.",
+        g_s2_step2: "Veja quais redes a corretora aceita para depósito de USDC (por exemplo: Ethereum, Base, Arbitrum).",
+        g_s2_step3: 'Se a corretora ainda não aceitar depósitos pela rede Arc, use a <a href="https://docs.arc.io/app-kit/bridge" rel="noopener">ponte oficial da Arc</a> para mover seu USDC até uma rede que ela aceite. "Ponte" (bridge) é só isso: transferir a mesma moeda de uma rede para outra.',
+        g_s2_step4: "Envie o USDC para o endereço de depósito que a corretora mostrar, <strong>na rede certa</strong>.",
+        g_s2_step5: "Na corretora, venda o USDC e saque para sua conta bancária.",
+        g_s2_p2: "<strong>Atenção:</strong> enviar para a rede errada pode causar a perda dos fundos. Sempre confira se a rede escolhida no envio é a mesma que a corretora indicou.",
+        g_s3_title: "Levar sua carteira com você (avançado)",
+        g_s3_p1: "A carteira criada com seu e-mail é portátil. Se um dia você quiser usá-la em outro aplicativo — como o MetaMask — é possível exportar a chave da carteira pelo provedor de login e importá-la onde preferir. Seu endereço e seu saldo continuam os mesmos.",
+        g_s3_p2: "Esse passo é opcional e voltado a quem já conhece carteiras cripto. Se você não precisa disso, os caminhos 1 e 2 resolvem tudo.",
+        g_warn_strong: "Fase de testes (Arc Testnet):",
+        g_warn_text: "no momento, o Stepless roda na rede de testes da Arc. O USDC recebido aqui é de teste e não tem valor real — serve para demonstrar que todo o ciclo funciona. Quando o Stepless for para a rede principal (mainnet), as recompensas passarão a ter valor real e estes mesmos caminhos se aplicarão.",
+        g_s4_title: "Perguntas rápidas",
+        g_faq1_q: "Meu saldo pode sumir se eu ficar tempo sem entrar?", g_faq1_a: "Não. O saldo fica registrado na blockchain, não no site do Stepless.",
+        g_faq2_q: "Preciso pagar algo para receber recompensas?", g_faq2_a: "Não. O registro das contribuições é patrocinado pelo Stepless e a recompensa chega direto na sua carteira.",
+        g_faq3_q: "Onde confiro se recebi mesmo?", g_faq3_a: "Toda transação pode ser verificada publicamente no", g_faq3_a2: "— basta colar o endereço da sua carteira na busca.",
+      },
+      en: {
+        nav_dashboard: "Dashboard", nav_search: "Search", nav_home: "Home",
+        footer_explorer: "ArcScan", footer_faucet: "Faucet", footer_github: "GitHub", footer_dashboard: "Dashboard",
+        footer_text: "Stepless — On-chain accessibility data on Arc Testnet.",
+        g_h1: "You received USDC. Now what?",
+        g_sub: "Your rewards are really yours. This guide shows, in plain language, how to withdraw that money.",
+        g_reassure_strong: "Don't worry:",
+        g_reassure_text: "the balance shown in your dashboard sits in a wallet that belongs to you — created automatically when you signed in with your email. Stepless does not hold your money. It never expires, never disappears, and no one but you can touch it.",
+        g_s0_title: "First: what is this wallet?",
+        g_s0_p1: 'When you signed in with your email, Stepless created a <dfn title="A digital account that holds coins like USDC">digital wallet</dfn> for you — similar to an account, but only you control it. Its address is that long code starting with <code>0x…</code> shown in the dashboard. Think of it as your account number: you can share it to receive funds, safely.',
+        g_s0_p2: "Your rewards arrive in <strong>USDC</strong>, a digital currency where 1 USDC is always worth about 1 US dollar.",
+        g_s1_title: "Send to another person or wallet",
+        g_s1_p1: "The simplest path. You can send USDC to any other address — a friend's, another wallet of yours (like MetaMask), or a service that accepts USDC on the Arc network.",
+        g_s1_step1: "In the dashboard or the app, use the <strong>Send USDC</strong> option.",
+        g_s1_step2: "Paste the destination address (the recipient's <code>0x…</code> code).",
+        g_s1_step3: "Enter the amount and confirm.",
+        g_s1_p2: "On Arc, the small transaction fee is paid in USDC itself — you don't need to buy any other token to send.",
+        g_s2_title: "Move it to an exchange and convert to cash",
+        g_s2_p1: "To turn USDC into money in your bank account, the path today goes through a crypto exchange (like Binance, Coinbase, and others):",
+        g_s2_step1: "Create an account on the exchange of your choice and find the <strong>Deposit USDC</strong> option.",
+        g_s2_step2: "Check which networks the exchange accepts for USDC deposits (e.g., Ethereum, Base, Arbitrum).",
+        g_s2_step3: 'If the exchange doesn\'t yet accept deposits over the Arc network, use the <a href="https://docs.arc.io/app-kit/bridge" rel="noopener">official Arc bridge</a> to move your USDC to a network it accepts. A "bridge" simply moves the same currency from one network to another.',
+        g_s2_step4: "Send the USDC to the deposit address shown by the exchange, <strong>on the correct network</strong>.",
+        g_s2_step5: "On the exchange, sell the USDC and withdraw to your bank account.",
+        g_s2_p2: "<strong>Careful:</strong> sending to the wrong network can cause loss of funds. Always double-check that the network you choose matches what the exchange indicated.",
+        g_s3_title: "Take your wallet with you (advanced)",
+        g_s3_p1: "The wallet created with your email is portable. If you ever want to use it in another app — like MetaMask — you can export the wallet's key through the login provider and import it wherever you prefer. Your address and balance stay the same.",
+        g_s3_p2: "This step is optional and meant for people already familiar with crypto wallets. If you don't need it, paths 1 and 2 cover everything.",
+        g_warn_strong: "Testing phase (Arc Testnet):",
+        g_warn_text: "Stepless currently runs on Arc's test network. The USDC received here is test USDC and has no real value — it exists to demonstrate that the full cycle works. Once Stepless moves to mainnet, rewards will have real value and these same paths will apply.",
+        g_s4_title: "Quick questions",
+        g_faq1_q: "Can my balance disappear if I don't log in for a while?", g_faq1_a: "No. Your balance lives on the blockchain, not on the Stepless website.",
+        g_faq2_q: "Do I need to pay anything to receive rewards?", g_faq2_a: "No. Contribution registration is sponsored by Stepless, and the reward goes straight to your wallet.",
+        g_faq3_q: "Where can I check that I actually received it?", g_faq3_a: "Every transaction can be publicly verified on", g_faq3_a2: "— just paste your wallet address into the search.",
+      },
+      es: {
+        nav_dashboard: "Dashboard", nav_search: "Buscar", nav_home: "Inicio",
+        footer_explorer: "ArcScan", footer_faucet: "Faucet", footer_github: "GitHub", footer_dashboard: "Dashboard",
+        footer_text: "Stepless — Datos de accesibilidad on-chain en Arc Testnet.",
+        g_h1: "Recibiste USDC. ¿Y ahora?",
+        g_sub: "Tus recompensas son realmente tuyas. Esta guía muestra, sin jerga, los caminos para retirar ese dinero.",
+        g_reassure_strong: "Tranquilo:",
+        g_reassure_text: "el saldo que aparece en tu dashboard está en una billetera que te pertenece — creada automáticamente cuando entraste con tu correo. Stepless no guarda tu dinero. No caduca, no desaparece y nadie más que tú puede tocarlo.",
+        g_s0_title: "Antes que nada: ¿qué es esta billetera?",
+        g_s0_p1: 'Cuando entraste con tu correo, Stepless creó para ti una <dfn title="Una cuenta digital que guarda monedas como el USDC">billetera digital</dfn> — parecida a una cuenta, pero que solo tú controlas. Su dirección es ese código largo que empieza con <code>0x…</code> que aparece en el dashboard. Es como el número de tu cuenta: puedes compartirlo para recibir, sin riesgo.',
+        g_s0_p2: "Tus recompensas llegan en <strong>USDC</strong>, una moneda digital donde 1 USDC vale siempre cerca de 1 dólar estadounidense.",
+        g_s1_title: "Enviar a otra persona o billetera",
+        g_s1_p1: "El camino más simple. Puedes enviar USDC a cualquier otra dirección — de un amigo, de otra billetera tuya (como MetaMask), o de un servicio que acepte USDC en la red Arc.",
+        g_s1_step1: "En el dashboard o en la app, usa la opción <strong>Enviar USDC</strong>.",
+        g_s1_step2: "Pega la dirección de destino (el código <code>0x…</code> de quien va a recibir).",
+        g_s1_step3: "Indica el monto y confirma.",
+        g_s1_p2: "En la red Arc, la pequeña comisión de la transacción se paga en el propio USDC — no necesitas comprar ninguna otra moneda para poder enviar.",
+        g_s2_title: "Llevarlo a un exchange y convertirlo en dinero",
+        g_s2_p1: "Para transformar USDC en dinero en tu cuenta bancaria, el camino hoy pasa por un exchange de criptomonedas (como Binance, Coinbase y otros):",
+        g_s2_step1: "Crea una cuenta en el exchange de tu preferencia y busca la opción <strong>Depositar USDC</strong>.",
+        g_s2_step2: "Verifica qué redes acepta el exchange para depósitos de USDC (por ejemplo: Ethereum, Base, Arbitrum).",
+        g_s2_step3: 'Si el exchange aún no acepta depósitos por la red Arc, usa el <a href="https://docs.arc.io/app-kit/bridge" rel="noopener">puente oficial de Arc</a> para mover tu USDC a una red que acepte. Un "puente" (bridge) es solo eso: transferir la misma moneda de una red a otra.',
+        g_s2_step4: "Envía el USDC a la dirección de depósito que muestre el exchange, <strong>en la red correcta</strong>.",
+        g_s2_step5: "En el exchange, vende el USDC y retira a tu cuenta bancaria.",
+        g_s2_p2: "<strong>Atención:</strong> enviar a la red equivocada puede causar la pérdida de los fondos. Verifica siempre que la red elegida en el envío sea la misma que indicó el exchange.",
+        g_s3_title: "Llevar tu billetera contigo (avanzado)",
+        g_s3_p1: "La billetera creada con tu correo es portátil. Si algún día quieres usarla en otra aplicación — como MetaMask — puedes exportar la clave de la billetera desde el proveedor de acceso e importarla donde prefieras. Tu dirección y tu saldo siguen siendo los mismos.",
+        g_s3_p2: "Este paso es opcional y está pensado para quien ya conoce billeteras cripto. Si no lo necesitas, los caminos 1 y 2 resuelven todo.",
+        g_warn_strong: "Fase de pruebas (Arc Testnet):",
+        g_warn_text: "por ahora, Stepless funciona en la red de pruebas de Arc. El USDC recibido aquí es de prueba y no tiene valor real — sirve para demostrar que todo el ciclo funciona. Cuando Stepless pase a la red principal (mainnet), las recompensas tendrán valor real y estos mismos caminos se aplicarán.",
+        g_s4_title: "Preguntas rápidas",
+        g_faq1_q: "¿Mi saldo puede desaparecer si paso tiempo sin entrar?", g_faq1_a: "No. El saldo queda registrado en la blockchain, no en el sitio de Stepless.",
+        g_faq2_q: "¿Necesito pagar algo para recibir recompensas?", g_faq2_a: "No. El registro de las contribuciones lo patrocina Stepless y la recompensa llega directo a tu billetera.",
+        g_faq3_q: "¿Dónde verifico si realmente lo recibí?", g_faq3_a: "Toda transacción puede verificarse públicamente en", g_faq3_a2: "— solo pega la dirección de tu billetera en la búsqueda.",
+      },
+    };
+
+    let currentLang = 'pt';
+
+    function detectLanguage() {
+      const saved = localStorage.getItem('stepless-lang');
+      if (saved && I18N[saved]) return saved;
+      const browserLang = (navigator.language || 'pt-BR').toLowerCase();
+      if (browserLang.startsWith('en')) return 'en';
+      if (browserLang.startsWith('es')) return 'es';
+      return 'pt';
+    }
+
+    function setLanguage(lang) {
+      if (!I18N[lang]) lang = 'pt';
+      currentLang = lang;
+      localStorage.setItem('stepless-lang', lang);
+      document.documentElement.lang = lang === 'pt' ? 'pt-BR' : lang;
+      const strings = I18N[lang];
+      document.querySelectorAll('[data-i18n]').forEach((el) => {
+        const key = el.getAttribute('data-i18n');
+        if (strings[key] !== undefined) el.innerHTML = strings[key];
+      });
+      document.querySelectorAll('.lang-btn').forEach((btn) => {
+        const active = btn.dataset.lang === lang;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-pressed', active);
+      });
+    }
+
+    /* ── Theme ── */
+    function initTheme() {
+      const saved = localStorage.getItem('stepless-theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const theme = saved || (prefersDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+      document.getElementById('theme-icon').textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('stepless-theme', next);
+      document.getElementById('theme-icon').textContent = next === 'dark' ? '☀️' : '🌙';
+    }
+
+    /* ── Mobile nav ── */
+    function initNav() {
+      const toggle = document.querySelector('.nav-toggle');
+      const links = document.getElementById('main-nav-links');
+      if (toggle) {
+        toggle.addEventListener('click', () => {
+          const open = links.classList.toggle('open');
+          toggle.setAttribute('aria-expanded', open);
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      initNav();
+      setLanguage(detectLanguage());
+      document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+      document.querySelectorAll('.lang-btn').forEach((btn) => {
+        btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
+      });
+    });
+  </script>
+</body>
+</html>
