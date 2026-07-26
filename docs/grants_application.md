@@ -5,7 +5,8 @@
 **License:** MIT (Open Source)  
 **Repository:** [github.com/Acarlosr/Stepless](https://github.com/Acarlosr/Stepless)  
 **Contact:** senacarlos@gmail.com  
-**Date:** June 2026  
+**Live dApp:** [www.stepless.lat](https://www.stepless.lat)  
+**Date:** July 2026  
 
 ---
 
@@ -15,7 +16,7 @@ Over 1 billion people worldwide live with some form of disability. Yet the most 
 
 Stepless is built natively on **Arc**, Circle's stablecoin-native L1. This is not an arbitrary choice: Arc's architecture makes micro-reward economics viable for the first time. USDC is the native gas token, transaction fees are sub-cent, and finality is sub-second. A $0.10 reward for mapping a new location is economically rational on Arc in a way it cannot be on Ethereum or even L2s where gas alone would consume the reward. The **Circle Gas Station** sponsors transaction fees for Smart Contract Account (SCA) wallets, meaning contributors never need to hold crypto to participate — they log in with social authentication via Crossmint or Dynamic, receive an embedded wallet, and start earning immediately. API consumers — travel apps, city governments, mobility platforms — pay for the data via **x402 nanopayments**, creating a self-sustaining revenue loop.
 
-We are applying for a Circle Developer Grant to fund the critical path from our current Phase 1 (Foundation: contracts deployed on Arc Testnet, subgraph schema defined, Gas Station integration documented) to Phase 2 (Public Beta, Q3 2025) and Phase 3 (Mainnet Launch, Q4 2025). Grant funds will cover a professional smart contract audit, frontend and mobile development, Goldsky subgraph indexing infrastructure, IPFS/Arweave photo storage, and initial community building in Brazil (our launch market). Stepless directly advances Circle's mission of an internet-native financial system by demonstrating that stablecoin micropayments can fund real-world public goods — and by onboarding a demographic (people with disabilities, many unbanked) into the stablecoin economy through meaningful work rather than speculation.
+Stepless is already live and working. The v3 smart contracts are deployed on Arc Testnet, the web dApp at [www.stepless.lat](https://www.stepless.lat) is in production, and the full reward loop has been validated end to end in production: a user logs in with an email address, registers an accessible location, the contribution is approved, and a 0.10 USDC reward is paid on-chain — no wallet extension, no seed phrase, no crypto knowledge required. We are applying for a Circle Developer Grant to fund the critical path from this working prototype (Phase 1 complete) to Public Beta (Phase 2) and Mainnet Launch (Phase 3). Grant funds will cover a professional smart contract audit, a native mobile app (Android/iOS) for on-the-go mapping, anti-sybil and treasury-security hardening, Goldsky subgraph indexing, IPFS/Arweave photo storage, and initial community building in Brazil (our launch market). Stepless directly advances Circle's mission of an internet-native financial system by demonstrating that stablecoin micropayments can fund real-world public goods — and by onboarding a demographic (people with disabilities, many unbanked) into the stablecoin economy through meaningful work rather than speculation.
 
 ---
 
@@ -256,6 +257,24 @@ Contributors interact with Stepless through Smart Contract Account (SCA) wallets
 - Circle SDK (`@circle-fin/wallets`) integrated in frontend/backend
 - Gas Station enabled for Arc Testnet SCA wallets
 
+### Security, Trust Model & Anti-Sybil Design
+
+Because rewards are paid in real USDC, Stepless treats fraud resistance and treasury security as first-class engineering concerns, not afterthoughts. This section documents the current model honestly and the hardening funded by this grant.
+
+**Current trust model (working today).** To give contributors a zero-friction experience, registration and reward payment are executed by an authorized backend relayer rather than by the contributor's own wallet — the contributor only needs a valid address to receive USDC. This is why anyone can participate with nothing but an email login. The trade-off is a degree of centralization: the relayer is currently also the contract admin. We consider this the single most important risk to address before mainnet, and we have already built the tooling for a clean key rotation (`/api/rotate-admin`, promote/revoke phases) after recovering from an early key exposure that forced a full, successful migration to the v3 contracts.
+
+**Hardening roadmap (grant-funded).**
+
+| Risk | Mitigation |
+|---|---|
+| Single-key admin / relayer (single point of failure) | Migrate the `onlyAdmin` role to a **2-of-3 Safe multisig**; separate the day-to-day relayer signer from the treasury/admin authority via role-based access control |
+| Malicious parameter or treasury change | **Timelock** on critical actions (authorized-caller changes, treasury withdrawals, address upgrades) so a leaked key cannot be used instantly |
+| Sybil / farming (fake or duplicate locations draining the treasury) | Two-step verification (submission → pending → paid only after validation), **geographic de-duplication** on packed coordinates, per-address reputation multipliers, photo-metadata presence checks, and backend rate limiting |
+| Reward-for-volume gaming | Reward genuine value: peer verification, sampling-based human review, and cross-checks against OpenStreetMap before payout |
+| Oracle/contract bugs at mainnet stakes | A dedicated professional audit of the oracle boundary (on-chain/off-chain), plus Slither and invariant tests covering known revert paths (`ContributionNotVerified`, EIP-55 checksum, caller authorization) |
+
+This roadmap is the reason the audit and security line items dominate the budget: the protocol only becomes trustworthy at scale once the relayer is decentralized and sybil defenses are proven.
+
 ### Frontend (dApp)
 
 - **Stack:** React + Viem/ethers.js + Tailwind CSS
@@ -323,7 +342,9 @@ Contributors interact with Stepless through Smart Contract Account (SCA) wallets
 
 ## 6. Traction & Roadmap
 
-### Current Status — Phase 1: Foundation (In Progress)
+### Current Status — Phase 1: Foundation (Complete)
+
+Phase 1 is done: the protocol is deployed and the end-to-end reward loop has been validated in production, not just in tests.
 
 | Milestone | Status |
 |---|---|
@@ -332,41 +353,42 @@ Contributors interact with Stepless through Smart Contract Account (SCA) wallets
 | X402API.sol — designed and implemented | ✅ Complete |
 | Arc-specific adaptations (Memo, block.number ordering, USDC dual interface, try/catch transfers) | ✅ Complete |
 | Goldsky subgraph schema defined (8 entity types) | ✅ Complete |
-| Circle Gas Station integration documented | ✅ Complete |
 | Foundry project structure with test framework | ✅ Complete |
-| Contracts deployed to Arc Testnet | 🔄 In Progress |
-| Frontend dApp | 🔄 In Progress |
-| Mobile app (React Native) | 🔄 In Progress |
+| **Contracts (v3) deployed to Arc Testnet** | ✅ **Complete** — see Appendix A for live addresses |
+| **Web dApp live in production** ([www.stepless.lat](https://www.stepless.lat)) | ✅ **Complete** |
+| **Email login → embedded wallet** (Dynamic) | ✅ **Complete** — no browser extension or seed phrase needed |
+| **Full reward loop validated in production** | ✅ **Complete** — register location → approve → 0.10 USDC paid on-chain, confirmed on ArcScan |
+| Native mobile app (Android/iOS) | 🔄 In Progress — scaffold built (Expo/React Native, GPS + camera); being wired to the live backend |
 | IPFS/Arweave photo storage integration | 🔄 In Progress |
+| Admin decentralization (multisig + timelock) & anti-sybil hardening | 🔜 Planned — grant-funded (see Security section) |
 
 ### Roadmap
 
-#### Phase 1: Foundation (Q2 2025) — Current
+#### Phase 1: Foundation (H1 2026) — ✅ Complete
 - Smart contract development and testing (Foundry)
-- Goldsky subgraph deployment
-- Gas Station integration with Circle Dev-Controlled Wallets
-- Frontend dApp MVP (map, contribution, dashboard)
-- Mobile app MVP (React Native, GPS, camera)
-- IPFS/Arweave photo storage pipeline
-- **Target:** 100 locations mapped on Arc Testnet by internal team
+- v3 contracts deployed to Arc Testnet
+- Web dApp live in production with email login (Dynamic embedded wallet)
+- Full reward loop validated end to end in production (0.10 USDC paid on-chain)
+- **Achieved:** working prototype anyone can use with only an email address
 
-#### Phase 2: Public Beta (Q3 2025)
-- Public launch in São Paulo, Brazil (pilot city)
-- Onboard 500 contributors via community partnerships
-- Integrate with 1–2 municipal accessibility programs
-- Launch API with x402 billing for early consumer partners
+#### Phase 2: Public Beta (Q3–Q4 2026) — Current
+- Native mobile app (Android/iOS) wired to the live backend — GPS + camera mapping
+- Admin decentralization (2-of-3 multisig + timelock) and anti-sybil hardening
+- Goldsky subgraph deployment; IPFS/Arweave photo storage pipeline
+- Public launch in São Paulo, Brazil (pilot city); onboard 500 contributors via community partnerships
+- Integrate with 1–2 municipal accessibility programs; launch API with x402 billing for early consumers
 - Bug bounty program for smart contracts
 - **Target:** 10,000 locations mapped, 500 active contributors
 
-#### Phase 3: Mainnet Launch (Q4 2025)
+#### Phase 3: Mainnet Launch (Q1–Q2 2027)
+- Professional smart contract audit complete (grant-funded)
 - Arc Mainnet deployment (pending mainnet availability)
-- Professional smart contract audit (grant-funded)
 - Expand to Rio de Janeiro, Brasília, and Lima
 - Launch subscription API tiers for enterprise consumers
 - Partnership with 1 major travel or mobility platform
 - **Target:** 50,000 locations mapped, 2,000 active contributors, 5 API consumers
 
-#### Phase 4: Scale (2026)
+#### Phase 4: Scale (H2 2027+)
 - Expand to Mexico City, Bogotá, Buenos Aires, Madrid, Lisbon
 - Add EURC rewards for European markets
 - Integrate with government open-data portals (bidirectional sync)
@@ -376,7 +398,7 @@ Contributors interact with Stepless through Smart Contract Account (SCA) wallets
 
 ### Long-Term Vision
 
-By 2027, Stepless aims to be the **global standard for accessibility data** — a decentralized oracle consumed by every major mapping, travel, and mobility platform. The protocol's open-source nature means any city, NGO, or developer can build on top of it. The reward mechanism ensures continuous data freshness as locations change. The x402 revenue model ensures the protocol is self-sustaining without dependence on grants or donations.
+By 2028, Stepless aims to be the **global standard for accessibility data** — a decentralized oracle consumed by every major mapping, travel, and mobility platform. The protocol's open-source nature means any city, NGO, or developer can build on top of it. The reward mechanism ensures continuous data freshness as locations change. The x402 revenue model ensures the protocol is self-sustaining without dependence on grants or donations.
 
 ---
 
@@ -426,9 +448,9 @@ Stepless is being built in Brazil, home to 46 million people with disabilities a
 
 | Quarter | Milestone | Funds Deployed |
 |---|---|---|
-| Q3 2025 | Audit initiated, frontend + mobile MVPs complete | $35,000 |
-| Q3 2025 | Goldsky + IPFS infrastructure live, legal framework | $15,000 |
-| Q4 2025 | Audit complete, mainnet deployment, community launch | $25,000 |
+| Q3 2026 | Native mobile app shipped; multisig + anti-sybil hardening; audit initiated | $35,000 |
+| Q4 2026 | Goldsky + IPFS infrastructure live, legal framework, São Paulo community launch | $15,000 |
+| Q1–Q2 2027 | Audit complete, mainnet deployment, API consumer onboarding | $25,000 |
 
 ### Post-Grant Sustainability
 
@@ -544,10 +566,10 @@ API Consumers pay (x402 + subscriptions)
 
 | Phase | Timeline | Revenue Source | Reward Funding |
 |---|---|---|---|
-| **Launch** | Q4 2025 | Grant + early API revenue | 90% grant, 10% revenue |
-| **Growth** | Q2 2026 | API revenue + subscriptions | 50% grant, 50% revenue |
-| **Sustainability** | Q4 2026 | API revenue + subscriptions | 100% revenue |
-| **Surplus** | 2027+ | API revenue + subscriptions | Revenue funds expansion + treasury reserve |
+| **Launch** | Q1 2027 | Grant + early API revenue | 90% grant, 10% revenue |
+| **Growth** | Q3 2027 | API revenue + subscriptions | 50% grant, 50% revenue |
+| **Sustainability** | Q1 2028 | API revenue + subscriptions | 100% revenue |
+| **Surplus** | 2028+ | API revenue + subscriptions | Revenue funds expansion + treasury reserve |
 
 ### Unit Economics
 
@@ -677,16 +699,18 @@ Accessibility data is a public good. Locking it behind proprietary licenses woul
 
 ## Appendix A: Contract Addresses (Arc Testnet)
 
-> Contracts are being deployed to Arc Testnet. Addresses will be populated here upon deployment.
+> Live v3 contracts, deployed and operational on Arc Testnet (Chain ID 5042002).
 
 | Contract | Address | ArcScan |
 |---|---|---|
-| SteplessOracle.sol | _[To be populated]_ | _[Link]_ |
-| RewardDistributor.sol | _[To be populated]_ | _[Link]_ |
-| X402API.sol | _[To be populated]_ | _[Link]_ |
+| SteplessOracle.sol (v3) | `0x53ba90e17bbe96e924979723c744475d55cccc16` | [View](https://testnet.arcscan.app/address/0x53ba90e17bbe96e924979723c744475d55cccc16) |
+| RewardDistributor.sol (v3) | `0xdf8fa455f01965866ac99ebc553ad3c2b58a0368` | [View](https://testnet.arcscan.app/address/0xdf8fa455f01965866ac99ebc553ad3c2b58a0368) |
+| X402API.sol | _[Integration pending — see roadmap]_ | _[Link]_ |
 
 **Arc Memo Contract:** `0x5294E9927c3306DcBaDb03fe70b92e01cCede505`  
-**ArcScan Explorer:** `https://testnet.arcscan.app`
+**ArcScan Explorer:** `https://testnet.arcscan.app`  
+
+> Note: the current admin/relayer is a single key (see Security section). Migrating this role to a 2-of-3 multisig with a timelock is a grant-funded Phase 2 priority.
 
 ---
 

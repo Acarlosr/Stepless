@@ -2,6 +2,11 @@
 
 This guide walks you through deploying the full Stepless stack to Arc Testnet, from smart contracts to frontend. Follow each step in order.
 
+Repository:
+- GitHub: https://github.com/Acarlosr/Stepless
+- Contracts: https://github.com/Acarlosr/Stepless/tree/main/contracts/src
+- Frontend: https://github.com/Acarlosr/Stepless/tree/main/frontend
+
 ---
 
 ## Table of Contents
@@ -41,8 +46,8 @@ This guide walks you through deploying the full Stepless stack to Arc Testnet, f
 ## Step 1: Clone and Install
 
 ```bash
-git clone https://github.com/stepless/stepless.git
-cd stepless
+git clone https://github.com/Acarlosr/Stepless.git
+cd Stepless
 
 # Install Foundry dependencies (OpenZeppelin, forge-std)
 forge install

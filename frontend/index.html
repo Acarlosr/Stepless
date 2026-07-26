@@ -6,8 +6,15 @@
   <meta name="description" content="Stepless — Infraestrutura de acessibilidade descentralizada na Arc Testnet. Mapas acessíveis alimentados por comunidade, recompensados em USDC." />
   <meta name="theme-color" content="#1a56c4" />
   <title>Stepless — Decentralized Accessibility Infrastructure</title>
+  <!-- Tipografia: display com pegada de sinalização (Inter Tight), corpo de
+       alta legibilidade (Inter) e mono para dados verificáveis (IBM Plex Mono).
+       display=swap evita bloquear o render — o fallback do sistema é métrico-
+       compatível o suficiente para não causar salto perceptível. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦿</text></svg>" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%231a56c4'/%3E%3Cpath d='M30 28h12v44H30zM58 28h12v44H58z' fill='white'/%3E%3Ccircle cx='50' cy='28' r='8' fill='white'/%3E%3C/svg%3E" />
 </head>
 <body>
   <a href="#main" class="skip-link">Pular para o conteúdo / Skip to content / Saltar al contenido</a>
@@ -132,12 +139,94 @@
           </div>
         </form>
 
-        <div class="accessibility-highlights" aria-label="Recursos de acessibilidade disponíveis">
-          <span>♿ <span data-i18n="highlight_ramp">Entrada e rampa</span></span>
-          <span>🛗 <span data-i18n="highlight_elevator">Elevador</span></span>
-          <span>🚻 <span data-i18n="highlight_restroom">Banheiro acessível</span></span>
-          <span>🅿️ <span data-i18n="highlight_parking">Vaga PCD</span></span>
-          <span>✋ <span data-i18n="highlight_braille">Braille e piso tátil</span></span>
+        <!-- Painel de sinalização: pictogramas ADA/ISO + selo de status on-chain.
+             O âmbar (piso tátil) só aparece em "verificado" — é o que dá
+             significado à cor de assinatura em vez de decorá-la. -->
+        <div class="wayfind" role="list" aria-label="Recursos de acessibilidade mapeados">
+          <a class="wayfind-item" href="buscar.html?cat=ramp" role="listitem">
+            <span class="picto-badge" aria-hidden="true">
+              <svg class="picto" viewBox="0 0 32 32"><use href="assets/pictograms.svg#picto-ramp"></use></svg>
+            </span>
+            <span class="wayfind-item__body">
+              <span class="wayfind-item__title" data-i18n="highlight_ramp">Entrada e rampa</span>
+              <span class="wayfind-item__meta">
+                <span class="seal">
+                  <svg class="picto seal__mark" viewBox="0 0 32 32" aria-hidden="true"><use href="assets/pictograms.svg#picto-seal"></use></svg>
+                  <span data-i18n="status_verified">Verificado on-chain</span>
+                </span>
+              </span>
+            </span>
+          </a>
+
+          <a class="wayfind-item" href="buscar.html?cat=elevator" role="listitem">
+            <span class="picto-badge" aria-hidden="true">
+              <svg class="picto" viewBox="0 0 32 32"><use href="assets/pictograms.svg#picto-elevator"></use></svg>
+            </span>
+            <span class="wayfind-item__body">
+              <span class="wayfind-item__title" data-i18n="highlight_elevator">Elevador</span>
+              <span class="wayfind-item__meta">
+                <span class="seal seal--pending">
+                  <svg class="picto seal__mark" viewBox="0 0 32 32" aria-hidden="true"><use href="assets/pictograms.svg#picto-pending"></use></svg>
+                  <span data-i18n="status_pending">Em verificação</span>
+                </span>
+              </span>
+            </span>
+          </a>
+
+          <a class="wayfind-item" href="buscar.html?cat=restroom" role="listitem">
+            <span class="picto-badge" aria-hidden="true">
+              <svg class="picto" viewBox="0 0 32 32"><use href="assets/pictograms.svg#picto-restroom"></use></svg>
+            </span>
+            <span class="wayfind-item__body">
+              <span class="wayfind-item__title" data-i18n="highlight_restroom">Banheiro acessível</span>
+              <span class="wayfind-item__meta">
+                <span class="seal">
+                  <svg class="picto seal__mark" viewBox="0 0 32 32" aria-hidden="true"><use href="assets/pictograms.svg#picto-seal"></use></svg>
+                  <span data-i18n="status_verified">Verificado on-chain</span>
+                </span>
+              </span>
+            </span>
+          </a>
+
+          <a class="wayfind-item" href="buscar.html?cat=parking" role="listitem">
+            <span class="picto-badge" aria-hidden="true">
+              <svg class="picto" viewBox="0 0 32 32"><use href="assets/pictograms.svg#picto-parking"></use></svg>
+            </span>
+            <span class="wayfind-item__body">
+              <span class="wayfind-item__title" data-i18n="highlight_parking">Vaga PCD</span>
+              <span class="wayfind-item__meta">
+                <span class="seal">
+                  <svg class="picto seal__mark" viewBox="0 0 32 32" aria-hidden="true"><use href="assets/pictograms.svg#picto-seal"></use></svg>
+                  <span data-i18n="status_verified">Verificado on-chain</span>
+                </span>
+              </span>
+            </span>
+          </a>
+
+          <a class="wayfind-item" href="buscar.html?cat=tactile" role="listitem">
+            <span class="picto-badge" aria-hidden="true">
+              <svg class="picto" viewBox="0 0 32 32"><use href="assets/pictograms.svg#picto-tactile"></use></svg>
+            </span>
+            <span class="wayfind-item__body">
+              <span class="wayfind-item__title" data-i18n="highlight_braille">Braille e piso tátil</span>
+              <span class="wayfind-item__meta">
+                <span class="seal seal--pending">
+                  <svg class="picto seal__mark" viewBox="0 0 32 32" aria-hidden="true"><use href="assets/pictograms.svg#picto-pending"></use></svg>
+                  <span data-i18n="status_pending">Em verificação</span>
+                </span>
+              </span>
+            </span>
+          </a>
+
+          <a class="wayfind-item" href="dashboard.html" role="listitem">
+            <span class="picto-badge" aria-hidden="true">
+              <svg class="picto" viewBox="0 0 32 32"><use href="assets/pictograms.svg#picto-locate"></use></svg>
+            </span>
+            <span class="wayfind-item__body">
+              <span class="wayfind-item__title" data-i18n="wayfind_add_title">Falta algum recurso?</span>
+              <span class="wayfind-item__meta" data-i18n="wayfind_add_meta">Mapeie e receba em USDC</span>
+            </span>
+          </a>
         </div>
 
         <div class="hero-actions hero-actions-secondary">
@@ -152,7 +241,9 @@
           Pode manter o Play Protect ativado e instalar normalmente.
         </p>
         <a href="como-sacar-recompensas.html" class="rewards-guide-cta" data-i18n="rewards_guide_link">
-          💸 Como sacar suas recompensas em USDC →
+          <svg class="picto" viewBox="0 0 32 32" aria-hidden="true"><use href="assets/pictograms.svg#picto-seal"></use></svg>
+          <span>Como sacar suas recompensas em USDC</span>
+          <span aria-hidden="true">→</span>
         </a>
       </div>
     </section>
@@ -162,36 +253,34 @@
       <div class="container">
         <h2 class="section-title" id="problem-title" data-i18n="problem_title">O Problema</h2>
         <p class="section-subtitle" data-i18n="problem_subtitle">Mais de 1 bilhão de pessoas vivem com alguma deficiência. A informação sobre acessibilidade é escassa, desatualizada e centralizada.</p>
-        <div class="problem-grid">
-          <div class="card">
-            <div class="card-icon" aria-hidden="true">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <!-- Lista de sinalização de rota: a numeração é semântica, não
+             decorativa — cada item é a causa do seguinte. -->
+        <ol class="route-list">
+          <li>
+            <div>
+              <h3 data-i18n="problem_1_title">Dados Inexistentes</h3>
+              <p data-i18n="problem_1_desc">A maioria dos locais não tem informação de acessibilidade disponível. Pessoas com deficiência não sabem se podem acessar um local antes de chegar lá.</p>
             </div>
-            <h3 class="card-title" data-i18n="problem_1_title">Dados Inexistentes</h3>
-            <p class="card-text" data-i18n="problem_1_desc">A maioria dos locais não tem informação de acessibilidade disponível. Pessoas com deficiência não sabem se podem acessar um local antes de chegar lá.</p>
-          </div>
-          <div class="card">
-            <div class="card-icon" aria-hidden="true">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </li>
+          <li>
+            <div>
+              <h3 data-i18n="problem_2_title">Informação Desatualizada</h3>
+              <p data-i18n="problem_2_desc">Mapas centralizados ficam rapidamente desatualizados. Uma rampa removida ou elevador quebrado não é refletido em tempo hábil.</p>
             </div>
-            <h3 class="card-title" data-i18n="problem_2_title">Informação Desatualizada</h3>
-            <p class="card-text" data-i18n="problem_2_desc">Mapas centralizados ficam rapidamente desatualizados. Uma rampa removida ou elevador quebrado não é refletido em tempo hábil.</p>
-          </div>
-          <div class="card">
-            <div class="card-icon" aria-hidden="true">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          </li>
+          <li>
+            <div>
+              <h3 data-i18n="problem_3_title">Falta de Incentivo</h3>
+              <p data-i18n="problem_3_desc">Não há recompensa para quem mapeia ou verifica acessibilidade. A comunidade não tem motivação para contribuir com dados de qualidade.</p>
             </div>
-            <h3 class="card-title" data-i18n="problem_3_title">Falta de Incentivo</h3>
-            <p class="card-text" data-i18n="problem_3_desc">Não há recompensa para quem mapeia ou verifica acessibilidade. A comunidade não tem motivação para contribuir com dados de qualidade.</p>
-          </div>
-          <div class="card">
-            <div class="card-icon" aria-hidden="true">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </li>
+          <li>
+            <div>
+              <h3 data-i18n="problem_4_title">Plataformas Centralizadas</h3>
+              <p data-i18n="problem_4_desc">Dados de acessibilidade ficam presos em plataformas centralizadas que podem ser descontinuadas, censuradas ou monetizadas sem beneficiar a comunidade.</p>
             </div>
-            <h3 class="card-title" data-i18n="problem_4_title">Plataformas Centralizadas</h3>
-            <p class="card-text" data-i18n="problem_4_desc">Dados de acessibilidade ficam presos em plataformas centralizadas que podem ser descontinuadas, censuradas ou monetizadas sem beneficiar a comunidade.</p>
-          </div>
-        </div>
+          </li>
+        </ol>
       </div>
     </section>
 
@@ -239,19 +328,19 @@
         <h2 class="section-title" id="how-title" data-i18n="how_title">Como Funciona</h2>
         <p class="section-subtitle" data-i18n="how_subtitle">Do mapeamento à recompensa em 4 passos simples.</p>
         <div class="steps">
-          <div class="step card">
+          <div class="step card reveal">
             <h3 class="card-title" data-i18n="step_1_title">Mapear Local</h3>
             <p class="card-text" data-i18n="step_1_desc">O contribuidor encontra um local acessível (rampa, elevador, banheiro), tira uma foto e registra as coordenadas GPS no SteplessOracle.</p>
           </div>
-          <div class="step card">
+          <div class="step card reveal">
             <h3 class="card-title" data-i18n="step_2_title">Registrar On-Chain</h3>
             <p class="card-text" data-i18n="step_2_desc">A contribuição é registrada na Arc Testnet com foto armazenada em IPFS/Arweave. O hash da foto fica imutável on-chain.</p>
           </div>
-          <div class="step card">
+          <div class="step card reveal">
             <h3 class="card-title" data-i18n="step_3_title">Verificar</h3>
             <p class="card-text" data-i18n="step_3_desc">Verificadores aprovados confirmam que a contribuição é válida. Contribuições verificadas qualificam-se para recompensa.</p>
           </div>
-          <div class="step card">
+          <div class="step card reveal">
             <h3 class="card-title" data-i18n="step_4_title">Receber USDC</h3>
             <p class="card-text" data-i18n="step_4_desc">O RewardDistributor paga USDC automaticamente ao contribuidor, baseado no tipo e qualidade da contribuição. Gas pago em USDC na Arc.</p>
           </div>
@@ -274,8 +363,40 @@
                 <th scope="col" data-i18n="reward_col_desc">Descrição</th>
               </tr>
             </thead>
+            <!-- Fallback estático com os valores reais do contrato: se o JS
+                 não rodar, a tabela ainda mostra dados em vez de ficar vazia.
+                 O renderRewardTable() reescreve isso com o idioma ativo. -->
             <tbody id="reward-table-body">
-              <!-- Populated by JS -->
+              <tr>
+                <td><span class="badge badge-info mono">T0</span></td>
+                <td style="text-align:left; color:var(--text); font-weight:600;">Novo local</td>
+                <td><span class="reward-amount">0.10</span></td>
+                <td style="text-align:left;">Mapear um local acessível com foto e coordenadas</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-info mono">T1</span></td>
+                <td style="text-align:left; color:var(--text); font-weight:600;">Verificação</td>
+                <td><span class="reward-amount">0.05</span></td>
+                <td style="text-align:left;">Confirmar ou rejeitar a contribuição de outra pessoa</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-info mono">T2</span></td>
+                <td style="text-align:left; color:var(--text); font-weight:600;">Foto de qualidade</td>
+                <td><span class="reward-amount">0.02</span></td>
+                <td style="text-align:left;">Adicionar evidência visual que mostra o recurso com clareza</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-info mono">T3</span></td>
+                <td style="text-align:left; color:var(--text); font-weight:600;">Atualização de local</td>
+                <td><span class="reward-amount">0.03</span></td>
+                <td style="text-align:left;">Corrigir informação desatualizada — rampa removida, elevador quebrado</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-info mono">T4</span></td>
+                <td style="text-align:left; color:var(--text); font-weight:600;">Bônus mensal</td>
+                <td><span class="reward-amount">5.00</span></td>
+                <td style="text-align:left;">Principais contribuidores do mês</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -287,18 +408,56 @@
       <div class="container">
         <h2 class="section-title" id="tech-title" data-i18n="tech_title">Stack Tecnológico</h2>
         <p class="section-subtitle" data-i18n="tech_subtitle">Tecnologias descentralizadas e open-source.</p>
-        <div class="tech-grid">
-          <div class="tech-item">Arc Testnet <small>Circle L1</small></div>
-          <div class="tech-item">USDC <small>Stablecoin nativo</small></div>
-          <div class="tech-item">Viem <small>TypeScript ETH lib</small></div>
-          <div class="tech-item">Solidity <small>Smart contracts</small></div>
-          <div class="tech-item">IPFS <small>Armazenamento de fotos</small></div>
-          <div class="tech-item">Arweave <small>Storage permanente</small></div>
-          <div class="tech-item">Goldsky <small>Subgraph indexing</small></div>
-          <div class="tech-item">x402 <small>HTTP payment protocol</small></div>
-          <div class="tech-item">Multicall3 <small>Batch reads</small></div>
-          <div class="tech-item">WCAG AA <small>Acessibilidade web</small></div>
-        </div>
+        <!-- Ficha técnica: endereços reais, verificáveis no explorer.
+             Formato de especificação em vez de grid de logos — o tom é
+             "infraestrutura auditável", não "vitrine de tecnologias". -->
+        <dl class="spec-sheet">
+          <div class="spec-sheet__head">
+            <span data-i18n="spec_head">Especificação técnica</span>
+            <span class="mono">arc-testnet</span>
+          </div>
+
+          <div class="spec-row">
+            <dt data-i18n="spec_network">Rede</dt>
+            <dd>Arc Testnet <span class="mono">· chain id 5042002</span></dd>
+          </div>
+          <div class="spec-row">
+            <dt data-i18n="spec_gas">Gas e recompensas</dt>
+            <dd>USDC <span class="mono">· 6 dec (ERC-20) / 18 dec (nativo)</span></dd>
+          </div>
+          <div class="spec-row">
+            <dt>SteplessOracle</dt>
+            <dd><a class="addr" href="https://testnet.arcscan.app/address/0x2Ac87a4E49D59900295999B1A44930B912F65F48" target="_blank" rel="noopener">0x2Ac87a4E49D59900295999B1A44930B912F65F48</a></dd>
+          </div>
+          <div class="spec-row">
+            <dt>RewardDistributor</dt>
+            <dd><a class="addr" href="https://testnet.arcscan.app/address/0x4959d0BB848Af5437F249E8516914e0e9353584b" target="_blank" rel="noopener">0x4959d0BB848Af5437F249E8516914e0e9353584b</a></dd>
+          </div>
+          <div class="spec-row">
+            <dt>X402API</dt>
+            <dd><a class="addr" href="https://testnet.arcscan.app/address/0x0D318864C80eCe8d28800a750bdA06b6E52ffCc9" target="_blank" rel="noopener">0x0D318864C80eCe8d28800a750bdA06b6E52ffCc9</a></dd>
+          </div>
+          <div class="spec-row">
+            <dt data-i18n="spec_contracts">Contratos</dt>
+            <dd>Solidity <span class="mono">0.8.24</span> · MIT</dd>
+          </div>
+          <div class="spec-row">
+            <dt data-i18n="spec_client">Cliente</dt>
+            <dd><span class="mono">viem</span> · relayer serverless com gas patrocinado</dd>
+          </div>
+          <div class="spec-row">
+            <dt data-i18n="spec_auth">Autenticação</dt>
+            <dd data-i18n="spec_auth_val">Login por e-mail com carteira embarcada · MetaMask opcional</dd>
+          </div>
+          <div class="spec-row">
+            <dt data-i18n="spec_a11y">Acessibilidade</dt>
+            <dd data-i18n="spec_a11y_val">WCAG 2.2 AA · navegação por teclado · leitor de tela · reduced-motion</dd>
+          </div>
+
+          <div class="spec-note" data-i18n="spec_note">
+            Fase de testnet: recompensas em USDC de teste, sem valor real. Verificadores são permissionados e a autenticidade de imagem ainda não é obrigatória.
+          </div>
+        </dl>
       </div>
     </section>
 
@@ -439,6 +598,18 @@
         wallet_no_provider: "Nenhuma wallet detectada. Instale MetaMask ou outra wallet compatível.",
         wallet_wrong_chain: "Rede incorreta. Conecte-se à Arc Testnet (Chain ID: 5042002).",
         wallet_balance: "Saldo USDC",
+        reward_newlocation: "Novo local", reward_newlocation_desc: "Mapear um local acessível com foto e coordenadas",
+        reward_verification: "Verificação", reward_verification_desc: "Confirmar ou rejeitar a contribuição de outra pessoa",
+        reward_photo: "Foto de qualidade", reward_photo_desc: "Adicionar evidência visual que mostra o recurso com clareza",
+        reward_update: "Atualização de local", reward_update_desc: "Corrigir informação desatualizada — rampa removida, elevador quebrado",
+        reward_bonus: "Bônus de contribuição destaque", reward_bonus_desc: "Principais contribuidores do mês",
+        status_verified: "Verificado on-chain", status_pending: "Em verificação", status_issue: "Problema reportado",
+        wayfind_add_title: "Falta algum recurso?", wayfind_add_meta: "Mapeie e receba em USDC",
+        spec_head: "Especificação técnica", spec_network: "Rede", spec_gas: "Gas e recompensas",
+        spec_contracts: "Contratos", spec_client: "Cliente", spec_auth: "Autenticação",
+        spec_auth_val: "Login por e-mail com carteira embarcada · MetaMask opcional",
+        spec_a11y: "Acessibilidade", spec_a11y_val: "WCAG 2.2 AA · navegação por teclado · leitor de tela · reduced-motion",
+        spec_note: "Fase de testnet: recompensas em USDC de teste, sem valor real. Verificadores são permissionados e a autenticidade de imagem ainda não é obrigatória.",
         reward_basic: "Básico — Mapear local", reward_standard: "Padrão — Verificar acesso", reward_premium: "Premium — Reportar problema", reward_critical: "Crítico — Atualização urgente",
         reward_basic_desc: "Mapear um novo local acessível com foto e coordenadas", reward_standard_desc: "Verificar e confirmar acessibilidade de um local existente",
         reward_premium_desc: "Reportar problema de acessibilidade (rampa quebrada, etc.)", reward_critical_desc: "Atualização urgente de informação crítica desatualizada",
@@ -488,6 +659,18 @@
         wallet_no_provider: "No wallet detected. Install MetaMask or another compatible wallet.",
         wallet_wrong_chain: "Wrong network. Connect to Arc Testnet (Chain ID: 5042002).",
         wallet_balance: "USDC Balance",
+        reward_newlocation: "New location", reward_newlocation_desc: "Map an accessible place with photo and coordinates",
+        reward_verification: "Verification", reward_verification_desc: "Confirm or reject someone else's contribution",
+        reward_photo: "Quality photo", reward_photo_desc: "Add visual evidence that clearly shows the feature",
+        reward_update: "Location update", reward_update_desc: "Correct outdated info — removed ramp, broken elevator",
+        reward_bonus: "Top contributor bonus", reward_bonus_desc: "Top contributors of the month",
+        status_verified: "Verified on-chain", status_pending: "Awaiting verification", status_issue: "Issue reported",
+        wayfind_add_title: "Something missing?", wayfind_add_meta: "Map it and get paid in USDC",
+        spec_head: "Technical specification", spec_network: "Network", spec_gas: "Gas and rewards",
+        spec_contracts: "Contracts", spec_client: "Client", spec_auth: "Authentication",
+        spec_auth_val: "Email login with embedded wallet · MetaMask optional",
+        spec_a11y: "Accessibility", spec_a11y_val: "WCAG 2.2 AA · keyboard navigation · screen reader · reduced-motion",
+        spec_note: "Testnet phase: rewards are test USDC with no real value. Verifiers are permissioned and image authenticity is not yet mandatory.",
         reward_basic: "Basic — Map location", reward_standard: "Standard — Verify access", reward_premium: "Premium — Report issue", reward_critical: "Critical — Urgent update",
         reward_basic_desc: "Map a new accessible location with photo and coordinates", reward_standard_desc: "Verify and confirm accessibility of an existing location",
         reward_premium_desc: "Report accessibility issue (broken ramp, etc.)", reward_critical_desc: "Urgent update of critical outdated information",
@@ -499,9 +682,9 @@
         hero_eyebrow: "Accesibilidad para la vida real", hero_title: "Encuentra lugares donde puedas entrar, desplazarte y ser atendido con autonomía",
         hero_subtitle: "Consulta rampas, ascensores, baños accesibles, estacionamiento PCD y otros recursos antes de salir de casa.", home_search_label: "¿A dónde quieres ir?", home_search_placeholder: "Escribe un lugar, dirección, barrio o ciudad", home_search_button: "Buscar lugares accesibles", highlight_ramp: "Entrada y rampa", highlight_elevator: "Ascensor", highlight_restroom: "Baño accesible", highlight_parking: "Estacionamiento PCD", highlight_braille: "Braille y pavimento táctil", hero_cta_search: "Ver todos los lugares", hero_cta_contribute: "Contribuir al mapa",
         hero_cta_dashboard: "Abrir Dashboard", hero_cta_learn: "Cómo Funciona", built_on_arc: "Built on",
-        hero_cta_download: "📱 Descargar App Android (APK)",
-        download_security_note: "⚠️ Android puede advertir que la app no viene de Play Store — normal en fase de pruebas. Puedes dejar Play Protect activo e instalar con normalidad.",
-        rewards_guide_link: "Cómo retirar tus recompensas en USDC →",
+        hero_cta_download: "Descargar App Android (APK)",
+        download_security_note: "Android puede advertir que la app no viene de Play Store — normal en fase de pruebas. Puedes dejar Play Protect activo e instalar con normalidad.",
+        rewards_guide_link: "Cómo retirar tus recompensas en USDC",
         problem_title: "El Problema",
         problem_subtitle: "Más de 1 mil millones de personas viven con alguna discapacidad. La información sobre accesibilidad es escasa, desactualizada y centralizada.",
         problem_1_title: "Datos Inexistentes", problem_1_desc: "La mayoría de los lugares no tienen información de accesibilidad disponible. Las personas con discapacidad no saben si pueden acceder a un lugar antes de llegar.",
@@ -537,6 +720,18 @@
         wallet_no_provider: "No se detectó wallet. Instala MetaMask u otra wallet compatible.",
         wallet_wrong_chain: "Red incorrecta. Conéctate a Arc Testnet (Chain ID: 5042002).",
         wallet_balance: "Saldo USDC",
+        reward_newlocation: "Nuevo lugar", reward_newlocation_desc: "Mapear un lugar accesible con foto y coordenadas",
+        reward_verification: "Verificación", reward_verification_desc: "Confirmar o rechazar la contribución de otra persona",
+        reward_photo: "Foto de calidad", reward_photo_desc: "Agregar evidencia visual que muestre el recurso con claridad",
+        reward_update: "Actualización de lugar", reward_update_desc: "Corregir información desactualizada — rampa removida, ascensor roto",
+        reward_bonus: "Bono de top contributor", reward_bonus_desc: "Principales contribuidores del mes",
+        status_verified: "Verificado on-chain", status_pending: "En verificación", status_issue: "Problema reportado",
+        wayfind_add_title: "¿Falta algún recurso?", wayfind_add_meta: "Mapéalo y recibe en USDC",
+        spec_head: "Especificación técnica", spec_network: "Red", spec_gas: "Gas y recompensas",
+        spec_contracts: "Contratos", spec_client: "Cliente", spec_auth: "Autenticación",
+        spec_auth_val: "Login por correo con billetera embebida · MetaMask opcional",
+        spec_a11y: "Accesibilidad", spec_a11y_val: "WCAG 2.2 AA · navegación por teclado · lector de pantalla · reduced-motion",
+        spec_note: "Fase de testnet: recompensas en USDC de prueba, sin valor real. Los verificadores son permisionados y la autenticidad de imagen aún no es obligatoria.",
         reward_basic: "Básico — Mapear lugar", reward_standard: "Estándar — Verificar acceso", reward_premium: "Premium — Reportar problema", reward_critical: "Crítico — Actualización urgente",
         reward_basic_desc: "Mapear un nuevo lugar accesible con foto y coordenadas", reward_standard_desc: "Verificar y confirmar accesibilidad de un lugar existente",
         reward_premium_desc: "Reportar problema de accesibilidad (rampa rota, etc.)", reward_critical_desc: "Actualización urgente de información crítica desactualizada",
@@ -576,23 +771,35 @@
       renderRewardTable();
     }
 
-    /* ── Reward table ── */
+    /* ── Reward table ──────────────────────────────────────────────────
+       Valores espelham EXATAMENTE o enum RewardType e as variáveis de
+       estado do RewardDistributor.sol (unidades de 6 decimais):
+         NewLocation         100_000    = $0.10
+         Verification         50_000    = $0.05
+         QualityPhoto         20_000    = $0.02
+         LocationUpdate       30_000    = $0.03
+         TopContributorBonus  5_000_000 = $5.00
+       Se este bloco divergir do contrato, o contrato é a verdade.
+       O <tbody> já traz as mesmas linhas em HTML estático, então a
+       tabela nunca aparece vazia se o JS falhar. ------------------- */
+    const REWARD_TIERS = [
+      { tier: 0, key: 'reward_newlocation', amount: '0.10' },
+      { tier: 1, key: 'reward_verification', amount: '0.05' },
+      { tier: 2, key: 'reward_photo',        amount: '0.02' },
+      { tier: 3, key: 'reward_update',       amount: '0.03' },
+      { tier: 4, key: 'reward_bonus',        amount: '5.00' },
+    ];
+
     function renderRewardTable() {
       const tbody = document.getElementById('reward-table-body');
       if (!tbody) return;
       const strings = I18N[currentLang];
-      const tiers = [
-        { tier: 0, label: strings.reward_basic, amount: '0.10', desc: strings.reward_basic_desc },
-        { tier: 1, label: strings.reward_standard, amount: '0.05', desc: strings.reward_standard_desc },
-        { tier: 2, label: strings.reward_premium, amount: '0.02', desc: strings.reward_premium_desc },
-        { tier: 3, label: strings.reward_critical, amount: '1.00', desc: strings.reward_critical_desc },
-      ];
-      tbody.innerHTML = tiers.map(t => `
+      tbody.innerHTML = REWARD_TIERS.map(t => `
         <tr>
-          <td><span class="badge badge-info">T${t.tier}</span></td>
-          <td style="text-align:left; color:var(--text); font-weight:600;">${t.label}</td>
+          <td><span class="badge badge-info mono">T${t.tier}</span></td>
+          <td style="text-align:left; color:var(--text); font-weight:600;">${strings[t.key]}</td>
           <td><span class="reward-amount">${t.amount}</span></td>
-          <td style="text-align:left;">${t.desc}</td>
+          <td style="text-align:left;">${strings[t.key + '_desc']}</td>
         </tr>
       `).join('');
     }
@@ -739,11 +946,69 @@
       if (!isConnected && localStorage.getItem(WALLET_DISCONNECT_KEY) !== '1') location.reload();
     });
 
+    /* ── Selo de Verificação ────────────────────────────────────────────
+       API reaproveitável no dashboard: quando uma contribuição é aprovada,
+       chame window.Stepless.stampSeal(el) para o carimbo.
+       Respeita prefers-reduced-motion — o selo aparece, mas sem movimento. */
+    const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    function stampSeal(el) {
+      if (!el || REDUCED_MOTION.matches) return;
+      el.classList.remove('is-stamping');
+      void el.offsetWidth;                 // força reflow p/ reiniciar a animação
+      el.classList.add('is-stamping');
+      el.addEventListener('animationend', () => el.classList.remove('is-stamping'), { once: true });
+    }
+
+    /** Monta um selo. status: 'verified' | 'pending' | 'issue'. */
+    function buildSeal({ status = 'verified', txHash = '', label = '' } = {}) {
+      const icon = status === 'verified' ? 'picto-seal'
+                 : status === 'issue'    ? 'picto-issue'
+                 : 'picto-pending';
+      const mod = status === 'verified' ? '' : ` seal--${status}`;
+      const strings = I18N[currentLang];
+      const text = label || (status === 'verified' ? strings.status_verified
+                          : status === 'issue'     ? strings.status_issue
+                          : strings.status_pending);
+      const frag = txHash ? `<span class="seal__hash">${txHash.slice(0, 6)}…${txHash.slice(-4)}</span>` : '';
+      const el = document.createElement('span');
+      el.className = `seal seal--stamp${mod}`;
+      el.innerHTML = `
+        <svg class="picto seal__mark" viewBox="0 0 32 32" aria-hidden="true"><use href="assets/pictograms.svg#${icon}"></use></svg>
+        <span>${text}</span>${frag}`;
+      return el;
+    }
+
+    /* ── Scroll-reveal discreto (só na seção Como Funciona) ── */
+    function initReveal() {
+      const items = document.querySelectorAll('.reveal');
+      if (!items.length) return;
+      if (REDUCED_MOTION.matches || !('IntersectionObserver' in window)) {
+        items.forEach(el => el.classList.add('is-visible'));
+        return;
+      }
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((entry, i) => {
+          if (!entry.isIntersecting) return;
+          const el = entry.target;
+          setTimeout(() => el.classList.add('is-visible'), i * 70);
+          io.unobserve(el);
+        });
+      }, { threshold: 0.2, rootMargin: '0px 0px -8% 0px' });
+      items.forEach(el => io.observe(el));
+    }
+
+    // Exposto para o dashboard reutilizar o mesmo selo e o mesmo carimbo
+    window.Stepless = Object.assign(window.Stepless || {}, {
+      stampSeal, buildSeal, REWARD_TIERS,
+    });
+
     /* ── Init ── */
     document.addEventListener('DOMContentLoaded', () => {
       initTheme();
       initNav();
       setLanguage(detectLanguage());
+      initReveal();
 
       document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
       document.getElementById('connect-wallet-btn').addEventListener('click', connectWallet);
@@ -752,6 +1017,20 @@
       document.querySelectorAll('.lang-btn').forEach(btn => {
         btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
       });
+
+      // Carimbo nos selos do hero quando entram na tela — uma vez, nunca em loop
+      const heroSeals = document.querySelectorAll('.wayfind .seal');
+      if (heroSeals.length && !REDUCED_MOTION.matches && 'IntersectionObserver' in window) {
+        const io = new IntersectionObserver((entries) => {
+          entries.forEach((entry, i) => {
+            if (!entry.isIntersecting) return;
+            entry.target.classList.add('seal--stamp');
+            setTimeout(() => stampSeal(entry.target), 120 + i * 90);
+            io.unobserve(entry.target);
+          });
+        }, { threshold: 0.6 });
+        heroSeals.forEach(el => io.observe(el));
+      }
 
       tryAutoConnectWallet();
     });

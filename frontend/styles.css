@@ -22,8 +22,8 @@ html {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-body, -apple-system), BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
   line-height: 1.6;
   color: var(--text);
   background: var(--bg);
@@ -50,26 +50,68 @@ a:hover {
  * ────────────────────────────────────────────────────────────── */
 
 :root {
-  /* Light theme — all pairs tested ≥ 4.5:1 */
+  /* ═══════════════════════════════════════════════════════════════
+   *  DESIGN TOKENS — Stepless
+   *  Paleta ancorada no mundo real da acessibilidade urbana:
+   *  o amarelo do piso tátil é a cor de assinatura, não um acento
+   *  decorativo. Azul institucional virou coadjuvante (CTAs/Arc).
+   *
+   *  CONTRASTE — medido, não estimado (sobre --sidewalk #EEF1F4):
+   *    ink-navy       12.52:1  ✓ AA/AAA qualquer tamanho
+   *    slate           5.28:1  ✓ AA
+   *    tactile-amber   1.77:1  ✗ NUNCA como texto — só preenchimento
+   *    usdc-green      3.80:1  ⚠ só texto grande (≥24px/19px bold)
+   *    signal-red      4.42:1  ⚠ só texto grande
+   *  Por isso existem as variantes -ink: verde/vermelho escurecidos
+   *  que passam AA em texto pequeno. Sobre amber, texto = ink-navy
+   *  (7.06:1); branco sobre amber é 2.01:1 e está proibido.
+   * ═══════════════════════════════════════════════════════════════ */
+
+  --ink-navy: #0f2a54;        /* texto principal, base do wayfinding */
+  --sidewalk: #eef1f4;        /* cinza-concreto frio (nunca creme)   */
+  --tactile-amber: #f2a900;   /* assinatura: verificado on-chain     */
+  --usdc-green: #0c8b5e;      /* recompensas e sucesso (preenchimento)*/
+  --slate: #5b6472;           /* texto secundário                    */
+  --signal-red: #c4432e;      /* não verificado / problema reportado */
+
+  /* Variantes acessíveis para TEXTO PEQUENO sobre --sidewalk */
+  --usdc-green-ink: #076241;  /* 6.54:1 ✓ */
+  --signal-red-ink: #a33322;  /* 6.07:1 ✓ */
+  --amber-ink: #8a5f00;       /* 4.98:1 ✓ — quando o texto precisa ser âmbar */
+
+  /* Tonalidades de superfície derivadas */
+  --sidewalk-deep: #dfe4ea;
+  --amber-wash: #fdf3dc;
+  --navy-wash: #e7ecf4;
+
+  /* Tipografia */
+  --font-display: "Inter Tight", "Public Sans", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo,
+    Consolas, monospace;
+
+  /* ── Mapeamento para o sistema existente (não quebra outras páginas) ── */
   --bg: #ffffff;
-  --bg-alt: #f5f7fa;
+  --bg-alt: var(--sidewalk);
   --bg-card: #ffffff;
-  --bg-code: #f0f2f5;
-  --text: #1a1a2e;
-  --text-muted: #4a5568;
+  --bg-code: var(--sidewalk);
+  --text: var(--ink-navy);
+  --text-muted: var(--slate);
   --text-light: #6b7280;
   --link: #1a56c4;
   --link-hover: #0f3d96;
-  --border: #d1d5db;
-  --border-light: #e5e7eb;
+  --border: #cbd3dd;
+  --border-light: var(--sidewalk-deep);
   --accent: #1a56c4;
-  --accent-bg: #e8f0fe;
+  --accent-bg: var(--navy-wash);
   --accent-text: #ffffff;
-  --success: #15803d;
+  --success: var(--usdc-green-ink);
   --success-bg: #dcfce7;
-  --warning: #b45309;
-  --warning-bg: #fef3c7;
-  --danger: #b91c1c;
+  --warning: var(--amber-ink);
+  --warning-bg: var(--amber-wash);
+  --danger: var(--signal-red-ink);
   --danger-bg: #fee2e2;
   --primary: #1a56c4;
   --primary-hover: #0f3d96;
@@ -1616,4 +1658,464 @@ pre code {
   .accessible-search-row .btn { width: 100%; }
   .accessibility-highlights { justify-content: flex-start; }
   .accessibility-highlights > span { font-size: 0.88rem; }
+}
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  REDESIGN — Linguagem de sinalização urbana + prova on-chain
+ *  Componentes reaproveitáveis: index, dashboard e buscar.
+ *  Regra dura de contraste: --tactile-amber é 1.77:1 sobre --sidewalk,
+ *  então NUNCA aparece como texto — só como preenchimento, borda ou
+ *  fundo com texto --ink-navy em cima (7.06:1).
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Display type: pegada de sinalização de trânsito ── */
+.hero-title,
+.section-title,
+.sign-panel__headline,
+.wayfind-item__title {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+/* ── Dados verificáveis sempre em mono ── */
+.mono,
+.spec-sheet,
+.seal__hash,
+.reward-amount,
+.addr {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ───────────────────────────────────────────────────────────────
+ *  1. PICTOGRAMAS  (substituem os emojis)
+ * ─────────────────────────────────────────────────────────────── */
+.picto {
+  width: 100%;
+  height: 100%;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.picto-badge {
+  --picto-size: 56px;
+  width: var(--picto-size);
+  height: var(--picto-size);
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  border-radius: 14px;
+  background: #fff;
+  color: var(--ink-navy);
+  border: 2px solid var(--sidewalk-deep);
+}
+[data-theme="dark"] .picto-badge {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #e8eefb;
+}
+
+/* ───────────────────────────────────────────────────────────────
+ *  2. SELO DE VERIFICAÇÃO — elemento de assinatura
+ *     Amarra infraestrutura física (relevo do piso tátil) +
+ *     prova on-chain (fragmento do hash).
+ * ─────────────────────────────────────────────────────────────── */
+.seal {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 6px;
+  border-radius: 999px;
+  background: var(--amber-wash);
+  border: 1.5px solid var(--tactile-amber);
+  color: var(--ink-navy);          /* 7.06:1 sobre amber */
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.seal__mark {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+.seal__hash {
+  font-size: 0.7rem;
+  color: var(--amber-ink);          /* 4.98:1 — passa AA */
+  letter-spacing: 0.02em;
+}
+
+/* Estado pendente: cinza, sem âmbar — âmbar significa VERIFICADO */
+.seal--pending {
+  background: var(--sidewalk);
+  border-color: var(--border);
+  color: var(--slate);
+}
+.seal--pending .seal__hash { color: var(--slate); }
+
+/* Estado problema reportado */
+.seal--issue {
+  background: #fdecea;
+  border-color: var(--signal-red);
+  color: var(--signal-red-ink);
+}
+.seal--issue .seal__hash { color: var(--signal-red-ink); }
+
+[data-theme="dark"] .seal {
+  background: rgba(242, 169, 0, 0.14);
+  color: #ffe3a3;
+}
+[data-theme="dark"] .seal__hash { color: #f5c974; }
+[data-theme="dark"] .seal--pending {
+  background: rgba(255, 255, 255, 0.07);
+  color: #b9c2d0;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+[data-theme="dark"] .seal--pending .seal__hash { color: #b9c2d0; }
+
+/* Animação de carimbo — único momento orquestrado do produto.
+   Dispara com .is-stamping; nunca em loop, nunca ambiente. */
+.seal--stamp { position: relative; }
+.seal--stamp.is-stamping { animation: seal-press 420ms cubic-bezier(.2,.9,.25,1) both; }
+.seal--stamp.is-stamping::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 2px solid var(--tactile-amber);
+  animation: seal-ripple 620ms ease-out both;
+  pointer-events: none;
+}
+@keyframes seal-press {
+  0%   { transform: scale(1.16); opacity: 0; }
+  55%  { transform: scale(0.97); opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+@keyframes seal-ripple {
+  0%   { transform: scale(0.9); opacity: 0.85; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* ───────────────────────────────────────────────────────────────
+ *  3. PAINEL DE SINALIZAÇÃO (hero)
+ * ─────────────────────────────────────────────────────────────── */
+.sign-panel {
+  background: var(--sidewalk);
+  border-top: 1px solid var(--sidewalk-deep);
+  border-bottom: 1px solid var(--sidewalk-deep);
+  padding: 40px 0 44px;
+}
+[data-theme="dark"] .sign-panel {
+  background: #101a2c;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.sign-panel__inner {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.sign-panel__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--slate);
+  margin-bottom: 12px;
+}
+
+.sign-panel__headline {
+  font-size: clamp(1.55rem, 4.6vw, 2.5rem);
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--ink-navy);
+  margin-bottom: 10px;
+  max-width: 24ch;
+}
+[data-theme="dark"] .sign-panel__headline { color: #eef3fb; }
+
+.sign-panel__sub {
+  font-size: 1rem;
+  color: var(--slate);
+  max-width: 52ch;
+  margin-bottom: 26px;
+}
+[data-theme="dark"] .sign-panel__sub { color: #aab5c6; }
+
+/* Faixa de pictogramas com status — a "placa de diretório" */
+.wayfind {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 26px;
+  border-top: 2px solid var(--ink-navy);
+  padding-top: 18px;
+}
+[data-theme="dark"] .wayfind { border-color: rgba(255, 255, 255, 0.28); }
+
+.wayfind-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px solid var(--sidewalk-deep);
+  border-radius: 14px;
+  text-decoration: none;
+  color: inherit;
+  min-height: 60px;
+  transition: transform var(--transition), border-color var(--transition),
+    box-shadow var(--transition);
+}
+.wayfind-item:hover,
+.wayfind-item:focus-visible {
+  border-color: var(--tactile-amber);
+  box-shadow: 0 4px 14px rgba(15, 42, 84, 0.09);
+  text-decoration: none;
+}
+[data-theme="dark"] .wayfind-item {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.wayfind-item__body { flex: 1 1 auto; min-width: 0; }
+.wayfind-item__title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--ink-navy);
+  line-height: 1.25;
+}
+[data-theme="dark"] .wayfind-item__title { color: #eef3fb; }
+.wayfind-item__meta {
+  font-size: 0.78rem;
+  color: var(--slate);
+  margin-top: 2px;
+}
+
+@media (min-width: 700px) {
+  .wayfind { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+}
+@media (min-width: 1000px) {
+  .wayfind { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ───────────────────────────────────────────────────────────────
+ *  4. LISTA DE SINALIZAÇÃO (substitui o grid de cards do Problema)
+ *     A ordem é uma sequência causal, então a numeração é semântica.
+ * ─────────────────────────────────────────────────────────────── */
+.route-list {
+  list-style: none;
+  max-width: 780px;
+  margin: 0 auto;
+  counter-reset: route;
+}
+
+.route-list > li {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 16px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border-light);
+  counter-increment: route;
+}
+.route-list > li:last-child { border-bottom: 0; }
+
+.route-list > li::before {
+  content: counter(route, decimal-leading-zero);
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--ink-navy);
+  background: var(--amber-wash);
+  border: 1.5px solid var(--tactile-amber);
+  border-radius: 8px;
+  width: 44px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  align-self: start;
+}
+[data-theme="dark"] .route-list > li::before {
+  background: rgba(242, 169, 0, 0.16);
+  color: #ffe3a3;
+}
+
+.route-list h3 {
+  font-family: var(--font-display);
+  font-size: 1.06rem;
+  font-weight: 700;
+  color: var(--ink-navy);
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+}
+[data-theme="dark"] .route-list h3 { color: #eef3fb; }
+.route-list p {
+  color: var(--slate);
+  font-size: 0.95rem;
+  margin: 0;
+}
+[data-theme="dark"] .route-list p { color: #aab5c6; }
+
+/* Conector visual entre etapas — reforça a sequência */
+.route-list > li { position: relative; }
+.route-list > li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 21px;
+  top: 56px;
+  bottom: 8px;
+  width: 2px;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--sidewalk-deep) 0 5px,
+    transparent 5px 10px
+  );
+}
+
+/* ───────────────────────────────────────────────────────────────
+ *  5. FICHA TÉCNICA (substitui o grid de logos do Tech Stack)
+ * ─────────────────────────────────────────────────────────────── */
+.spec-sheet {
+  max-width: 820px;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+  font-size: 0.86rem;
+}
+[data-theme="dark"] .spec-sheet {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.spec-sheet__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  background: var(--ink-navy);
+  color: #fff;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.spec-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+.spec-row:last-child { border-bottom: 0; }
+
+.spec-row dt {
+  color: var(--slate);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.spec-row dd {
+  color: var(--ink-navy);
+  word-break: break-all;
+  font-weight: 500;
+}
+[data-theme="dark"] .spec-row dd { color: #e6ecf7; }
+.spec-row dd a { color: var(--link); }
+
+@media (min-width: 620px) {
+  .spec-row {
+    grid-template-columns: 210px 1fr;
+    gap: 16px;
+    align-items: baseline;
+  }
+  .spec-row dt { padding-top: 1px; }
+}
+
+.spec-note {
+  padding: 11px 16px;
+  background: var(--sidewalk);
+  color: var(--slate);
+  font-size: 0.78rem;
+  font-family: var(--font-body);
+  border-top: 1px solid var(--border-light);
+}
+[data-theme="dark"] .spec-note {
+  background: rgba(255, 255, 255, 0.04);
+  color: #aab5c6;
+}
+
+/* ───────────────────────────────────────────────────────────────
+ *  6. VALORES DE RECOMPENSA
+ * ─────────────────────────────────────────────────────────────── */
+.reward-amount {
+  color: var(--usdc-green-ink);   /* 6.54:1 — AA em texto pequeno */
+  font-weight: 700;
+}
+[data-theme="dark"] .reward-amount { color: #4ade9f; }
+
+/* ───────────────────────────────────────────────────────────────
+ *  7. ESTADOS VAZIOS QUE INSTRUEM A PRÓXIMA AÇÃO
+ * ─────────────────────────────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 34px 20px;
+  border: 1.5px dashed var(--border);
+  border-radius: 14px;
+  background: var(--sidewalk);
+}
+[data-theme="dark"] .empty-state {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.empty-state__title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--ink-navy);
+  margin-bottom: 6px;
+}
+[data-theme="dark"] .empty-state__title { color: #eef3fb; }
+.empty-state__hint {
+  color: var(--slate);
+  font-size: 0.92rem;
+  max-width: 44ch;
+  margin: 0 auto 16px;
+}
+
+/* ───────────────────────────────────────────────────────────────
+ *  8. SCROLL-REVEAL discreto (Como Funciona)
+ * ─────────────────────────────────────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 520ms ease, transform 520ms ease;
+}
+.reveal.is-visible { opacity: 1; transform: none; }
+
+/* ───────────────────────────────────────────────────────────────
+ *  9. MOVIMENTO — requisito funcional, não estético.
+ *     Usuários com sensibilidade a movimento fazem parte do
+ *     público-alvo deste produto.
+ * ─────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .reveal { opacity: 1; transform: none; }
+  .seal--stamp.is-stamping { animation: none; }
+  .seal--stamp.is-stamping::after { display: none; }
 }
