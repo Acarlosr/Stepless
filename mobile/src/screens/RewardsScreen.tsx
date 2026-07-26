@@ -31,7 +31,7 @@ import { useWallet } from '../services/wallet';
 import { fetchPending } from '../services/api';
 
 const ARCSCAN_TX_URL = 'https://testnet.arcscan.app/tx/';
-const REWARDS_GUIDE_URL = 'https://www.stepless.lat/recompensas-como-usar.html';
+const REWARDS_GUIDE_URL = 'https://www.stepless.lat/como-sacar-recompensas.html';
 
 interface PendingItem {
   user?: string;

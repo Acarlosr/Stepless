@@ -36,10 +36,15 @@
       padding-bottom: .4rem; margin: 0 0 .9rem;
       color: var(--text);
     }
+    .guide-section h2 {
+      display: flex; align-items: center; gap: .55rem;
+    }
     .guide-section h2 .step-badge {
-      display: inline-block; background: var(--primary); color: #fff;
-      border-radius: 999px; width: 1.7em; height: 1.7em; line-height: 1.7em;
-      text-align: center; font-size: .8em; margin-right: .5rem;
+      flex: 0 0 auto;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--primary); color: #fff;
+      border-radius: 999px; width: 1.8em; height: 1.8em;
+      font-size: .8em;
     }
     .guide-section p, .guide-section li { color: var(--text); }
     .guide-section ol, .guide-section ul { padding-left: 1.3rem; }
