@@ -154,7 +154,7 @@ a:hover {
 .rewards-guide-cta {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin: 1rem auto 0;
   padding: 10px 20px;
   border-radius: 999px;
@@ -162,9 +162,19 @@ a:hover {
   color: var(--primary);
   font-weight: 700;
   font-size: 0.95rem;
+  line-height: 1.3;
   text-decoration: none;
   border: 1.5px solid var(--primary);
   transition: background 0.15s ease, transform 0.15s ease;
+}
+
+/* .picto usa width/height 100% porque foi feito para viver dentro de
+   .picto-badge (56px fixos). Aqui ele é filho direto do botão, então
+   precisa de tamanho próprio — sem isto o SVG estica e infla o pill. */
+.rewards-guide-cta .picto {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
 }
 .rewards-guide-cta:hover,
 .rewards-guide-cta:focus-visible {
@@ -917,106 +927,247 @@ input[type="file"]::file-selector-button {
 }
 
 /* ──────────────────────────────────────────────────────────────
- *  Mascot SVG — Animated Robot
+ *  Registro — regra de local único e estado de bloqueio
  * ────────────────────────────────────────────────────────────── */
 
-.mascot-container {
+.unique-rule {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  margin: 0 auto 32px;
-  width: 160px;
-  height: 160px;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  border-radius: 10px;
+  background: var(--accent-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+.unique-rule p { margin: 0; }
+.unique-rule-icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--primary);
 }
 
-.mascot {
+/* Estado de bloqueio — some do fluxo quando [hidden] */
+.reg-blocked[hidden] { display: none; }
+.reg-blocked {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  border-radius: 10px;
+  background: var(--danger-bg);
+  border: 1.5px solid var(--danger);
+  color: var(--text);
+}
+.reg-blocked-icon {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--danger);
+}
+.reg-blocked-title {
+  margin: 0 0 4px;
+  font-weight: 700;
+  color: var(--danger);
+}
+.reg-blocked-body { margin: 0 0 4px; font-size: 0.9rem; }
+.reg-blocked-hint { margin: 0; font-size: 0.84rem; color: var(--text-muted); }
+
+/* Formulário travado: some interação, mas continua legível */
+#register-form.is-blocked {
+  opacity: 0.5;
+  pointer-events: none;
+  filter: grayscale(0.35);
+}
+
+/* ──────────────────────────────────────────────────────────────
+ *  Mascote — cadeira de rodas que vira drone para vencer a escada
+ *  Loop de 9s: rola → freia → inclina → hélices → sobe → pousa
+ * ────────────────────────────────────────────────────────────── */
+
+.mascot-scene {
   width: 100%;
-  height: 100%;
+  max-width: 420px;
+  margin: 0 auto 20px;
+
+  /* Tokens próprios da cena. Não usar --bg-card aqui: no tema claro ele é
+     branco puro (#fff), o que faria a escada sumir sobre o fundo branco. */
+  --ms-step-fill: var(--sidewalk-deep);
+  --ms-step-edge: var(--border);
 }
 
-/* Antenna pulse */
-@keyframes antenna-pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.4);
-    opacity: 0.6;
-  }
+[data-theme="dark"] .mascot-scene {
+  --ms-step-fill: #232735;
+  --ms-step-edge: #3a4053;
 }
 
-.mascot-antenna-dot {
-  animation: antenna-pulse 2s ease-in-out infinite;
+/* variante compacta (ex.: card de login do dashboard) */
+.mascot-scene-sm {
+  max-width: 320px;
+  margin-bottom: 14px;
+}
+
+.mascot-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+/* cenário */
+.ms-ground     { stroke: var(--ms-step-edge); stroke-width: 4; stroke-linecap: round; }
+.ms-step       { fill: var(--ms-step-fill); }
+.ms-step-edge  { fill: var(--ms-step-edge); }
+.ms-shadow     { fill: var(--text); opacity: .13; }
+
+/* percurso: avança, para diante da escada, sobe voando, pousa */
+.ms-rig { animation: ms-travel 9s cubic-bezier(.45,.05,.55,.95) infinite; }
+@keyframes ms-travel {
+  0%   { transform: translate(0px, 0px); }
+  29%  { transform: translate(210px, 0px); }
+  40%  { transform: translate(214px, 0px); }
+  51%  { transform: translate(214px, 0px); }
+  82%  { transform: translate(430px, -132px); }
+  93%  { transform: translate(452px, -132px); }
+  100% { transform: translate(452px, -132px); }
+}
+
+/* inclina para trás na decolagem */
+.ms-tilt {
+  transform-origin: 60px 96px;
+  animation: ms-tilt 9s ease-in-out infinite;
+}
+@keyframes ms-tilt {
+  0%, 40%   { transform: rotate(0deg); }
+  51%       { transform: rotate(-16deg); }
+  60%       { transform: rotate(-11deg); }
+  82%       { transform: rotate(-11deg); }
+  93%, 100% { transform: rotate(0deg); }
+}
+
+/* Aro e raios somem juntos ao virar hélice — se os raios ficassem visíveis
+   durante o voo, virariam um emaranhado por baixo das pás. */
+@keyframes ms-wheel-fade {
+  0%, 44%   { opacity: 1; }
+  53%, 88%  { opacity: 0; }
+  96%, 100% { opacity: 1; }
+}
+
+/* raios giram enquanto rola no chão */
+.ms-spokes {
+  transform-box: fill-box;
   transform-origin: center;
+  animation: ms-roll 9s linear infinite,
+             ms-wheel-fade 9s ease-in-out infinite;
+}
+@keyframes ms-roll {
+  0%   { transform: rotate(0deg); }
+  29%  { transform: rotate(900deg); }
+  40%  { transform: rotate(920deg); }
+  100% { transform: rotate(920deg); }
 }
 
-/* Eye blink */
-@keyframes eye-blink {
-  0%, 90%, 100% {
-    transform: scaleY(1);
-  }
-  95% {
-    transform: scaleY(0.1);
-  }
-}
-
-.mascot-eye {
-  animation: eye-blink 4s ease-in-out infinite;
+/* aro recolhe ao virar hélice */
+.ms-rim {
+  transform-box: fill-box;
   transform-origin: center;
+  animation: ms-rim-scale 9s ease-in-out infinite,
+             ms-wheel-fade 9s ease-in-out infinite;
+}
+@keyframes ms-rim-scale {
+  0%, 44%   { transform: scale(1); }
+  53%, 88%  { transform: scale(.55); }
+  96%, 100% { transform: scale(1); }
 }
 
-.mascot-eye-right {
-  animation-delay: 0.1s;
-}
-
-/* Body float */
-@keyframes body-float {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
-.mascot-body-group {
-  animation: body-float 3s ease-in-out infinite;
-}
-
-/* Arm wave */
-@keyframes arm-wave {
-  0%, 100% {
-    transform: rotate(0deg);
-  }
-  25% {
-    transform: rotate(-15deg);
-  }
-  75% {
-    transform: rotate(15deg);
-  }
-}
-
-.mascot-arm {
-  animation: arm-wave 2.5s ease-in-out infinite;
-  transform-origin: top center;
-}
-
-/* Shadow pulse */
-@keyframes shadow-pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.3;
-  }
-  50% {
-    transform: scale(0.85);
-    opacity: 0.15;
-  }
-}
-
-.mascot-shadow {
-  animation: shadow-pulse 3s ease-in-out infinite;
+/* pás da hélice */
+.ms-blade {
+  transform-box: fill-box;
   transform-origin: center;
+  opacity: 0;
+  animation: ms-spin 9s linear infinite, ms-blade-show 9s ease-in-out infinite;
+}
+@keyframes ms-spin {
+  0%, 44% { transform: rotate(0deg); }
+  100%    { transform: rotate(3000deg); }
+}
+@keyframes ms-blade-show {
+  0%, 44%   { opacity: 0; }
+  53%, 86%  { opacity: 1; }
+  94%, 100% { opacity: 0; }
+}
+
+/* halo de ar das hélices */
+.ms-wash {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: ms-wash 9s ease-in-out infinite;
+}
+@keyframes ms-wash {
+  0%, 44%   { opacity: 0; transform: scale(.7); }
+  53%       { opacity: 1; transform: scale(1); }
+  62%       { opacity: .75; transform: scale(1.12); }
+  72%, 86%  { opacity: 1; transform: scale(1); }
+  94%, 100% { opacity: 0; transform: scale(.7); }
+}
+
+/* piscada, com uma piscada dupla ocasional */
+.ms-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-blink 5.2s ease-in-out infinite;
+}
+.ms-eye-right { animation-delay: .04s; }
+@keyframes ms-blink {
+  0%, 41%   { transform: scaleY(1); }
+  43%       { transform: scaleY(.08); }
+  45%, 52%  { transform: scaleY(1); }
+  54%       { transform: scaleY(.08); }
+  56%, 100% { transform: scaleY(1); }
+}
+
+/* antena pulsando */
+.ms-antenna {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-antenna 2s ease-in-out infinite;
+}
+@keyframes ms-antenna {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.35); opacity: .6; }
+}
+
+/* sombra acompanha e encolhe no voo */
+.ms-shadow { animation: ms-shadow 9s cubic-bezier(.45,.05,.55,.95) infinite; }
+@keyframes ms-shadow {
+  0%   { transform: translate(0,0) scale(1); opacity: .13; }
+  29%  { transform: translate(210px,0) scale(1); opacity: .13; }
+  51%  { transform: translate(214px,0) scale(1); opacity: .13; }
+  82%  { transform: translate(430px,0) scale(.6); opacity: .06; }
+  100% { transform: translate(452px,0) scale(.6); opacity: .06; }
+}
+
+/* Movimento reduzido: mostra o quadro final, sem animação */
+@media (prefers-reduced-motion: reduce) {
+  .ms-rig, .ms-tilt, .ms-spokes, .ms-rim, .ms-blade,
+  .ms-wash, .ms-eye, .ms-antenna, .ms-shadow {
+    animation: none !important;
+  }
+  .ms-rig    { transform: translate(430px, -132px); }
+  .ms-tilt   { transform: rotate(-11deg); }
+  .ms-rim    { opacity: 0; }
+  .ms-spokes { opacity: 0; }
+  .ms-blade  { opacity: 1; }
+  .ms-wash   { opacity: 1; }
+  .ms-shadow { transform: translate(430px,0) scale(.6); opacity: .06; }
 }
 
 /* ──────────────────────────────────────────────────────────────

@@ -66,6 +66,7 @@
     .guide-warn strong { color: #92400e; }
 
     dfn { font-style: normal; font-weight: 600; border-bottom: 1px dotted var(--text-light); cursor: help; }
+    .guide-note { font-size: .88rem; color: var(--text-light); margin-top: .5rem; }
   </style>
 </head>
 <body>
@@ -158,8 +159,17 @@
 
     <section class="guide-section" aria-labelledby="s3">
       <h2 id="s3"><span class="step-badge" aria-hidden="true">3</span><span data-i18n="g_s3_title">Levar sua carteira com você (avançado)</span></h2>
-      <p data-i18n="g_s3_p1">A carteira criada com seu e-mail é portátil. Se um dia você quiser usá-la em outro aplicativo — como o MetaMask — é possível exportar a chave da carteira pelo provedor de login e importá-la onde preferir. Seu endereço e seu saldo continuam os mesmos.</p>
+      <p data-i18n="g_s3_p1">A carteira criada com seu e-mail é portátil. Se um dia você quiser usá-la em outro aplicativo — como o MetaMask — é possível exportar a chave privada e importá-la onde preferir. Seu endereço e seu saldo continuam os mesmos.</p>
+      <div class="guide-card">
+        <ol>
+          <li data-i18n="g_s3_step1">No app Android, abra <strong>Perfil</strong> e toque em <strong>Exportar chave privada</strong>.</li>
+          <li data-i18n="g_s3_step2">Leia o aviso de segurança com atenção e confirme que quer continuar.</li>
+          <li data-i18n="g_s3_step3">Copie a chave exibida e cole na opção <strong>"Importar carteira"</strong> do MetaMask ou de outro app compatível.</li>
+        </ol>
+        <p data-i18n="g_s3_warn"><strong>Nunca tire print, envie por mensagem ou digite essa chave em nenhum site.</strong> Qualquer pessoa com acesso a ela pode gastar seu saldo — inclusive alguém que diga ser do suporte do Stepless. O Stepless nunca vai pedir essa chave para você.</p>
+      </div>
       <p data-i18n="g_s3_p2">Esse passo é opcional e voltado a quem já conhece carteiras cripto. Se você não precisa disso, os caminhos 1 e 2 resolvem tudo.</p>
+      <p class="guide-note" data-i18n="g_s3_platform">Disponível hoje no aplicativo Android. A versão web ainda não tem essa opção — está no roteiro do produto.</p>
     </section>
 
     <div class="guide-warn">
@@ -222,8 +232,13 @@
         g_s2_step5: "Na corretora, venda o USDC e saque para sua conta bancária.",
         g_s2_p2: "<strong>Atenção:</strong> enviar para a rede errada pode causar a perda dos fundos. Sempre confira se a rede escolhida no envio é a mesma que a corretora indicou.",
         g_s3_title: "Levar sua carteira com você (avançado)",
-        g_s3_p1: "A carteira criada com seu e-mail é portátil. Se um dia você quiser usá-la em outro aplicativo — como o MetaMask — é possível exportar a chave da carteira pelo provedor de login e importá-la onde preferir. Seu endereço e seu saldo continuam os mesmos.",
+        g_s3_p1: "A carteira criada com seu e-mail é portátil. Se um dia você quiser usá-la em outro aplicativo — como o MetaMask — é possível exportar a chave privada e importá-la onde preferir. Seu endereço e seu saldo continuam os mesmos.",
+        g_s3_step1: "No app Android, abra <strong>Perfil</strong> e toque em <strong>Exportar chave privada</strong>.",
+        g_s3_step2: "Leia o aviso de segurança com atenção e confirme que quer continuar.",
+        g_s3_step3: 'Copie a chave exibida e cole na opção <strong>"Importar carteira"</strong> do MetaMask ou de outro app compatível.',
+        g_s3_warn: "<strong>Nunca tire print, envie por mensagem ou digite essa chave em nenhum site.</strong> Qualquer pessoa com acesso a ela pode gastar seu saldo — inclusive alguém que diga ser do suporte do Stepless. O Stepless nunca vai pedir essa chave para você.",
         g_s3_p2: "Esse passo é opcional e voltado a quem já conhece carteiras cripto. Se você não precisa disso, os caminhos 1 e 2 resolvem tudo.",
+        g_s3_platform: "Disponível hoje no aplicativo Android. A versão web ainda não tem essa opção — está no roteiro do produto.",
         g_warn_strong: "Fase de testes (Arc Testnet):",
         g_warn_text: "no momento, o Stepless roda na rede de testes da Arc. O USDC recebido aqui é de teste e não tem valor real — serve para demonstrar que todo o ciclo funciona. Quando o Stepless for para a rede principal (mainnet), as recompensas passarão a ter valor real e estes mesmos caminhos se aplicarão.",
         g_s4_title: "Perguntas rápidas",
@@ -257,8 +272,13 @@
         g_s2_step5: "On the exchange, sell the USDC and withdraw to your bank account.",
         g_s2_p2: "<strong>Careful:</strong> sending to the wrong network can cause loss of funds. Always double-check that the network you choose matches what the exchange indicated.",
         g_s3_title: "Take your wallet with you (advanced)",
-        g_s3_p1: "The wallet created with your email is portable. If you ever want to use it in another app — like MetaMask — you can export the wallet's key through the login provider and import it wherever you prefer. Your address and balance stay the same.",
+        g_s3_p1: "The wallet created with your email is portable. If you ever want to use it in another app — like MetaMask — you can export the private key and import it wherever you prefer. Your address and balance stay the same.",
+        g_s3_step1: "In the Android app, open <strong>Profile</strong> and tap <strong>Export private key</strong>.",
+        g_s3_step2: "Read the security warning carefully and confirm you want to continue.",
+        g_s3_step3: 'Copy the key shown and paste it into MetaMask\'s <strong>"Import wallet"</strong> option or another compatible app.',
+        g_s3_warn: "<strong>Never screenshot, message, or type this key into any website.</strong> Anyone with access to it can spend your balance — including someone claiming to be Stepless support. Stepless will never ask you for this key.",
         g_s3_p2: "This step is optional and meant for people already familiar with crypto wallets. If you don't need it, paths 1 and 2 cover everything.",
+        g_s3_platform: "Available today on the Android app. The web version doesn't have this option yet — it's on the product roadmap.",
         g_warn_strong: "Testing phase (Arc Testnet):",
         g_warn_text: "Stepless currently runs on Arc's test network. The USDC received here is test USDC and has no real value — it exists to demonstrate that the full cycle works. Once Stepless moves to mainnet, rewards will have real value and these same paths will apply.",
         g_s4_title: "Quick questions",
@@ -292,8 +312,13 @@
         g_s2_step5: "En el exchange, vende el USDC y retira a tu cuenta bancaria.",
         g_s2_p2: "<strong>Atención:</strong> enviar a la red equivocada puede causar la pérdida de los fondos. Verifica siempre que la red elegida en el envío sea la misma que indicó el exchange.",
         g_s3_title: "Llevar tu billetera contigo (avanzado)",
-        g_s3_p1: "La billetera creada con tu correo es portátil. Si algún día quieres usarla en otra aplicación — como MetaMask — puedes exportar la clave de la billetera desde el proveedor de acceso e importarla donde prefieras. Tu dirección y tu saldo siguen siendo los mismos.",
+        g_s3_p1: "La billetera creada con tu correo es portátil. Si algún día quieres usarla en otra aplicación — como MetaMask — puedes exportar la clave privada e importarla donde prefieras. Tu dirección y tu saldo siguen siendo los mismos.",
+        g_s3_step1: "En la app de Android, abre <strong>Perfil</strong> y toca <strong>Exportar clave privada</strong>.",
+        g_s3_step2: "Lee la advertencia de seguridad con atención y confirma que deseas continuar.",
+        g_s3_step3: 'Copia la clave mostrada y pégala en la opción <strong>"Importar billetera"</strong> de MetaMask u otra app compatible.',
+        g_s3_warn: "<strong>Nunca tomes captura, envíes por mensaje ni escribas esta clave en ningún sitio web.</strong> Cualquier persona con acceso a ella puede gastar tu saldo — incluso alguien que diga ser del soporte de Stepless. Stepless nunca te pedirá esta clave.",
         g_s3_p2: "Este paso es opcional y está pensado para quien ya conoce billeteras cripto. Si no lo necesitas, los caminos 1 y 2 resuelven todo.",
+        g_s3_platform: "Disponible hoy en la app de Android. La versión web todavía no tiene esta opción — está en el roadmap del producto.",
         g_warn_strong: "Fase de pruebas (Arc Testnet):",
         g_warn_text: "por ahora, Stepless funciona en la red de pruebas de Arc. El USDC recibido aquí es de prueba y no tiene valor real — sirve para demostrar que todo el ciclo funciona. Cuando Stepless pase a la red principal (mainnet), las recompensas tendrán valor real y estos mismos caminos se aplicarán.",
         g_s4_title: "Preguntas rápidas",

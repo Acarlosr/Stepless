@@ -15,19 +15,71 @@ import {
   Switch,
   Alert,
   Share,
+  Modal,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
+import * as Clipboard from 'expo-clipboard';
 import { Colors } from '../config/colors';
 import { useWallet } from '../services/wallet';
 import { RewardDistributor } from '../services/contracts';
 
 export default function ProfileScreen() {
   const { t, i18n } = useTranslation();
-  const { walletAddress, user, disconnectWallet, usdcBalance } = useWallet();
+  const { walletAddress, user, disconnectWallet, usdcBalance, exportPrivateKey } = useWallet();
   const insets = useSafeAreaInsets();
+
+  // ─── Exportar chave privada ──────────────────────────────────────────
+  // Fluxo em duas etapas: aviso de risco → revela a chave só depois de
+  // confirmação explícita. A chave nunca fica em state depois que o
+  // modal fecha (closeExportModal limpa), para não sobreviver em memória
+  // além do necessário nem reaparecer sem o usuário pedir de novo.
+  const [exportVisible, setExportVisible] = useState(false);
+  const [revealedKey, setRevealedKey] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const closeExportModal = useCallback(() => {
+    setExportVisible(false);
+    setRevealedKey(null);
+    setCopied(false);
+  }, []);
+
+  const handleExportPress = () => {
+    Alert.alert(
+      t('profile.exportKeyTitle'),
+      t('profile.exportKeyWarning'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('profile.exportKeyContinue'),
+          style: 'destructive',
+          onPress: async () => {
+            setExporting(true);
+            setExportVisible(true);
+            try {
+              const pk = await exportPrivateKey();
+              setRevealedKey(pk);
+            } catch (e) {
+              closeExportModal();
+              Alert.alert(t('profile.exportKeyTitle'), t('profile.exportKeyError'));
+            } finally {
+              setExporting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleCopyKey = async () => {
+    if (!revealedKey) return;
+    await Clipboard.setStringAsync(revealedKey);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
 
   const [highContrast, setHighContrast] = useState(false);
   const [largeText, setLargeText] = useState(false);
@@ -201,6 +253,21 @@ export default function ProfileScreen() {
           <Text style={styles.versionText}>{t('profile.version')} 1.0.0</Text>
         </View>
 
+        {/* Levar a carteira para outro app (avançado) */}
+        <Text style={styles.sectionTitle}>{t('profile.walletPortability')}</Text>
+        <View style={styles.aboutCard}>
+          <Text style={styles.aboutText}>{t('profile.walletPortabilityDesc')}</Text>
+          <TouchableOpacity
+            style={styles.exportButton}
+            onPress={handleExportPress}
+            accessibilityRole="button"
+            accessibilityLabel={t('profile.exportKeyButton')}
+          >
+            <Ionicons name="key-outline" size={18} color={Colors.light.text} />
+            <Text style={styles.exportButtonText}>{t('profile.exportKeyButton')}</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Disconnect */}
         <TouchableOpacity
           style={styles.disconnectButton}
@@ -212,6 +279,66 @@ export default function ProfileScreen() {
           <Text style={styles.disconnectText}>{t('profile.disconnect')}</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* ─── Modal: Exportar chave privada ─── */}
+      <Modal visible={exportVisible} animationType="slide" transparent onRequestClose={closeExportModal}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{t('profile.exportKeyTitle')}</Text>
+              <TouchableOpacity
+                onPress={closeExportModal}
+                accessibilityRole="button"
+                accessibilityLabel={t('common.cancel')}
+              >
+                <Ionicons name="close" size={26} color={Colors.light.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.dangerBox}>
+              <Ionicons name="warning-outline" size={18} color="#B45309" />
+              <Text style={styles.dangerText}>{t('profile.exportKeyNeverShare')}</Text>
+            </View>
+
+            {exporting ? (
+              <Text style={styles.exportLoading}>{t('profile.exportKeyLoading')}</Text>
+            ) : revealedKey ? (
+              <>
+                <Text style={styles.exportLabel}>{t('profile.exportKeyLabel')}</Text>
+                <View style={styles.keyBox}>
+                  <Text style={styles.keyText} selectable>{revealedKey}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.copyButton}
+                  onPress={handleCopyKey}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('profile.exportKeyCopy')}
+                >
+                  <Ionicons
+                    name={copied ? 'checkmark' : 'copy-outline'}
+                    size={18}
+                    color={Colors.light.onPrimary}
+                  />
+                  <Text style={styles.copyButtonText}>
+                    {copied ? t('profile.exportKeyCopied') : t('profile.exportKeyCopy')}
+                  </Text>
+                </TouchableOpacity>
+                <Text style={styles.exportHint}>{t('profile.exportKeyHint')}</Text>
+              </>
+            ) : (
+              <Text style={styles.exportLoading}>{t('profile.exportKeyError')}</Text>
+            )}
+
+            <TouchableOpacity
+              style={styles.doneButton}
+              onPress={closeExportModal}
+              accessibilityRole="button"
+            >
+              <Text style={styles.doneButtonText}>{t('profile.exportKeyDone')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -260,4 +387,39 @@ const styles = StyleSheet.create({
     backgroundColor: `${Colors.light.error}15`, borderWidth: 1, borderColor: Colors.light.error,
   },
   disconnectText: { fontSize: 16, fontWeight: '700', color: Colors.light.error },
+
+  // ─── Exportar chave ───
+  exportButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    marginTop: 14, paddingVertical: 13, borderRadius: 12,
+    borderWidth: 1.5, borderColor: Colors.light.border, minHeight: 44,
+  },
+  exportButtonText: { fontSize: 14.5, fontWeight: '700', color: Colors.light.text },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  modalCard: {
+    backgroundColor: Colors.light.background, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 24, paddingBottom: 40,
+  },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: Colors.light.text },
+  dangerBox: {
+    flexDirection: 'row', gap: 8, alignItems: 'flex-start',
+    backgroundColor: '#FEF3C7', borderRadius: 12, padding: 12, marginBottom: 16,
+  },
+  dangerText: { flex: 1, fontSize: 12.5, lineHeight: 18, color: '#78350F', fontWeight: '600' },
+  exportLoading: { fontSize: 14, color: Colors.light.textMuted, textAlign: 'center', paddingVertical: 20 },
+  exportLabel: { fontSize: 13, fontWeight: '700', color: Colors.light.text, marginBottom: 6 },
+  keyBox: {
+    backgroundColor: Colors.light.surface, borderRadius: 12, borderWidth: 1,
+    borderColor: Colors.light.border, padding: 14, marginBottom: 12,
+  },
+  keyText: { fontSize: 13, fontFamily: 'monospace', color: Colors.light.text, lineHeight: 20 },
+  copyButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: Colors.light.primary, borderRadius: 12, paddingVertical: 13, minHeight: 46,
+  },
+  copyButtonText: { fontSize: 14.5, fontWeight: '700', color: Colors.light.onPrimary },
+  exportHint: { fontSize: 12, color: Colors.light.textMuted, marginTop: 12, lineHeight: 17 },
+  doneButton: { alignItems: 'center', paddingVertical: 14, marginTop: 16 },
+  doneButtonText: { fontSize: 15, fontWeight: '700', color: Colors.light.textMuted },
 });
