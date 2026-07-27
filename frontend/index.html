@@ -74,49 +74,107 @@
     <!-- ── Hero ── -->
     <section class="hero" aria-labelledby="hero-title">
       <div class="container">
-        <!-- Animated SVG Mascot Robot -->
-        <div class="mascot-container" role="img" aria-label="Stepless mascot robot">
-          <svg class="mascot" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- Shadow -->
-            <ellipse class="mascot-shadow" cx="100" cy="185" rx="50" ry="8" fill="var(--text)" opacity="0.2"/>
+        <!-- Mascote animado: cadeira de rodas que vira drone para vencer a escada -->
+        <div class="mascot-scene" role="img"
+             aria-label="Mascote do Stepless avança na cadeira de rodas, encontra uma escada e as rodas se transformam em hélices, permitindo que ele suba voando com a cadeira">
+          <svg class="mascot-svg" viewBox="0 -72 720 358" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
 
-            <g class="mascot-body-group">
-              <!-- Antenna -->
-              <line x1="100" y1="30" x2="100" y2="48" stroke="var(--primary)" stroke-width="3" stroke-linecap="round"/>
-              <circle class="mascot-antenna-dot" cx="100" cy="26" r="6" fill="var(--primary)"/>
+            <!-- chão -->
+            <line class="ms-ground" x1="20" y1="266" x2="300" y2="266"/>
 
-              <!-- Head -->
-              <rect x="60" y="48" width="80" height="60" rx="20" fill="var(--primary)" stroke="var(--border)" stroke-width="2"/>
+            <!-- escada -->
+            <g>
+              <rect class="ms-step" x="300" y="233" width="66" height="33"/>
+              <rect class="ms-step-edge" x="300" y="233" width="66" height="5"/>
+              <rect class="ms-step" x="366" y="200" width="66" height="66"/>
+              <rect class="ms-step-edge" x="366" y="200" width="66" height="5"/>
+              <rect class="ms-step" x="432" y="167" width="66" height="99"/>
+              <rect class="ms-step-edge" x="432" y="167" width="66" height="5"/>
+              <rect class="ms-step" x="498" y="134" width="200" height="132"/>
+              <rect class="ms-step-edge" x="498" y="134" width="200" height="5"/>
+            </g>
 
-              <!-- Eyes -->
-              <circle class="mascot-eye" cx="82" cy="75" r="8" fill="#ffffff"/>
-              <circle class="mascot-eye mascot-eye-right" cx="118" cy="75" r="8" fill="#ffffff"/>
-              <circle cx="82" cy="75" r="4" fill="var(--bg)"/>
-              <circle cx="118" cy="75" r="4" fill="var(--bg)"/>
+            <!-- sombra -->
+            <ellipse class="ms-shadow" cx="96" cy="268" rx="46" ry="7"/>
 
-              <!-- Mouth -->
-              <path d="M85 92 Q100 100 115 92" stroke="#ffffff" stroke-width="3" stroke-linecap="round" fill="none"/>
+            <g class="ms-rig">
+              <g class="ms-tilt">
 
-              <!-- Body -->
-              <rect x="65" y="112" width="70" height="55" rx="16" fill="var(--bg-card)" stroke="var(--primary)" stroke-width="2.5"/>
+                <!-- roda traseira / hélice -->
+                <g>
+                  <circle class="ms-rim" cx="60" cy="228" r="34" fill="none" stroke="var(--primary)" stroke-width="6"/>
+                  <g class="ms-spokes">
+                    <line x1="60" y1="200" x2="60" y2="256" stroke="var(--primary)" stroke-width="4" stroke-linecap="round"/>
+                    <line x1="36" y1="214" x2="84" y2="242" stroke="var(--primary)" stroke-width="4" stroke-linecap="round"/>
+                    <line x1="36" y1="242" x2="84" y2="214" stroke="var(--primary)" stroke-width="4" stroke-linecap="round"/>
+                  </g>
+                  <circle cx="60" cy="228" r="6" fill="var(--primary)"/>
+                  <g class="ms-wash">
+                    <circle cx="60" cy="228" r="40" fill="var(--primary)" fill-opacity=".10"/>
+                  </g>
+                  <g class="ms-blade">
+                    <ellipse cx="26" cy="228" rx="22" ry="5.5" fill="var(--primary)"/>
+                    <ellipse cx="94" cy="228" rx="22" ry="5.5" fill="var(--primary)"/>
+                    <ellipse cx="60" cy="208" rx="5" ry="14" fill="var(--primary)" fill-opacity=".45"/>
+                    <ellipse cx="60" cy="248" rx="5" ry="14" fill="var(--primary)" fill-opacity=".45"/>
+                  </g>
+                </g>
 
-              <!-- Body screen -->
-              <rect x="78" y="122" width="44" height="28" rx="6" fill="var(--accent-bg)"/>
-              <text x="100" y="140" text-anchor="middle" font-size="10" fill="var(--primary)" font-family="monospace" font-weight="bold">USDC</text>
+                <!-- rodinha dianteira / hélice -->
+                <g>
+                  <circle class="ms-rim" cx="122" cy="246" r="15" fill="none" stroke="var(--primary)" stroke-width="5"/>
+                  <g class="ms-spokes">
+                    <line x1="122" y1="234" x2="122" y2="258" stroke="var(--primary)" stroke-width="3" stroke-linecap="round"/>
+                    <line x1="111" y1="240" x2="133" y2="252" stroke="var(--primary)" stroke-width="3" stroke-linecap="round"/>
+                  </g>
+                  <circle cx="122" cy="246" r="4" fill="var(--primary)"/>
+                  <g class="ms-wash">
+                    <circle cx="122" cy="246" r="19" fill="var(--primary)" fill-opacity=".10"/>
+                  </g>
+                  <g class="ms-blade">
+                    <ellipse cx="105" cy="246" rx="11" ry="3.5" fill="var(--primary)"/>
+                    <ellipse cx="139" cy="246" rx="11" ry="3.5" fill="var(--primary)"/>
+                    <ellipse cx="122" cy="236" rx="3.2" ry="7" fill="var(--primary)" fill-opacity=".45"/>
+                    <ellipse cx="122" cy="256" rx="3.2" ry="7" fill="var(--primary)" fill-opacity=".45"/>
+                  </g>
+                </g>
 
-              <!-- Left arm -->
-              <g class="mascot-arm">
-                <rect x="48" y="120" width="14" height="35" rx="7" fill="var(--primary)"/>
-                <circle cx="55" cy="158" r="8" fill="var(--primary)"/>
+                <!-- estrutura da cadeira -->
+                <rect x="34" y="150" width="9" height="70" rx="4.5" fill="var(--primary)"/>
+                <rect x="34" y="212" width="80" height="9" rx="4.5" fill="var(--primary)"/>
+                <rect x="122" y="237" width="26" height="9" rx="4.5" fill="var(--primary)"/>
+
+                <!-- pernas -->
+                <rect x="86" y="197" width="44" height="16" rx="8" fill="var(--primary)"/>
+                <rect x="118" y="205" width="16" height="34" rx="8" fill="var(--primary)"/>
+
+                <!-- corpo -->
+                <rect x="46" y="148" width="62" height="54" rx="16" fill="var(--bg-card)" stroke="var(--primary)" stroke-width="2.5"/>
+                <rect x="59" y="158" width="37" height="24" rx="5" fill="var(--accent-bg)"/>
+                <text x="77.5" y="175" text-anchor="middle" font-size="9" fill="var(--primary)"
+                      font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="bold">USDC</text>
+
+                <!-- braço -->
+                <rect x="100" y="156" width="13" height="42" rx="6.5" fill="var(--primary)"/>
+                <circle cx="106.5" cy="202" r="8" fill="var(--primary)"/>
+
+                <!-- cabeça -->
+                <rect x="42" y="96" width="70" height="52" rx="18" fill="var(--primary)"/>
+                <g class="ms-eye">
+                  <circle cx="61" cy="120" r="7.5" fill="#ffffff"/>
+                  <circle cx="61" cy="120" r="3.8" fill="var(--bg)"/>
+                </g>
+                <g class="ms-eye ms-eye-right">
+                  <circle cx="93" cy="120" r="7.5" fill="#ffffff"/>
+                  <circle cx="93" cy="120" r="3.8" fill="var(--bg)"/>
+                </g>
+                <path d="M64 135 Q77 143 90 135" stroke="#ffffff" stroke-width="3" stroke-linecap="round" fill="none"/>
+
+                <!-- antena -->
+                <line x1="77" y1="80" x2="77" y2="96" stroke="var(--primary)" stroke-width="3" stroke-linecap="round"/>
+                <circle class="ms-antenna" cx="77" cy="76" r="5.5" fill="var(--primary)"/>
+
               </g>
-
-              <!-- Right arm -->
-              <rect x="138" y="120" width="14" height="35" rx="7" fill="var(--primary)"/>
-              <circle cx="145" cy="158" r="8" fill="var(--primary)"/>
-
-              <!-- Legs -->
-              <rect x="78" y="168" width="16" height="14" rx="6" fill="var(--primary)"/>
-              <rect x="106" y="168" width="16" height="14" rx="6" fill="var(--primary)"/>
             </g>
           </svg>
         </div>

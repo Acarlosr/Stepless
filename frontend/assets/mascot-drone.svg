@@ -1,0 +1,266 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -72 720 358" width="720" height="358" role="img" aria-labelledby="mascotTitle mascotDesc">
+  <title id="mascotTitle">Mascote Stepless subindo uma escada</title>
+  <desc id="mascotDesc">O mascote do Stepless avança em sua cadeira de rodas, encontra uma escada, inclina-se para trás e as rodas se abrem em hélices, permitindo que ele suba voando com a cadeira.</desc>
+
+  <style>
+    :root { }
+    .body-fill   { fill: #2563EB; }
+    .panel       { fill: #F8FAFC; stroke: #2563EB; stroke-width: 2.5; }
+    .screen      { fill: #DBEAFE; }
+    .ink         { fill: #FFFFFF; }
+    .pupil       { fill: #1E40AF; }
+    .step-fill   { fill: #E7ECF4; }
+    .step-edge   { fill: #C9D4E5; }
+    .ground      { stroke: #C9D4E5; stroke-width: 4; stroke-linecap: round; }
+    .rotor       { stroke: #2563EB; stroke-width: 5; stroke-linecap: round; }
+    .shadow      { fill: #1E293B; opacity: .13; }
+
+    /* ---- Timeline: 9s loop ----
+       0.0–2.6s   rola no chão
+       2.6–3.6s   freia diante da escada
+       3.6–4.6s   inclina para trás, rodas se abrem em hélices
+       4.6–7.4s   sobe voando os degraus
+       7.4–9.0s   pousa no topo e some suavemente para reiniciar
+    */
+
+    #rig {
+      animation: travel 9s cubic-bezier(.45,.05,.55,.95) infinite;
+    }
+    @keyframes travel {
+      0%    { transform: translate(0px, 0px); }
+      29%   { transform: translate(210px, 0px); }
+      40%   { transform: translate(214px, 0px); }
+      51%   { transform: translate(214px, 0px); }
+      82%   { transform: translate(430px, -132px); }
+      93%   { transform: translate(452px, -132px); }
+      100%  { transform: translate(452px, -132px); }
+    }
+
+    /* corpo inclina para trás na hora da decolagem */
+    #tilt {
+      transform-origin: 60px 96px;
+      animation: tilt 9s ease-in-out infinite;
+    }
+    @keyframes tilt {
+      0%, 40%   { transform: rotate(0deg); }
+      51%       { transform: rotate(-16deg); }
+      60%       { transform: rotate(-11deg); }
+      82%       { transform: rotate(-11deg); }
+      93%, 100% { transform: rotate(0deg); }
+    }
+
+    /* rodas: giram no chão, depois viram hélices */
+    /* aro e raios somem juntos ao virar hélice */
+    @keyframes wheelfade {
+      0%, 44%   { opacity: 1; }
+      53%, 88%  { opacity: 0; }
+      96%, 100% { opacity: 1; }
+    }
+    .wheel-spokes {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: roll 9s linear infinite, wheelfade 9s ease-in-out infinite;
+    }
+    @keyframes roll {
+      0%   { transform: rotate(0deg); }
+      29%  { transform: rotate(900deg); }
+      40%  { transform: rotate(920deg); }
+      100% { transform: rotate(920deg); }
+    }
+
+    /* aro da roda encolhe ao virar hélice */
+    .wheel-rim {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: rimscale 9s ease-in-out infinite, wheelfade 9s ease-in-out infinite;
+    }
+    @keyframes rimscale {
+      0%, 44%   { transform: scale(1); }
+      53%, 88%  { transform: scale(.55); }
+      96%, 100% { transform: scale(1); }
+    }
+
+    /* hélices aparecem e giram rápido */
+    .rotor-blade {
+      transform-box: fill-box;
+      transform-origin: center;
+      opacity: 0;
+      animation: rotorspin 9s linear infinite, rotorshow 9s ease-in-out infinite;
+    }
+    @keyframes rotorspin {
+      0%, 44% { transform: rotate(0deg); }
+      100%    { transform: rotate(3000deg); }
+    }
+    @keyframes rotorshow {
+      0%, 44%   { opacity: 0; }
+      53%, 86%  { opacity: 1; }
+      94%, 100% { opacity: 0; }
+    }
+
+    /* piscada: ritmo natural, com uma piscada dupla ocasional */
+    .eye {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: blink 5.2s ease-in-out infinite;
+    }
+    .eye-right { animation-delay: .04s; }
+    @keyframes blink {
+      0%, 41%   { transform: scaleY(1); }
+      43%       { transform: scaleY(.08); }
+      45%       { transform: scaleY(1); }
+      52%       { transform: scaleY(1); }
+      54%       { transform: scaleY(.08); }
+      56%, 100% { transform: scaleY(1); }
+    }
+
+    /* halo de ar deslocado pelas hélices */
+    .rotor-wash {
+      transform-box: fill-box;
+      transform-origin: center;
+      opacity: 0;
+      animation: wash 9s ease-in-out infinite;
+    }
+    @keyframes wash {
+      0%, 44%   { opacity: 0; transform: scale(.7); }
+      53%       { opacity: 1; transform: scale(1); }
+      62%       { opacity: .75; transform: scale(1.12); }
+      72%       { opacity: 1; transform: scale(1); }
+      86%       { opacity: 1; transform: scale(1); }
+      94%, 100% { opacity: 0; transform: scale(.7); }
+    }
+
+    /* sombra acompanha e encolhe no voo */
+    #shadow {
+      animation: shadowmove 9s cubic-bezier(.45,.05,.55,.95) infinite;
+    }
+    @keyframes shadowmove {
+      0%    { transform: translate(0,0) scale(1); opacity: .13; }
+      29%   { transform: translate(210px,0) scale(1); opacity: .13; }
+      51%   { transform: translate(214px,0) scale(1); opacity: .13; }
+      82%   { transform: translate(430px,0) scale(.6); opacity: .06; }
+      100%  { transform: translate(452px,0) scale(.6); opacity: .06; }
+    }
+
+    /* Acessibilidade: sem movimento para quem pediu movimento reduzido */
+    @media (prefers-reduced-motion: reduce) {
+      #rig, #tilt, .wheel-spokes, .wheel-rim, .rotor-blade, .rotor-wash, #shadow, .eye {
+        animation: none !important;
+      }
+      #rig   { transform: translate(430px, -132px); }
+      #tilt  { transform: rotate(-11deg); }
+      .wheel-rim   { opacity: 0; }
+      .wheel-spokes{ opacity: 0; }
+      .rotor-blade { opacity: 1; }
+      .rotor-wash  { opacity: 1; }
+      #shadow { transform: translate(430px,0) scale(.6); opacity: .06; }
+    }
+  </style>
+
+  <!-- ================= cenário ================= -->
+  <!-- chão -->
+  <line class="ground" x1="20" y1="266" x2="300" y2="266"/>
+
+  <!-- escada (4 degraus, subindo para a direita) -->
+  <g>
+    <rect class="step-fill" x="300" y="233" width="66" height="33"/>
+    <rect class="step-edge" x="300" y="233" width="66" height="5"/>
+    <rect class="step-fill" x="366" y="200" width="66" height="66"/>
+    <rect class="step-edge" x="366" y="200" width="66" height="5"/>
+    <rect class="step-fill" x="432" y="167" width="66" height="99"/>
+    <rect class="step-edge" x="432" y="167" width="66" height="5"/>
+    <rect class="step-fill" x="498" y="134" width="200" height="132"/>
+    <rect class="step-edge" x="498" y="134" width="200" height="5"/>
+  </g>
+
+  <!-- sombra -->
+  <ellipse id="shadow" class="shadow" cx="96" cy="268" rx="46" ry="7"/>
+
+  <!-- ================= mascote + cadeira ================= -->
+  <g id="rig">
+    <g id="tilt">
+
+      <!-- rodas / hélices -->
+      <!-- roda grande (traseira) -->
+      <g>
+        <circle class="wheel-rim" cx="60" cy="228" r="34" fill="none" stroke="#2563EB" stroke-width="6"/>
+        <g class="wheel-spokes">
+          <line x1="60" y1="200" x2="60" y2="256" stroke="#2563EB" stroke-width="4" stroke-linecap="round"/>
+          <line x1="36" y1="214" x2="84" y2="242" stroke="#2563EB" stroke-width="4" stroke-linecap="round"/>
+          <line x1="36" y1="242" x2="84" y2="214" stroke="#2563EB" stroke-width="4" stroke-linecap="round"/>
+        </g>
+        <circle cx="60" cy="228" r="6" class="body-fill"/>
+        <!-- hélices da roda traseira -->
+        <g class="rotor-wash">
+          <circle cx="60" cy="228" r="40" fill="#2563EB" fill-opacity=".10"/>
+        </g>
+        <g class="rotor-blade">
+          <ellipse cx="26" cy="228" rx="22" ry="5.5" class="body-fill"/>
+          <ellipse cx="94" cy="228" rx="22" ry="5.5" class="body-fill"/>
+          <ellipse cx="60" cy="208" rx="5" ry="14" class="body-fill" fill-opacity=".45"/>
+          <ellipse cx="60" cy="248" rx="5" ry="14" class="body-fill" fill-opacity=".45"/>
+        </g>
+      </g>
+
+      <!-- rodinha dianteira -->
+      <g>
+        <circle class="wheel-rim" cx="122" cy="246" r="15" fill="none" stroke="#2563EB" stroke-width="5"/>
+        <g class="wheel-spokes">
+          <line x1="122" y1="234" x2="122" y2="258" stroke="#2563EB" stroke-width="3" stroke-linecap="round"/>
+          <line x1="111" y1="240" x2="133" y2="252" stroke="#2563EB" stroke-width="3" stroke-linecap="round"/>
+        </g>
+        <circle cx="122" cy="246" r="4" class="body-fill"/>
+        <!-- hélices da rodinha -->
+        <g class="rotor-wash">
+          <circle cx="122" cy="246" r="19" fill="#2563EB" fill-opacity=".10"/>
+        </g>
+        <g class="rotor-blade">
+          <ellipse cx="105" cy="246" rx="11" ry="3.5" class="body-fill"/>
+          <ellipse cx="139" cy="246" rx="11" ry="3.5" class="body-fill"/>
+          <ellipse cx="122" cy="236" rx="3.2" ry="7" class="body-fill" fill-opacity=".45"/>
+          <ellipse cx="122" cy="256" rx="3.2" ry="7" class="body-fill" fill-opacity=".45"/>
+        </g>
+      </g>
+
+      <!-- estrutura da cadeira -->
+      <!-- encosto -->
+      <rect x="34" y="150" width="9" height="70" rx="4.5" class="body-fill"/>
+      <!-- assento -->
+      <rect x="34" y="212" width="80" height="9" rx="4.5" class="body-fill"/>
+      <!-- apoio de pé -->
+      <rect x="122" y="237" width="26" height="9" rx="4.5" class="body-fill"/>
+
+      <!-- mascote -->
+      <!-- coxa: do quadril até o joelho, apoiada no assento -->
+      <rect x="86" y="197" width="44" height="16" rx="8" class="body-fill"/>
+      <!-- canela: do joelho até o apoio de pé -->
+      <rect x="118" y="205" width="16" height="34" rx="8" class="body-fill"/>
+
+      <!-- corpo -->
+      <rect x="46" y="148" width="62" height="54" rx="16" class="panel"/>
+      <rect x="59" y="158" width="37" height="24" rx="5" class="screen"/>
+      <text x="77.5" y="175" text-anchor="middle" font-size="9" fill="#2563EB"
+            font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="bold">USDC</text>
+
+      <!-- braço: desce pela lateral até o aro da roda -->
+      <rect x="100" y="156" width="13" height="42" rx="6.5" class="body-fill"/>
+      <circle cx="106.5" cy="202" r="8" class="body-fill"/>
+
+      <!-- cabeça -->
+      <rect x="42" y="96" width="70" height="52" rx="18" class="body-fill"/>
+      <g class="eye">
+        <circle cx="61" cy="120" r="7.5" class="ink"/>
+        <circle cx="61" cy="120" r="3.8" class="pupil"/>
+      </g>
+      <g class="eye eye-right">
+        <circle cx="93" cy="120" r="7.5" class="ink"/>
+        <circle cx="93" cy="120" r="3.8" class="pupil"/>
+      </g>
+      <path d="M64 135 Q77 143 90 135" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" fill="none"/>
+
+      <!-- antena -->
+      <line x1="77" y1="80" x2="77" y2="96" stroke="#2563EB" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="77" cy="76" r="5.5" class="body-fill"/>
+
+    </g>
+  </g>
+</svg>

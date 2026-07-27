@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preview — Mascote Stepless (cadeira → drone)</title>
+<style>
+  body {
+    margin: 0; padding: 32px 20px;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #FFFFFF; color: #0B1220;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; }
+  h1 { font-size: 1.35rem; margin: 0 0 6px; }
+  p.sub { margin: 0 0 24px; color: #5B6472; font-size: .95rem; }
+  .stage {
+    border: 1px solid #E4E7EC; border-radius: 16px;
+    padding: 8px; background: #FFFFFF; overflow: hidden;
+  }
+  .stage img, .stage object { width: 100%; height: auto; display: block; }
+  .note {
+    margin-top: 20px; padding: 14px 16px; border-radius: 12px;
+    background: #F4F6FA; font-size: .9rem; color: #3A4557; line-height: 1.5;
+  }
+  code { background: #E7ECF4; padding: 1px 5px; border-radius: 4px; font-size: .85em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Mascote Stepless — cadeira que vira drone</h1>
+  <p class="sub">Loop de 9 segundos. Ele avança, encontra a escada, inclina, as rodas viram hélices e ele sobe voando — sem sair da cadeira.</p>
+
+  <div class="stage">
+    <object type="image/svg+xml" data="assets/mascot-drone.svg" aria-label="Animação do mascote Stepless subindo uma escada"></object>
+  </div>
+
+  <div class="note">
+    Se você ativar <strong>“Reduzir movimento”</strong> no sistema (macOS: Ajustes → Acessibilidade → Tela; Android: Acessibilidade → Remover animações),
+    a animação para e mostra direto o quadro final — o mascote já no topo, com as hélices ativas. Isso é intencional e segue a
+    regra <code>prefers-reduced-motion</code>, importante para quem tem sensibilidade a movimento.
+  </div>
+</div>
+</body>
+</html>

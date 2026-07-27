@@ -72,29 +72,95 @@
 
     <!-- ── Not Connected Overlay ── -->
     <div id="not-connected" class="card text-center" style="padding:48px 24px;">
-      <div class="mascot-container" role="img" aria-label="Stepless mascot" style="margin-bottom:16px;">
-        <svg class="mascot" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <ellipse class="mascot-shadow" cx="100" cy="185" rx="50" ry="8" fill="var(--text)" opacity="0.2"/>
-          <g class="mascot-body-group">
-            <line x1="100" y1="30" x2="100" y2="48" stroke="var(--primary)" stroke-width="3" stroke-linecap="round"/>
-            <circle class="mascot-antenna-dot" cx="100" cy="26" r="6" fill="var(--primary)"/>
-            <rect x="60" y="48" width="80" height="60" rx="20" fill="var(--primary)" stroke="var(--border)" stroke-width="2"/>
-            <circle class="mascot-eye" cx="82" cy="75" r="8" fill="#ffffff"/>
-            <circle class="mascot-eye mascot-eye-right" cx="118" cy="75" r="8" fill="#ffffff"/>
-            <circle cx="82" cy="75" r="4" fill="var(--bg)"/>
-            <circle cx="118" cy="75" r="4" fill="var(--bg)"/>
-            <path d="M85 92 Q100 100 115 92" stroke="#ffffff" stroke-width="3" stroke-linecap="round" fill="none"/>
-            <rect x="65" y="112" width="70" height="55" rx="16" fill="var(--bg-card)" stroke="var(--primary)" stroke-width="2.5"/>
-            <rect x="78" y="122" width="44" height="28" rx="6" fill="var(--accent-bg)"/>
-            <text x="100" y="140" text-anchor="middle" font-size="10" fill="var(--primary)" font-family="monospace" font-weight="bold">USDC</text>
-            <g class="mascot-arm">
-              <rect x="48" y="120" width="14" height="35" rx="7" fill="var(--primary)"/>
-              <circle cx="55" cy="158" r="8" fill="var(--primary)"/>
+      <div class="mascot-scene mascot-scene-sm" role="img"
+           aria-label="Mascote do Stepless avança na cadeira de rodas, encontra uma escada e as rodas se transformam em hélices, permitindo que ele suba voando com a cadeira">
+        <svg class="mascot-svg" viewBox="0 -72 720 358" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+
+          <line class="ms-ground" x1="20" y1="266" x2="300" y2="266"/>
+
+          <g>
+            <rect class="ms-step" x="300" y="233" width="66" height="33"/>
+            <rect class="ms-step-edge" x="300" y="233" width="66" height="5"/>
+            <rect class="ms-step" x="366" y="200" width="66" height="66"/>
+            <rect class="ms-step-edge" x="366" y="200" width="66" height="5"/>
+            <rect class="ms-step" x="432" y="167" width="66" height="99"/>
+            <rect class="ms-step-edge" x="432" y="167" width="66" height="5"/>
+            <rect class="ms-step" x="498" y="134" width="200" height="132"/>
+            <rect class="ms-step-edge" x="498" y="134" width="200" height="5"/>
+          </g>
+
+          <ellipse class="ms-shadow" cx="96" cy="268" rx="46" ry="7"/>
+
+          <g class="ms-rig">
+            <g class="ms-tilt">
+
+              <g>
+                <circle class="ms-rim" cx="60" cy="228" r="34" fill="none" stroke="var(--primary)" stroke-width="6"/>
+                <g class="ms-spokes">
+                  <line x1="60" y1="200" x2="60" y2="256" stroke="var(--primary)" stroke-width="4" stroke-linecap="round"/>
+                  <line x1="36" y1="214" x2="84" y2="242" stroke="var(--primary)" stroke-width="4" stroke-linecap="round"/>
+                  <line x1="36" y1="242" x2="84" y2="214" stroke="var(--primary)" stroke-width="4" stroke-linecap="round"/>
+                </g>
+                <circle cx="60" cy="228" r="6" fill="var(--primary)"/>
+                <g class="ms-wash">
+                  <circle cx="60" cy="228" r="40" fill="var(--primary)" fill-opacity=".10"/>
+                </g>
+                <g class="ms-blade">
+                  <ellipse cx="26" cy="228" rx="22" ry="5.5" fill="var(--primary)"/>
+                  <ellipse cx="94" cy="228" rx="22" ry="5.5" fill="var(--primary)"/>
+                  <ellipse cx="60" cy="208" rx="5" ry="14" fill="var(--primary)" fill-opacity=".45"/>
+                  <ellipse cx="60" cy="248" rx="5" ry="14" fill="var(--primary)" fill-opacity=".45"/>
+                </g>
+              </g>
+
+              <g>
+                <circle class="ms-rim" cx="122" cy="246" r="15" fill="none" stroke="var(--primary)" stroke-width="5"/>
+                <g class="ms-spokes">
+                  <line x1="122" y1="234" x2="122" y2="258" stroke="var(--primary)" stroke-width="3" stroke-linecap="round"/>
+                  <line x1="111" y1="240" x2="133" y2="252" stroke="var(--primary)" stroke-width="3" stroke-linecap="round"/>
+                </g>
+                <circle cx="122" cy="246" r="4" fill="var(--primary)"/>
+                <g class="ms-wash">
+                  <circle cx="122" cy="246" r="19" fill="var(--primary)" fill-opacity=".10"/>
+                </g>
+                <g class="ms-blade">
+                  <ellipse cx="105" cy="246" rx="11" ry="3.5" fill="var(--primary)"/>
+                  <ellipse cx="139" cy="246" rx="11" ry="3.5" fill="var(--primary)"/>
+                  <ellipse cx="122" cy="236" rx="3.2" ry="7" fill="var(--primary)" fill-opacity=".45"/>
+                  <ellipse cx="122" cy="256" rx="3.2" ry="7" fill="var(--primary)" fill-opacity=".45"/>
+                </g>
+              </g>
+
+              <rect x="34" y="150" width="9" height="70" rx="4.5" fill="var(--primary)"/>
+              <rect x="34" y="212" width="80" height="9" rx="4.5" fill="var(--primary)"/>
+              <rect x="122" y="237" width="26" height="9" rx="4.5" fill="var(--primary)"/>
+
+              <rect x="86" y="197" width="44" height="16" rx="8" fill="var(--primary)"/>
+              <rect x="118" y="205" width="16" height="34" rx="8" fill="var(--primary)"/>
+
+              <rect x="46" y="148" width="62" height="54" rx="16" fill="var(--bg-card)" stroke="var(--primary)" stroke-width="2.5"/>
+              <rect x="59" y="158" width="37" height="24" rx="5" fill="var(--accent-bg)"/>
+              <text x="77.5" y="175" text-anchor="middle" font-size="9" fill="var(--primary)"
+                    font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="bold">USDC</text>
+
+              <rect x="100" y="156" width="13" height="42" rx="6.5" fill="var(--primary)"/>
+              <circle cx="106.5" cy="202" r="8" fill="var(--primary)"/>
+
+              <rect x="42" y="96" width="70" height="52" rx="18" fill="var(--primary)"/>
+              <g class="ms-eye">
+                <circle cx="61" cy="120" r="7.5" fill="#ffffff"/>
+                <circle cx="61" cy="120" r="3.8" fill="var(--bg)"/>
+              </g>
+              <g class="ms-eye ms-eye-right">
+                <circle cx="93" cy="120" r="7.5" fill="#ffffff"/>
+                <circle cx="93" cy="120" r="3.8" fill="var(--bg)"/>
+              </g>
+              <path d="M64 135 Q77 143 90 135" stroke="#ffffff" stroke-width="3" stroke-linecap="round" fill="none"/>
+
+              <line x1="77" y1="80" x2="77" y2="96" stroke="var(--primary)" stroke-width="3" stroke-linecap="round"/>
+              <circle class="ms-antenna" cx="77" cy="76" r="5.5" fill="var(--primary)"/>
+
             </g>
-            <rect x="138" y="120" width="14" height="35" rx="7" fill="var(--primary)"/>
-            <circle cx="145" cy="158" r="8" fill="var(--primary)"/>
-            <rect x="78" y="168" width="16" height="14" rx="6" fill="var(--primary)"/>
-            <rect x="106" y="168" width="16" height="14" rx="6" fill="var(--primary)"/>
           </g>
         </svg>
       </div>
@@ -181,6 +247,35 @@
         <p class="section-subtitle" data-i18n="register_subtitle">Registre um local acessível na Arc Testnet. Você será recompensado em USDC após verificação.</p>
 
         <div class="card">
+          <!-- Regra de local único: um mesmo lugar só pode ser registrado uma vez -->
+          <div class="unique-rule" role="note">
+            <svg class="unique-rule-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+              <path d="M8 12.5l2.5 2.5L16 9.5" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <p data-i18n="reg_unique_rule">
+              <strong>Cada local só pode ser registrado uma vez.</strong> Se já existir um local
+              registrado a menos de 50 metros daqui, o registro é bloqueado — não é possível
+              cadastrar o mesmo lugar duas vezes.
+            </p>
+          </div>
+
+          <!-- Bloqueio: exibido quando já existe local registrado por perto -->
+          <div id="reg-blocked" class="reg-blocked" role="alert" aria-live="assertive" hidden>
+            <svg class="reg-blocked-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+              <path d="M6 18L18 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <div>
+              <p class="reg-blocked-title" data-i18n="reg_blocked_title">Este local já está registrado</p>
+              <p class="reg-blocked-body" id="reg-blocked-detail"></p>
+              <p class="reg-blocked-hint" data-i18n="reg_blocked_hint">
+                Para registrar outro lugar, escolha uma localização diferente no mapa.
+              </p>
+            </div>
+          </div>
+
           <form id="register-form" novalidate>
             <!-- Hidden lat/lng filled by GPS or search -->
             <input type="hidden" id="reg-lat" name="lat" />
@@ -346,6 +441,11 @@
         reg_location:"Localização", reg_gps_btn:"📍 Usar minha localização", reg_address_placeholder:"Ou busque um endereço...", reg_search_btn:"🔍",
         reg_name:"Nome do Local", reg_category:"Categoria", reg_category_hint:"Marque todas as opções que se aplicam.", reg_photo:"Foto do Local", reg_submit:"Registrar Local",
         reg_map_hint:"Toque no mapa ou arraste o marcador para ajustar o local exato.",
+        reg_unique_rule:"Cada local só pode ser registrado uma vez. Se já existir um local registrado a menos de 50 metros daqui, o registro é bloqueado — não é possível cadastrar o mesmo lugar duas vezes.",
+        reg_blocked_title:"Este local já está registrado",
+        reg_blocked_detail:"Já existe {name} registrado a {dist} metros deste ponto.",
+        reg_blocked_unnamed:"um local sem nome",
+        reg_blocked_hint:"Para registrar outro lugar, escolha uma localização diferente no mapa.",
         reg_missing_name:"Preencha o nome do local.", reg_missing_category:"Marque pelo menos uma categoria.",
         reg_gps_detecting:"Detectando sua localização...", reg_gps_ok:"📍 Localização detectada!", reg_gps_error:"Não foi possível obter localização. Busque pelo endereço.",
         reg_other_desc:"Descreva o recurso de acessibilidade",
@@ -390,6 +490,11 @@
         reg_location:"Location", reg_gps_btn:"📍 Use my location", reg_address_placeholder:"Or search an address...", reg_search_btn:"🔍",
         reg_name:"Location Name", reg_category:"Category", reg_category_hint:"Check all that apply.", reg_photo:"Location Photo", reg_submit:"Register Location",
         reg_map_hint:"Tap the map or drag the marker to set the exact spot.",
+        reg_unique_rule:"Each location can only be registered once. If a location is already registered within 50 metres of this spot, registration is blocked — the same place cannot be added twice.",
+        reg_blocked_title:"This location is already registered",
+        reg_blocked_detail:"{name} is already registered {dist} metres from this point.",
+        reg_blocked_unnamed:"A location",
+        reg_blocked_hint:"To register a different place, pick another location on the map.",
         reg_missing_name:"Enter the location name.", reg_missing_category:"Check at least one category.",
         reg_gps_detecting:"Detecting your location...", reg_gps_ok:"📍 Location detected!", reg_gps_error:"Could not get location. Search by address instead.",
         reg_other_desc:"Describe the accessibility feature",
@@ -433,6 +538,11 @@
         register_title:"Mapear Nuevo Lugar", register_subtitle:"Registra un lugar accesible en Arc Testnet. Serás recompensado en USDC después de la verificación.",
         reg_lat:"Latitud", reg_lng:"Longitud", reg_name:"Nombre del Lugar", reg_category:"Categoría", reg_category_hint:"Marca todas las opciones que apliquen.", reg_photo:"Foto del Lugar", reg_submit:"Registrar Lugar",
         reg_map_hint:"Toca el mapa o arrastra el marcador para ajustar el lugar exacto.",
+        reg_unique_rule:"Cada lugar solo puede registrarse una vez. Si ya existe un lugar registrado a menos de 50 metros de aquí, el registro queda bloqueado — no es posible añadir el mismo lugar dos veces.",
+        reg_blocked_title:"Este lugar ya está registrado",
+        reg_blocked_detail:"Ya existe {name} registrado a {dist} metros de este punto.",
+        reg_blocked_unnamed:"un lugar sin nombre",
+        reg_blocked_hint:"Para registrar otro lugar, elige una ubicación diferente en el mapa.",
         reg_missing_name:"Completa el nombre del lugar.", reg_missing_category:"Marca al menos una categoría.",
         verify_title:"Verificar Contribución", verify_subtitle:"Solo verificadores aprobados pueden validar contribuciones.",
         verify_denied:"No eres un verificador aprobado. Solo verificadores pueden validar contribuciones.",

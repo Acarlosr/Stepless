@@ -652,6 +652,7 @@ function setRegLocationFromMap(lat, lng, geocode) {
   const status = document.getElementById('reg-location-status');
   if (status) status.innerHTML = `<span style="color:var(--success)">✅ ${lat.toFixed(5)}, ${lng.toFixed(5)}</span>`;
   if (typeof estimateRegisterGas === 'function') estimateRegisterGas();
+  checkDuplicateLocation(lat, lng);
 
   if (geocode) {
     reverseGeocode(lat, lng).then((label) => {
@@ -730,6 +731,129 @@ async function loadMapMarkers(force = false) {
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+ *  Local único — um mesmo lugar não pode ser registrado duas vezes
+ *
+ *  O contrato já reverte com LocationAlreadyRegistered, mas o hash
+ *  on-chain é keccak256(lat, lng, nome): coordenada com precisão de
+ *  ~11cm e nome idêntico caractere a caractere. Ou seja, o MESMO
+ *  monumento marcado 2 metros ao lado, ou escrito com outra grafia,
+ *  gera outro hash e passaria. Por isso a checagem real de duplicata
+ *  é por PROXIMIDADE, feita aqui antes do envio.
+ * ═══════════════════════════════════════════════════════════════ */
+
+const DUPLICATE_RADIUS_M = 50;
+
+// Distância em metros entre duas coordenadas (Haversine).
+function haversineMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371000; // raio médio da Terra, em metros
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+// Cache dos locais já registrados (hash → nome/lat/lng). Recarregado após
+// cada registro bem-sucedido para não deixar o cache velho liberar duplicata.
+let registeredLocationsCache = null;
+
+async function loadRegisteredLocations(force = false) {
+  if (registeredLocationsCache && !force) return registeredLocationsCache;
+  try {
+    const count = Number(await publicClient.readContract({
+      address: cfg.contracts.SteplessOracle,
+      abi: cfg.abis.SteplessOracle,
+      functionName: 'locationCount',
+    }));
+    const total = Math.min(count, 500);
+    if (!total) { registeredLocationsCache = []; return registeredLocationsCache; }
+
+    const hashes = await publicClient.multicall({
+      multicallAddress: cfg.contracts.Multicall3,
+      allowFailure: false,
+      contracts: Array.from({ length: total }, (_, i) => ({
+        address: cfg.contracts.SteplessOracle,
+        abi: cfg.abis.SteplessOracle,
+        functionName: 'allLocationHashes',
+        args: [BigInt(i)],
+      })),
+    });
+
+    let metaMap = {};
+    try {
+      const r = await fetch('/api/location-meta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hashes }),
+      });
+      metaMap = (await r.json()).meta || {};
+    } catch (_) { /* sem metadado → sem coordenada → não dá pra comparar */ }
+
+    registeredLocationsCache = hashes.map((h) => {
+      const m = metaMap[h.toLowerCase()] || {};
+      const lat = Number(m.lat), lng = Number(m.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      return { hash: h, name: m.name || null, lat, lng };
+    }).filter(Boolean);
+
+    return registeredLocationsCache;
+  } catch (err) {
+    console.warn('[dup] Falha ao carregar locais registrados:', err?.shortMessage || err?.message);
+    return null; // null = desconhecido (≠ lista vazia)
+  }
+}
+
+// Retorna o local registrado mais próximo dentro do raio, ou null.
+function findNearbyRegistered(lat, lng, list) {
+  if (!Array.isArray(list)) return null;
+  let best = null;
+  for (const loc of list) {
+    const d = haversineMeters(lat, lng, loc.lat, loc.lng);
+    if (d <= DUPLICATE_RADIUS_M && (!best || d < best.distance)) {
+      best = { ...loc, distance: d };
+    }
+  }
+  return best;
+}
+
+// Trava/destrava o formulário inteiro. Além do CSS (que só some com o
+// ponteiro), desabilita cada campo — senão dá para chegar neles pelo Tab.
+function setRegisterBlocked(match) {
+  const form = document.getElementById('register-form');
+  const panel = document.getElementById('reg-blocked');
+  const detail = document.getElementById('reg-blocked-detail');
+  if (!form || !panel) return;
+
+  const blocked = !!match;
+  form.classList.toggle('is-blocked', blocked);
+  panel.hidden = !blocked;
+  form.setAttribute('aria-hidden', String(blocked));
+
+  form.querySelectorAll('input, select, textarea, button').forEach((el) => {
+    el.disabled = blocked;
+  });
+
+  if (blocked && detail) {
+    const s = getStrings();
+    const nome = match.name ? `“${match.name}”` : (s.reg_blocked_unnamed || 'um local já cadastrado');
+    const tpl = s.reg_blocked_detail || 'Já existe {name} registrado a {dist} metros deste ponto.';
+    detail.textContent = tpl
+      .replace('{name}', nome)
+      .replace('{dist}', String(Math.round(match.distance)));
+  }
+}
+
+// Chamado sempre que a coordenada muda (GPS, busca ou mapa).
+async function checkDuplicateLocation(lat, lng) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+  const list = await loadRegisteredLocations();
+  if (list === null) { setRegisterBlocked(null); return; } // falha de rede: não trava à toa
+  setRegisterBlocked(findNearbyRegistered(lat, lng, list));
+}
+
 async function handleRegisterLocation(e) {
   e.preventDefault();
   const s = getStrings();
@@ -751,6 +875,20 @@ async function handleRegisterLocation(e) {
   if (isNaN(lat) || isNaN(lng)) {
     showAlert('register-alert', 'danger', s.reg_gps_error || 'Use o GPS ou busque um endereço primeiro.');
     return;
+  }
+
+  // Última barreira antes de gastar gas: revalida a duplicata com dados
+  // frescos. Cobre o caso de outra pessoa ter registrado o mesmo ponto
+  // enquanto este formulário estava aberto.
+  {
+    const freshList = await loadRegisteredLocations(true);
+    const dup = findNearbyRegistered(lat, lng, freshList);
+    if (dup) {
+      setRegisterBlocked(dup);
+      showAlert('register-alert', 'danger',
+        `✗ ${s.reg_blocked_title || 'Este local já está registrado'}`);
+      return;
+    }
   }
   if (!name) {
     showAlert('register-alert', 'danger', s.reg_missing_name || 'Preencha o nome do local.');
@@ -836,6 +974,7 @@ async function handleRegisterLocation(e) {
       : '';
     showAlert('register-alert', 'success', `✓ ${s.success_registered || 'Local registrado!'} TX: ${shortHash(result.txHash)}${pendingNote}`);
     document.getElementById('register-form')?.reset();
+    registeredLocationsCache = null; // força recarregar: este ponto agora está ocupado
     logEvent('LocationRegistered', `by ${shortAddr(walletAddress)}`);
     await refreshAll();
 
@@ -1086,6 +1225,7 @@ function setDetectedLocation(lat, lng, label) {
   if (status) status.innerHTML = `<span style="color:var(--success)">✅ ${label}</span>`;
   syncRegPickerMap(parseFloat(lat), parseFloat(lng)); // move o marcador no mapa interativo
   estimateRegisterGas();
+  checkDuplicateLocation(parseFloat(lat), parseFloat(lng));
 }
 
 async function reverseGeocode(lat, lng) {
