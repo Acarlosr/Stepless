@@ -69,7 +69,13 @@ export function oracleAddress() {
   return getAddress(process.env.ORACLE_ADDRESS.toLowerCase());
 }
 export function distributorAddress() {
-  return getAddress((process.env.DISTRIBUTOR_ADDRESS || '0x4959d0BB848Af5437F249E8516914e0e9353584b').toLowerCase());
+  // Sem fallback silencioso: o valor antigo que ficava aqui apontava para um
+  // distributor órfão (admin inacessível após a migração v3). Se a env var
+  // sumir, é melhor falhar alto do que gravar em um contrato morto.
+  if (!process.env.DISTRIBUTOR_ADDRESS) {
+    throw new Error('DISTRIBUTOR_ADDRESS não configurado no ambiente.');
+  }
+  return getAddress(process.env.DISTRIBUTOR_ADDRESS.toLowerCase());
 }
 
 // ─── ABIs mínimas ────────────────────────────────────────────────────────────
