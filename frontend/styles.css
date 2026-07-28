@@ -484,6 +484,19 @@ textarea:focus-visible {
 
 /* Colapsa para menu hamburguer mais cedo — com wallet conectada a nav
    do index.html não cabe abaixo de ~1100px e sobrepunha o logo */
+/* Faixa apertada: entre o hambúrguer (1100px) e a largura confortável.
+   Com a carteira conectada, endereço + saldo + botão comem ~330px e o
+   menu transbordava, cortando "Roadmap" no meio de uma letra — parecia
+   defeito. Aqui comprimimos o menu e escondemos o saldo (que continua
+   visível na seção de recompensas) para tudo caber inteiro. */
+@media (min-width: 1101px) and (max-width: 1400px) {
+  .nav { gap: 8px; }
+  .nav-links { gap: 2px; }
+  .nav-links a { padding: 4px 5px; font-size: 0.78rem; }
+  .wallet-balance { display: none; }
+  .lang-selector { gap: 2px; }
+}
+
 @media (max-width: 1100px) {
   .nav-toggle {
     display: block;
@@ -924,6 +937,39 @@ input[type="file"]::file-selector-button {
   .hero-subtitle {
     font-size: 1.05rem;
   }
+}
+
+/* ──────────────────────────────────────────────────────────────
+ *  Evidência na tabela de verificação
+ *  A foto não é armazenada (só o hash), então o verificador julga
+ *  pela coerência dos dados — estes elementos mostram isso.
+ * ────────────────────────────────────────────────────────────── */
+
+.evid-line { font-size: .8rem; line-height: 1.5; }
+.evid-key  { color: var(--text-muted); }
+.evid-dim  { color: var(--text-muted); font-size: .76rem; }
+.evid-warn { color: var(--warning); font-weight: 600; }
+
+.evid-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 700;
+}
+.evid-badge.is-ok  { background: var(--success-bg); color: var(--success); }
+.evid-badge.is-bad { background: var(--danger-bg);  color: var(--danger); }
+
+.evid-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.evid-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--accent-bg);
+  color: var(--primary);
+  font-family: inherit;
+  font-size: .72rem;
+  font-weight: 600;
 }
 
 /* ──────────────────────────────────────────────────────────────

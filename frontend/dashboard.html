@@ -339,9 +339,23 @@
 
         <div id="verify-access-denied" class="alert alert-warning">
           <span data-i18n="verify_denied">Você não é um verificador aprovado. Apenas verificadores podem validar contribuições.</span>
+          <div id="verify-denied-hint" hidden
+               style="margin-top:8px; font-family:ui-monospace,Menlo,monospace; font-size:.8rem; word-break:break-all;"></div>
         </div>
 
         <div id="verify-content" class="hidden">
+          <div class="unique-rule" role="note" style="margin-bottom:14px;">
+            <svg class="unique-rule-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+              <path d="M12 11v6M12 7.5v.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <p data-i18n="verify_evidence_note">
+              A foto não é armazenada — apenas o hash dela vai para a blockchain.
+              Confira a coerência: a coordenada corresponde ao nome do local? A categoria
+              faz sentido? O GPS da foto bateu com o ponto?
+            </p>
+          </div>
+
           <div class="card mb-2">
             <form id="verify-form" class="flex items-center gap-2 wrap" style="margin-bottom:0;">
               <div class="form-group" style="flex:1; margin-bottom:0;">
@@ -441,6 +455,10 @@
         reg_location:"Localização", reg_gps_btn:"📍 Usar minha localização", reg_address_placeholder:"Ou busque um endereço...", reg_search_btn:"🔍",
         reg_name:"Nome do Local", reg_category:"Categoria", reg_category_hint:"Marque todas as opções que se aplicam.", reg_photo:"Foto do Local", reg_submit:"Registrar Local",
         reg_map_hint:"Toque no mapa ou arraste o marcador para ajustar o local exato.",
+        evid_coord:"Coordenada", evid_gps:"GPS da foto", evid_from_point:"do ponto",
+        evid_no_coord:"Sem coordenada registrada", evid_no_gps:"Foto sem GPS — não foi possível conferir",
+        evid_photo_date:"Foto de", verify_pending:"pendente",
+        verify_evidence_note:"A foto não é armazenada — apenas o hash dela vai para a blockchain. Confira a coerência: a coordenada corresponde ao nome do local? A categoria faz sentido? O GPS da foto bateu com o ponto?",
         reg_unique_rule:"Cada local só pode ser registrado uma vez. Se já existir um local registrado a menos de 50 metros daqui, o registro é bloqueado — não é possível cadastrar o mesmo lugar duas vezes.",
         reg_blocked_title:"Este local já está registrado",
         reg_blocked_detail:"Já existe {name} registrado a {dist} metros deste ponto.",
@@ -490,6 +508,10 @@
         reg_location:"Location", reg_gps_btn:"📍 Use my location", reg_address_placeholder:"Or search an address...", reg_search_btn:"🔍",
         reg_name:"Location Name", reg_category:"Category", reg_category_hint:"Check all that apply.", reg_photo:"Location Photo", reg_submit:"Register Location",
         reg_map_hint:"Tap the map or drag the marker to set the exact spot.",
+        evid_coord:"Coordinates", evid_gps:"Photo GPS", evid_from_point:"from the point",
+        evid_no_coord:"No coordinates recorded", evid_no_gps:"Photo without GPS — could not be checked",
+        evid_photo_date:"Photo from", verify_pending:"pending",
+        verify_evidence_note:"The photo is not stored — only its hash goes to the blockchain. Check for consistency: do the coordinates match the location name? Does the category make sense? Did the photo GPS match the point?",
         reg_unique_rule:"Each location can only be registered once. If a location is already registered within 50 metres of this spot, registration is blocked — the same place cannot be added twice.",
         reg_blocked_title:"This location is already registered",
         reg_blocked_detail:"{name} is already registered {dist} metres from this point.",
@@ -538,6 +560,13 @@
         register_title:"Mapear Nuevo Lugar", register_subtitle:"Registra un lugar accesible en Arc Testnet. Serás recompensado en USDC después de la verificación.",
         reg_lat:"Latitud", reg_lng:"Longitud", reg_name:"Nombre del Lugar", reg_category:"Categoría", reg_category_hint:"Marca todas las opciones que apliquen.", reg_photo:"Foto del Lugar", reg_submit:"Registrar Lugar",
         reg_map_hint:"Toca el mapa o arrastra el marcador para ajustar el lugar exacto.",
+        reg_location:"Ubicación", reg_gps_btn:"📍 Usar mi ubicación",
+        reg_address_placeholder:"O busca una dirección...", reg_search_btn:"🔍",
+        reg_other_desc:"Describe el recurso de accesibilidad",
+        evid_coord:"Coordenada", evid_gps:"GPS de la foto", evid_from_point:"del punto",
+        evid_no_coord:"Sin coordenada registrada", evid_no_gps:"Foto sin GPS — no se pudo verificar",
+        evid_photo_date:"Foto del", verify_pending:"pendiente",
+        verify_evidence_note:"La foto no se almacena — solo su hash va a la blockchain. Verifica la coherencia: ¿la coordenada corresponde al nombre del lugar? ¿La categoría tiene sentido? ¿El GPS de la foto coincidió con el punto?",
         reg_unique_rule:"Cada lugar solo puede registrarse una vez. Si ya existe un lugar registrado a menos de 50 metros de aquí, el registro queda bloqueado — no es posible añadir el mismo lugar dos veces.",
         reg_blocked_title:"Este lugar ya está registrado",
         reg_blocked_detail:"Ya existe {name} registrado a {dist} metros de este punto.",
