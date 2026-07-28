@@ -315,6 +315,55 @@ function requestAdminSecret() {
   return secret?.trim() || null;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+ *  Assinatura do verificador
+ *
+ *  Cada verificador assina a aprovação com a própria carteira. O
+ *  backend recupera o endereço da assinatura e confere no contrato
+ *  se ele é verificador — ninguém precisa saber segredo nenhum, e
+ *  cada aprovação fica atribuída a uma pessoa.
+ *
+ *  A mensagem é legível de propósito: quem assina precisa entender
+ *  o que está autorizando. Ela amarra ação + contribuição + horário
+ *  + domínio, para a assinatura não servir em outro contexto.
+ * ═══════════════════════════════════════════════════════════════ */
+
+function buildVerifyMessage({ contributionId, approve, address, timestamp, domain }) {
+  return [
+    'Stepless — autorizar verificação',
+    '',
+    `Ação: ${approve ? 'APROVAR' : 'REJEITAR'}`,
+    `Contribuição: ${String(contributionId).toLowerCase()}`,
+    `Verificador: ${String(address).toLowerCase()}`,
+    `Momento: ${new Date(timestamp).toISOString()}`,
+    `Domínio: ${domain}`,
+  ].join('\n');
+}
+
+/** Pede a assinatura à carteira conectada. Retorna null se não der. */
+async function signVerification(contributionId, approve) {
+  if (!walletAddress) return null;
+  let provider;
+  try { provider = await getProvider(); } catch (_) { return null; }
+  if (!provider?.request) return null;
+
+  const timestamp = Date.now();
+  const domain = window.location.host;
+  const message = buildVerifyMessage({ contributionId, approve, address: walletAddress, timestamp, domain });
+
+  try {
+    const signature = await provider.request({
+      method: 'personal_sign',
+      params: [message, walletAddress],
+    });
+    return { address: walletAddress, signature, timestamp };
+  } catch (err) {
+    // 4001 = usuário recusou no popup da carteira; não é erro de sistema.
+    if (err?.code === 4001) throw new Error('Assinatura cancelada.');
+    return null;
+  }
+}
+
 // Verifica se relayer está autorizado e mostra banner de setup se não estiver
 async function checkRelayerSetup() {
   const panel = document.getElementById('admin-setup-panel');
@@ -1028,15 +1077,33 @@ async function handleVerify(approved, idFromTable) {
   }
 
   try {
-    const adminSecret = requestAdminSecret();
-    if (!adminSecret) return;
+    // Caminho normal: assina com a carteira conectada. O backend confere
+    // no contrato se esse endereço é verificador autorizado.
+    const auth = await signVerification(contributionId, approved);
+
+    // Sem carteira que assine (ex.: dono operando de outro dispositivo),
+    // cai no segredo administrativo como alternativa.
+    let adminSecret = null;
+    if (!auth) {
+      adminSecret = requestAdminSecret();
+      if (!adminSecret) return;
+    }
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (adminSecret) headers['X-Admin-Secret'] = adminSecret;
+
     // Verificação + pagamento acontecem no backend (/api/verify):
     // a chave verificadora aprova on-chain e o relayer paga o USDC
     // direto para a wallet do contribuidor real.
     const resp = await fetch('/api/verify', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': adminSecret },
-      body: JSON.stringify({ contributionId, approve: approved, reason: approved ? '' : 'Rejeitado pelo verificador' }),
+      headers,
+      body: JSON.stringify({
+        contributionId,
+        approve: approved,
+        reason: approved ? '' : 'Rejeitado pelo verificador',
+        ...(auth ? { auth } : {}),
+      }),
     });
     const result = await resp.json();
     if (!result.success) throw new Error(result.error || 'Verify API error');

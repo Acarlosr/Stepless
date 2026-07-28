@@ -22,3 +22,6 @@ contracts/broadcast/
 *.log
 *.zip
 .fuse_hidden*
+
+# ── Config local de ferramentas ──────────────────────────────
+.claude/

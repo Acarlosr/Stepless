@@ -250,10 +250,31 @@
           <li><a href="dashboard.html" data-i18n="nav_dashboard">Dashboard</a></li>
           <li><a href="index.html" data-i18n="nav_home">Início</a></li>
         </ul>
-        <div class="lang-selector" role="group" aria-label="Selecionar idioma">
-          <button type="button" class="lang-btn" data-lang="pt" aria-label="Português do Brasil" title="Português do Brasil" aria-pressed="false"><img src="assets/flags/br.svg" alt="" aria-hidden="true"></button>
-          <button type="button" class="lang-btn" data-lang="en" aria-label="English" title="English" aria-pressed="false"><img src="assets/flags/us.svg" alt="" aria-hidden="true"></button>
-          <button type="button" class="lang-btn" data-lang="es" aria-label="Español" title="Español" aria-pressed="false"><img src="assets/flags/es.svg" alt="" aria-hidden="true"></button>
+        <!-- Seletor de idioma em menu suspenso. Os itens mantêm .lang-btn e
+             data-lang porque o setLanguage() de cada página já os usa. -->
+        <div class="lang-menu">
+          <button type="button" class="lang-menu-trigger" id="lang-menu-trigger"
+                  aria-haspopup="true" aria-expanded="false" aria-controls="lang-menu-list"
+                  aria-label="Selecionar idioma" title="Selecionar idioma">
+            <img class="lang-menu-flag" src="assets/flags/br.svg" alt="" aria-hidden="true">
+            <svg class="lang-menu-caret" viewBox="0 0 12 8" aria-hidden="true">
+              <path d="M1 1.5 L6 6.5 L11 1.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="lang-menu-list" id="lang-menu-list" role="group" aria-label="Idiomas" hidden>
+            <button type="button" class="lang-btn" data-lang="en" aria-pressed="false">
+              <img src="assets/flags/us.svg" alt="" aria-hidden="true"><span>English</span>
+              <svg class="lang-check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5 L6.5 12 L13 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button type="button" class="lang-btn" data-lang="pt" aria-pressed="false">
+              <img src="assets/flags/br.svg" alt="" aria-hidden="true"><span>Português</span>
+              <svg class="lang-check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5 L6.5 12 L13 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button type="button" class="lang-btn" data-lang="es" aria-pressed="false">
+              <img src="assets/flags/es.svg" alt="" aria-hidden="true"><span>Español</span>
+              <svg class="lang-check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5 L6.5 12 L13 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
         </div>
         <button class="theme-toggle" id="theme-toggle" aria-label="Alternar modo escuro" data-i18n-aria-label="theme_toggle" data-i18n-title="theme_toggle">
           <span id="theme-icon">🌙</span>
@@ -1200,5 +1221,6 @@
 
     setLanguage(detectLanguage());
   </script>
+  <script src="lang-menu.js" defer></script>
 </body>
 </html>

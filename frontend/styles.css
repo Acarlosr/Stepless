@@ -387,31 +387,109 @@ textarea:focus-visible {
   text-decoration: none;
 }
 
-.lang-selector {
-  display: flex;
-  gap: 2px;
-  align-items: center;
+/* ── Seletor de idioma (menu suspenso) ──────────────────────────
+   Uma bandeira só no cabeçalho, em vez de três lado a lado: ocupa
+   menos espaço (era o que apertava o menu) e mostra o nome escrito
+   de cada idioma, que bandeira sozinha não comunica bem. */
+
+.lang-menu {
+  position: relative;
   flex-shrink: 0;
 }
 
-.lang-btn {
+.lang-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 7px;
   background: none;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  padding: 3px 7px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: 8px;
   color: var(--text-muted);
   cursor: pointer;
   transition: var(--transition);
 }
-
-.lang-btn:hover,
-.lang-btn.active {
+.lang-menu-trigger:hover,
+.lang-menu.is-open .lang-menu-trigger {
   border-color: var(--primary);
   color: var(--primary);
+}
+
+.lang-menu-flag {
+  width: 20px;
+  height: 14px;
+  object-fit: cover;
+  border-radius: 2px;
+  display: block;
+}
+
+.lang-menu-caret {
+  width: 10px;
+  height: 7px;
+  transition: transform .18s ease;
+}
+.lang-menu.is-open .lang-menu-caret { transform: rotate(180deg); }
+
+.lang-menu-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 60;
+  min-width: 178px;
+  padding: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+}
+.lang-menu-list[hidden] { display: none; }
+
+/* Itens do menu. Mantêm a classe .lang-btn porque o setLanguage() de
+   cada página já os seleciona e marca o ativo com .active. */
+.lang-menu-list .lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background .12s ease;
+}
+.lang-menu-list .lang-btn img {
+  width: 20px;
+  height: 14px;
+  object-fit: cover;
+  border-radius: 2px;
+  flex: 0 0 auto;
+}
+.lang-menu-list .lang-btn span { flex: 1; }
+
+.lang-menu-list .lang-btn:hover,
+.lang-menu-list .lang-btn:focus-visible {
+  background: var(--bg-alt);
+}
+.lang-menu-list .lang-btn.active {
+  color: var(--primary);
+  font-weight: 600;
   background: var(--accent-bg);
 }
+
+/* O "check" só aparece no idioma ativo */
+.lang-check {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  opacity: 0;
+  color: var(--primary);
+}
+.lang-menu-list .lang-btn.active .lang-check { opacity: 1; }
 
 .theme-toggle {
   background: none;
@@ -494,7 +572,7 @@ textarea:focus-visible {
   .nav-links { gap: 2px; }
   .nav-links a { padding: 4px 5px; font-size: 0.78rem; }
   .wallet-balance { display: none; }
-  .lang-selector { gap: 2px; }
+  .lang-menu-trigger { padding: 3px 5px; }
 }
 
 @media (max-width: 1100px) {
@@ -1457,15 +1535,6 @@ input[type="file"]::file-selector-button {
 }
 .lang-select:hover { border-color: var(--primary); }
 
-/* legacy buttons kept for buscar.html */
-.lang-selector { display: flex; gap: 4px; }
-.lang-btn {
-  background: none; border: 1px solid var(--border);
-  border-radius: 6px; padding: 5px 10px; cursor: pointer;
-  font-size: 0.82rem; font-weight: 600; color: var(--text-muted);
-  transition: var(--transition); font-family: inherit;
-}
-.lang-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
 /* ──────────────────────────────────────────────────────────────
  *  Wallet connection
@@ -1743,49 +1812,6 @@ pre code {
 .gap-1 { gap: 8px; }
 .wrap { flex-wrap: wrap; }
 
-/* Compact flag language switcher */
-.lang-selector {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  flex-shrink: 0;
-}
-.lang-selector .lang-btn {
-  display: inline-grid;
-  place-items: center;
-  width: 32px;
-  height: 30px;
-  padding: 0;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  font-size: 1.18rem;
-  line-height: 1;
-  cursor: pointer;
-  transition: var(--transition);
-}
-.lang-selector .lang-btn img {
-  display: block;
-  width: 24px;
-  height: 16px;
-  border-radius: 2px;
-  object-fit: cover;
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 14%);
-}
-.lang-selector .lang-btn:hover {
-  border-color: var(--primary);
-  background: var(--accent-bg);
-  transform: translateY(-1px);
-}
-.lang-selector .lang-btn:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-.lang-selector .lang-btn.active {
-  border-color: var(--primary);
-  background: var(--accent-bg);
-  box-shadow: inset 0 0 0 1px var(--primary);
-}
 /* Accessibility-first public search */
 .hero-eyebrow {
   margin: 0 0 10px;

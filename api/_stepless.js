@@ -4,7 +4,7 @@
  */
 
 import { timingSafeEqual } from 'node:crypto';
-import { createWalletClient, createPublicClient, http, fallback, getAddress, keccak256, toBytes } from 'viem';
+import { createWalletClient, createPublicClient, http, fallback, getAddress, keccak256, toBytes, recoverMessageAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
 // ─── RPC endpoints ───────────────────────────────────────────────────────────
@@ -236,6 +236,84 @@ export function requireAdminSecret(req, res, options = {}) {
     return false;
   }
   return true;
+}
+
+/* ─── Autenticação de verificador por assinatura ──────────────────────────────
+ *
+ * Antes, aprovar exigia um segredo compartilhado: quem tivesse o segredo
+ * aprovava tudo, sem rastro de quem foi e sem como revogar uma pessoa só.
+ * Agora cada verificador assina com a própria carteira e o backend confere
+ * `verifiers[endereço]` no contrato. Vantagens: identidade real no log,
+ * revogação individual on-chain, e nenhum segredo circulando entre pessoas.
+ *
+ * A mensagem é legível (a pessoa vê o que assina) e amarra ação + contribuição
+ * + horário + domínio — assim uma assinatura não serve para outra contribuição,
+ * nem para a ação oposta, nem em outro site, nem depois da validade.
+ */
+const SIGNATURE_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutos
+
+export function buildVerifyMessage({ contributionId, approve, address, timestamp, domain }) {
+  return [
+    'Stepless — autorizar verificação',
+    '',
+    `Ação: ${approve ? 'APROVAR' : 'REJEITAR'}`,
+    `Contribuição: ${String(contributionId).toLowerCase()}`,
+    `Verificador: ${String(address).toLowerCase()}`,
+    `Momento: ${new Date(timestamp).toISOString()}`,
+    `Domínio: ${domain}`,
+  ].join('\n');
+}
+
+/**
+ * Valida a assinatura e confirma que o signatário é verificador on-chain.
+ * Devolve { ok: true, address } ou { ok: false, status, error }.
+ */
+export async function verifySignedRequest({ auth, contributionId, approve, domain }) {
+  if (!auth || typeof auth !== 'object') {
+    return { ok: false, status: 401, error: 'Assinatura ausente.' };
+  }
+  const { address, signature, timestamp } = auth;
+
+  if (typeof signature !== 'string' || !/^0x[0-9a-fA-F]+$/.test(signature)) {
+    return { ok: false, status: 401, error: 'Assinatura mal formada.' };
+  }
+  let addr;
+  try { addr = getAddress(String(address)); }
+  catch { return { ok: false, status: 401, error: 'Endereço do verificador inválido.' }; }
+
+  const ts = Number(timestamp);
+  if (!Number.isFinite(ts)) {
+    return { ok: false, status: 401, error: 'Horário da assinatura inválido.' };
+  }
+  const age = Date.now() - ts;
+  // Tolera 60s de relógio adiantado; recusa assinatura velha (anti-replay).
+  if (age > SIGNATURE_MAX_AGE_MS || age < -60_000) {
+    return { ok: false, status: 401, error: 'Assinatura expirada. Tente aprovar novamente.' };
+  }
+
+  const message = buildVerifyMessage({ contributionId, approve, address: addr, timestamp: ts, domain });
+  let recovered;
+  try { recovered = await recoverMessageAddress({ message, signature }); }
+  catch { return { ok: false, status: 401, error: 'Não foi possível validar a assinatura.' }; }
+
+  if (getAddress(recovered) !== addr) {
+    return { ok: false, status: 401, error: 'A assinatura não corresponde ao endereço informado.' };
+  }
+
+  // A autoridade vem do contrato, não de uma lista no servidor.
+  let isVerifier = false;
+  try {
+    isVerifier = await publicClient().readContract({
+      address: distributorAddress(), abi: DISTRIBUTOR_ABI, functionName: 'verifiers', args: [addr],
+    });
+  } catch (err) {
+    return { ok: false, status: 503, error: 'Não foi possível consultar a lista de verificadores na Arc.' };
+  }
+  if (!isVerifier) {
+    return { ok: false, status: 403, error: 'Este endereço não é um verificador autorizado.' };
+  }
+
+  return { ok: true, address: addr };
 }
 
 export function clientIp(req) {

@@ -15,6 +15,7 @@ import {
   publicClient, walletFor, relayerAccount, verifierAccount,
   oracleAddress, distributorAddress, ORACLE_ABI, DISTRIBUTOR_ABI,
   REWARD_TYPE, store, contribKey, PENDING_LIST_KEY, cors, clientIp, translateError, requireAdminSecret,
+  verifySignedRequest,
 } from './_stepless.js';
 
 export default async function handler(req, res) {
@@ -26,15 +27,33 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Relayer/Oracle não configurados no Vercel.' });
   }
 
-  if (!requireAdminSecret(req, res)) return;
-
   if (!(await store.rateLimit(`verify:${clientIp(req)}`, 10, 60))) {
     return res.status(429).json({ success: false, error: 'Muitas requisições. Aguarde um minuto.' });
   }
 
-  const { contributionId, approve = true, reason = '', contributor: fallbackContributor } = req.body || {};
+  const { contributionId, approve = true, reason = '', contributor: fallbackContributor, auth } = req.body || {};
   if (!/^0x[0-9a-fA-F]{64}$/.test(contributionId || '')) {
     return res.status(400).json({ success: false, error: 'contributionId inválido (bytes32 esperado).' });
+  }
+
+  // ── Autorização ────────────────────────────────────────────────────────
+  // Caminho principal: o verificador assina com a própria carteira e o
+  // contrato diz se ele está autorizado. Cada aprovação fica atribuída a uma
+  // pessoa, e revogar alguém é uma transação on-chain — sem trocar segredo.
+  //
+  // O segredo administrativo continua valendo como saída de emergência para
+  // o dono (ex.: operar sem carteira à mão), mas não é mais o único jeito.
+  let approvedBy = null;
+  if (auth) {
+    const domain = req.headers?.host || 'www.stepless.lat';
+    const check = await verifySignedRequest({ auth, contributionId, approve: Boolean(approve), domain });
+    if (!check.ok) {
+      return res.status(check.status).json({ success: false, error: check.error });
+    }
+    approvedBy = check.address;
+  } else {
+    if (!requireAdminSecret(req, res)) return;
+    approvedBy = 'admin-secret';
   }
 
   const pub = publicClient();
@@ -61,9 +80,9 @@ export default async function handler(req, res) {
     // Rejeição: registra e encerra (sem pagamento)
     const meta = (await store.getJSON(contribKey(contributionId))) || {};
     if (!approve) {
-      await store.setJSON(contribKey(contributionId), { ...meta, status: 'rejected', reason, rejectedAt: Date.now() });
+      await store.setJSON(contribKey(contributionId), { ...meta, status: 'rejected', reason, rejectedAt: Date.now(), approvedBy });
       await store.listRemove(PENDING_LIST_KEY, contributionId);
-      return res.status(200).json({ success: true, approved: false, verifyTx });
+      return res.status(200).json({ success: true, approved: false, verifyTx, approvedBy });
     }
 
     // 2) Pagamento para a wallet REAL do usuário
@@ -91,11 +110,11 @@ export default async function handler(req, res) {
     }
 
     await store.setJSON(contribKey(contributionId), {
-      ...meta, status: 'paid', verifyTx, payTx, paidTo: recipient, paidAt: Date.now(),
+      ...meta, status: 'paid', verifyTx, payTx, paidTo: recipient, paidAt: Date.now(), approvedBy,
     });
     await store.listRemove(PENDING_LIST_KEY, contributionId);
 
-    return res.status(200).json({ success: true, approved: true, verifyTx, payTx, paidTo: recipient });
+    return res.status(200).json({ success: true, approved: true, verifyTx, payTx, paidTo: recipient, approvedBy });
   } catch (err) {
     console.error('[verify] Error:', err);
     const t = translateError(err);
