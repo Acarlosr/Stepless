@@ -536,23 +536,49 @@ async function loadLocationCount() {
 
 async function checkVerifierStatus() {
   try {
-    const isVerifier = await publicClient.readContract({
-      address: cfg.contracts.RewardDistributor,
-      abi: cfg.abis.RewardDistributor,
-      functionName: 'verifiers',
-      args: [walletAddress],
-    });
+    // Quem verifica DE FATO on-chain é a conta derivada no backend
+    // (verifierAccount em api/_stepless.js) — nunca a carteira do navegador.
+    // Portanto checar só `verifiers[walletAddress]` trancava justamente o
+    // admin, que é quem tem o segredo para aprovar. A proteção real é o
+    // X-Admin-Secret exigido pelo /api/verify no servidor; esta checagem
+    // aqui é só para não exibir o painel a um visitante qualquer.
+    const [isVerifier, adminAddr] = await Promise.all([
+      publicClient.readContract({
+        address: cfg.contracts.RewardDistributor,
+        abi: cfg.abis.RewardDistributor,
+        functionName: 'verifiers',
+        args: [walletAddress],
+      }),
+      publicClient.readContract({
+        address: cfg.contracts.RewardDistributor,
+        abi: cfg.abis.RewardDistributor,
+        functionName: 'admin',
+      }).catch(() => null),
+    ]);
+
+    const isAdmin = adminAddr && walletAddress &&
+      String(adminAddr).toLowerCase() === String(walletAddress).toLowerCase();
+    const canVerify = Boolean(isVerifier) || Boolean(isAdmin);
 
     const badge = document.getElementById('verifier-badge');
     const denied = document.getElementById('verify-access-denied');
     const content = document.getElementById('verify-content');
 
-    // Somente wallets verificadoras podem acessar o painel. O backend ainda
-    // exige uma credencial administrativa para executar a mutação.
-    denied?.classList.toggle('hidden', Boolean(isVerifier));
-    content?.classList.toggle('hidden', !isVerifier);
-    badge?.classList.toggle('hidden', !isVerifier);
-    if (isVerifier) await loadPendingContributions();
+    denied?.classList.toggle('hidden', canVerify);
+    content?.classList.toggle('hidden', !canVerify);
+    badge?.classList.toggle('hidden', !canVerify);
+
+    // Se não pode verificar, diz QUAL carteira precisa conectar — sem isso
+    // a mensagem "você não é verificador" não ajuda em nada.
+    if (!canVerify && adminAddr) {
+      const hint = document.getElementById('verify-denied-hint');
+      if (hint) {
+        hint.textContent = `Conecte a carteira administradora: ${adminAddr}`;
+        hint.hidden = false;
+      }
+    }
+
+    if (canVerify) await loadPendingContributions();
   } catch (err) {
     console.error('Verifier check error:', err);
   }
@@ -1032,6 +1058,73 @@ async function handleVerify(approved, idFromTable) {
  *  Pending contributions (via /api/pending)
  * ═══════════════════════════════════════════════════════════════ */
 
+/* ═══════════════════════════════════════════════════════════════
+ *  Evidência para o verificador
+ *
+ *  A foto NUNCA é armazenada — só o keccak256 dela vai para a chain.
+ *  Então o verificador não tem imagem para olhar. O que ele pode
+ *  julgar é a coerência dos dados: o local existe naquela coordenada?
+ *  a categoria faz sentido? o GPS da foto bateu com o ponto declarado?
+ *  Estas funções expõem exatamente isso.
+ * ═══════════════════════════════════════════════════════════════ */
+
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
+function renderCategoryChips(categories) {
+  if (!Array.isArray(categories) || !categories.length) return '';
+  const chips = categories.map((id) => {
+    const label = categoryLabel(id) || `#${id}`;
+    return `<span class="evid-chip">${escapeHtml(label)}</span>`;
+  }).join('');
+  return `<div class="evid-chips">${chips}</div>`;
+}
+
+function renderEvidence(p) {
+  const s = getStrings();
+  const parts = [];
+
+  // Coordenada + link para o mapa, para o verificador conferir onde é
+  if (Number.isFinite(p.lat) && Number.isFinite(p.lng)) {
+    const coord = `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
+    const osm = `https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lng}#map=18/${p.lat}/${p.lng}`;
+    parts.push(
+      `<div class="evid-line"><span class="evid-key">${s.evid_coord || 'Coordenada'}:</span> ` +
+      `<a href="${osm}" target="_blank" rel="noopener" style="font-family:monospace;font-size:.78rem;">${coord}</a></div>`
+    );
+  } else {
+    parts.push(`<div class="evid-line evid-warn">${s.evid_no_coord || 'Sem coordenada registrada'}</div>`);
+  }
+
+  // Resultado da checagem de GPS da foto
+  const e = p.exif;
+  if (e && e.hasGps && Number.isFinite(e.distKm)) {
+    const m = Math.round(e.distKm * 1000);
+    const ok = e.ok !== false;
+    parts.push(
+      `<div class="evid-line"><span class="evid-badge ${ok ? 'is-ok' : 'is-bad'}">` +
+      `${ok ? '✓' : '!'} ${s.evid_gps || 'GPS da foto'}</span> ` +
+      `<span class="evid-dim">${m} m ${s.evid_from_point || 'do ponto'}</span></div>`
+    );
+  } else if (e && !e.hasGps) {
+    parts.push(`<div class="evid-line evid-warn">${s.evid_no_gps || 'Foto sem GPS — não foi possível conferir'}</div>`);
+  }
+
+  // Data da foto
+  if (e && e.photoTs) {
+    const d = new Date(e.photoTs);
+    if (!isNaN(d)) {
+      parts.push(`<div class="evid-line evid-dim">${s.evid_photo_date || 'Foto de'} ${d.toLocaleDateString()}</div>`);
+    }
+  }
+
+  parts.push(`<div class="evid-line evid-dim">⏳ ${s.verify_pending || 'pendente'}</div>`);
+  return parts.join('');
+}
+
 async function loadPendingContributions() {
   const tbody = document.getElementById('verify-table-body');
   if (!tbody) return;
@@ -1047,10 +1140,14 @@ async function loadPendingContributions() {
 
     tbody.innerHTML = pending.map(p => `
       <tr>
-        <td style="font-family:monospace;font-size:0.8rem;" title="${p.contributionId}">${shortHash(p.contributionId)}${p.name ? `<br><small>${p.name}</small>` : ''}</td>
+        <td style="font-family:monospace;font-size:0.8rem;" title="${p.contributionId}">
+          ${shortHash(p.contributionId)}
+          ${p.name ? `<br><strong style="font-family:inherit;font-size:0.9rem;">${escapeHtml(p.name)}</strong>` : ''}
+          ${renderCategoryChips(p.categories)}
+        </td>
         <td style="font-family:monospace;font-size:0.8rem;">${shortAddr(p.user)}</td>
         <td>${p.rewardType || 'NewLocation'}</td>
-        <td>⏳ pendente</td>
+        <td>${renderEvidence(p)}</td>
         <td>
           <button class="btn btn-success btn-sm" data-verify="${p.contributionId}" data-approve="1">✓</button>
           <button class="btn btn-danger btn-sm" data-verify="${p.contributionId}" data-approve="0">✗</button>

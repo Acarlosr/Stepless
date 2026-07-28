@@ -266,6 +266,7 @@ export default async function handler(req, res) {
 
     let txHash;
     let contributionId = null;
+    let exifEvidence = null; // evidência da checagem de GPS, para o verificador
 
     // ── submitContribution ────────────────────────────────────────────────
     if (action === 'submitContribution') {
@@ -312,6 +313,16 @@ export default async function handler(req, res) {
           console.warn('[relay] EXIF warning (not enforced on testnet):', exifCheck.error);
         }
       }
+      // Guarda o resultado da checagem para o verificador ver depois. A foto
+      // em si nunca é armazenada (só o hash), então esta é a única evidência
+      // que sobra sobre onde/quando a imagem foi capturada.
+      exifEvidence = {
+        ok: exifCheck.ok,
+        distKm: exifCheck.distKm ?? null,
+        hasGps: exifLat != null && exifLng != null,
+        photoTs: exifTimestamp || null,
+        warning: exifCheck.ok ? null : exifCheck.error,
+      };
 
       // dataHash inclui hash da foto + coords EXIF para prova imutável
       const finalDataHash = dataHash || keccak256(encodePacked(
@@ -356,11 +367,19 @@ export default async function handler(req, res) {
 
     // ── Registra pendência p/ verificação + atribuição do usuário real ────
     if (contributionId) {
+      // Desempacota as coordenadas para o verificador poder situar o local no
+      // mapa. Sem isto ele só veria um hash e um nome — aprovação às cegas.
+      const pLat = Number(submissionData.latPacked);
+      const pLng = Number(submissionData.lngPacked);
+
       await store.setJSON(contribKey(contributionId), {
         user: userAddress,
         locationHash: submissionData.locationHash,
         name: submissionData.name || null,
         categories: Array.isArray(submissionData.categories) ? submissionData.categories : [],
+        lat: Number.isFinite(pLat) ? pLat / 1e6 - 90 : null,
+        lng: Number.isFinite(pLng) ? pLng / 1e6 - 180 : null,
+        exif: exifEvidence,
         rewardType: action === 'registerLocation' ? 'NewLocation' : 'LocationUpdate',
         status: 'pending',
         ts: Date.now(),
