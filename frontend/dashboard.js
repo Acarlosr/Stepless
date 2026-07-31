@@ -308,7 +308,9 @@ async function disconnect() {
  *  Admin panel — autorizar relayer (só aparece para o admin)
  * ═══════════════════════════════════════════════════════════════ */
 
-const RELAYER_ADDRESS = '0xd299358Db4e263d95Fdc0B72970373470921c53A'; // relayer atual (verificado no ArcScan em 2026-07-06 — autorizado pelo admin 0xbc8aE412... às 19:56); admin continua sendo 0xbc8aE412f4F6aFA21aDf4A18DEfFabbFB21304aE
+// Endereço do relayer: lido de arc-config.js (fonte única), não mais
+// hardcoded aqui. Evita divergência silenciosa na próxima rotação de chave.
+const RELAYER_ADDRESS = cfg.relayerAddress;
 
 function requestAdminSecret() {
   const secret = window.prompt('Informe a credencial administrativa para confirmar esta operação:');
@@ -531,7 +533,12 @@ async function loadContributorStats() {
       args: [walletAddress],
     });
 
-    const [totalEarned, contributions, verifications, lastRewardAt] = result;
+    // getContributorStats retorna 3 valores (earned, contributions,
+    // verifications) — não existe lastRewardAt no contrato. Desestruturar
+    // um 4º valor não quebra em JS (fica undefined), mas é enganoso: nada
+    // no contrato rastreia "última recompensa", então esse campo nunca
+    // existiu de verdade.
+    const [totalEarned, contributions, verifications] = result;
 
     const elEarned = document.getElementById('stat-total-earned');
     const elContrib = document.getElementById('stat-contributions');
@@ -1246,16 +1253,20 @@ function startWebSocketSubscriptions(viem) {
 
   try {
     // Subscribe to RewardPaid events
+    // Nomes reais do evento (RewardDistributor.sol): `recipient` e
+    // `rewardType` — não `contributor`/`tier`. Com a ABI antiga (errada)
+    // isso lia undefined silenciosamente; com a ABI corrigida os nomes
+    // batem com o que o contrato de fato emite.
     const unwatchReward = publicClient.watchContractEvent({
       address: cfg.contracts.RewardDistributor,
       abi: cfg.abis.RewardDistributor,
       eventName: 'RewardPaid',
       onLogs: (logs) => {
         logs.forEach(log => {
-          const isMine = log.args.contributor?.toLowerCase() === walletAddress?.toLowerCase();
+          const isMine = log.args.recipient?.toLowerCase() === walletAddress?.toLowerCase();
           const amount = formatUsdc(log.args.amount);
-          const tier = log.args.tier;
-          logEvent('RewardPaid', `${amount} USDC → ${shortAddr(log.args.contributor)} (T${tier})${isMine ? ' ← YOU' : ''}`);
+          const rewardType = log.args.rewardType;
+          logEvent('RewardPaid', `${amount} USDC → ${shortAddr(log.args.recipient)} (T${rewardType})${isMine ? ' ← YOU' : ''}`);
           if (isMine) {
             refreshAll();
           }
@@ -1265,6 +1276,10 @@ function startWebSocketSubscriptions(viem) {
     activeUnwatch.push(unwatchReward);
 
     // Subscribe to LocationRegistered events
+    // Nome real do campo (SteplessOracle.sol) é `locationHash`, não
+    // `locationId` — a ABI antiga inventava esse nome e o valor lido aqui
+    // sempre foi undefined (a busca de meta abaixo silenciosamente não
+    // encontrava nada, e o mapa nunca recebia name/categories corretos).
     const unwatchLocation = publicClient.watchContractEvent({
       address: cfg.contracts.SteplessOracle,
       abi: cfg.abis.SteplessOracle,
@@ -1272,16 +1287,16 @@ function startWebSocketSubscriptions(viem) {
       onLogs: (logs) => {
         logs.forEach(async (log) => {
           const isMine = log.args.contributor?.toLowerCase() === walletAddress?.toLowerCase();
-          const locationId = log.args.locationId;
+          const locationHash = log.args.locationHash;
 
           // Busca nome salvo fora da chain pra esse local específico (best-effort)
           let name = null, categories = [];
           try {
             const r = await fetch('/api/location-meta', {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ hashes: [locationId] }),
+              body: JSON.stringify({ hashes: [locationHash] }),
             });
-            const meta = (await r.json()).meta?.[locationId?.toLowerCase()];
+            const meta = (await r.json()).meta?.[locationHash?.toLowerCase()];
             if (meta) { name = meta.name; categories = meta.categories; }
           } catch (_) {}
 
@@ -1306,18 +1321,38 @@ function startWebSocketSubscriptions(viem) {
     activeUnwatch.push(unwatchLocation);
 
     // Subscribe to ContributionVerified events
+    // ContributionVerified NÃO tem campo `approved` — o contrato só emite
+    // esse evento no caminho de APROVAÇÃO; rejeição é um evento à parte
+    // (ContributionRejected, com `reason`, sem booleano). O código antigo
+    // lia log.args.approved (sempre undefined) e por isso classificava toda
+    // aprovação como "rejected" no log ao vivo — nunca havia log correto de
+    // aprovação, e rejeições de fato nunca apareciam (não existia watcher
+    // para ContributionRejected).
     const unwatchVerified = publicClient.watchContractEvent({
       address: cfg.contracts.SteplessOracle,
       abi: cfg.abis.SteplessOracle,
       eventName: 'ContributionVerified',
       onLogs: (logs) => {
         logs.forEach(log => {
-          const status = log.args.approved ? 'approved' : 'rejected';
-          logEvent('ContributionVerified', `${shortHash(log.args.contributionId)} ${status} by ${shortAddr(log.args.verifier)}`);
+          logEvent('ContributionVerified', `${shortHash(log.args.contributionId)} approved by ${shortAddr(log.args.verifier)}`);
         });
       },
     });
     activeUnwatch.push(unwatchVerified);
+
+    // Subscribe to ContributionRejected events (antes ausente — rejeições
+    // nunca apareciam no log ao vivo do dashboard).
+    const unwatchRejected = publicClient.watchContractEvent({
+      address: cfg.contracts.SteplessOracle,
+      abi: cfg.abis.SteplessOracle,
+      eventName: 'ContributionRejected',
+      onLogs: (logs) => {
+        logs.forEach(log => {
+          logEvent('ContributionRejected', `${shortHash(log.args.contributionId)} rejected by ${shortAddr(log.args.verifier)} — ${escapeHtml(log.args.reason || '')}`);
+        });
+      },
+    });
+    activeUnwatch.push(unwatchRejected);
 
     logEvent('WebSocket', 'Connected to Arc Testnet events');
   } catch (err) {
@@ -1352,15 +1387,24 @@ async function estimateRegisterGas() {
 
   try {
     const viem = window.viem;
-    const latInt = BigInt(Math.round((lat + 90) * 1e6));
-    const lngInt = BigInt(Math.round((lng + 180) * 1e6));
+    // registerLocation real: (locationHash, latPacked, lngPacked, dataHash,
+    // contributor) — não (lat, lng, name, category, photoHash). O cálculo do
+    // locationHash espelha handleRegisterLocation() para a estimativa usar o
+    // mesmo hash que a transação real usaria (mesmo offset +90/+180 e mesmo
+    // encodePacked), só com um dataHash fictício já que a foto pode ainda
+    // não ter sido escolhida neste ponto do formulário.
+    const latPacked = BigInt(Math.round((lat + 90) * 1e6));
+    const lngPacked = BigInt(Math.round((lng + 180) * 1e6));
     const dummyHash = viem.keccak256('0x00');
+    const locationHash = viem.keccak256(
+      viem.encodePacked(['int256', 'int256', 'string'], [latPacked, lngPacked, name])
+    );
 
     const gasEstimate = await publicClient.estimateContractGas({
       address: cfg.contracts.SteplessOracle,
       abi: cfg.abis.SteplessOracle,
       functionName: 'registerLocation',
-      args: [latInt, lngInt, name, categories[0], dummyHash],
+      args: [locationHash, latPacked, lngPacked, dummyHash, walletAddress],
       account: walletAddress,
     });
 

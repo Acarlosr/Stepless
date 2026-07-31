@@ -170,9 +170,16 @@ function validateExif(exifLat, exifLng, exifTimestamp, latPacked, lngPacked) {
     }
   }
 
-  // Verifica distância entre EXIF GPS e local registrado
-  const claimedLat = latPacked / 1e6;
-  const claimedLng = lngPacked / 1e6;
+  // Verifica distância entre EXIF GPS e local registrado.
+  // latPacked/lngPacked chegam com offset (dashboard.js: (lat+90)*1e6 e
+  // (lng+180)*1e6 — ver unpackLat/unpackLng) para caberem em uint256 sem
+  // negativos. Sem subtrair o offset aqui, claimedLat/claimedLng ficavam
+  // ~90/~180 graus errados, o que faz a distância Haversine para QUALQUER
+  // local dar milhares de km — ou seja, com EXIF_REQUIRED=true este check
+  // bloquearia 100% dos registros legítimos (mascarado hoje só porque
+  // EXIF_REQUIRED=false faz o erro virar warning em vez de bloqueio).
+  const claimedLat = latPacked / 1e6 - 90;
+  const claimedLng = lngPacked / 1e6 - 180;
   const distKm = haversineKm(exifLat, exifLng, claimedLat, claimedLng);
 
   if (distKm > MAX_DISTANCE_KM) {

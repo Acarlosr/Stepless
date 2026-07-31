@@ -30,11 +30,18 @@ Stepless turns accessibility mapping into on-chain, instantly-settled USDC rewar
 
 | Contract | Address | Purpose |
 |---|---|---|
-| **SteplessOracle** | [`0x2Ac87a4E49D59900295999B1A44930B912F65F48`](https://testnet.arcscan.app/address/0x2Ac87a4E49D59900295999B1A44930B912F65F48) | Location registry + contribution tracking |
-| **RewardDistributor** | [`0x4959d0BB848Af5437F249E8516914e0e9353584b`](https://testnet.arcscan.app/address/0x4959d0BB848Af5437F249E8516914e0e9353584b) | USDC treasury + reward payments |
+| **SteplessOracle** | [`0x53ba90e17bbe96e924979723c744475d55cccc16`](https://testnet.arcscan.app/address/0x53ba90e17bbe96e924979723c744475d55cccc16) | Location registry + contribution tracking |
+| **RewardDistributor** | [`0xdf8fa455f01965866ac99ebc553ad3c2b58a0368`](https://testnet.arcscan.app/address/0xdf8fa455f01965866ac99ebc553ad3c2b58a0368) | USDC treasury + reward payments |
 | **X402API** | [`0x0D318864C80eCe8d28800a750bdA06b6E52ffCc9`](https://testnet.arcscan.app/address/0x0D318864C80eCe8d28800a750bdA06b6E52ffCc9) | HTTP 402 payment protocol for API access |
 
-**Example transaction:** `registerLocation` confirmed on-chain at block 49720668 on Arc Testnet.
+> These are the v3 contracts (deployed 2026-07-06 after a key-rotation incident
+> orphaned v1/v2 — see project history). They match `frontend/arc-config.js`,
+> which is the source of truth consumed by the live app. The addresses
+> previously listed here (`0x2Ac87a4E...`, `0x4959d0BB...`) are orphaned v1
+> contracts with no accessible admin key — do not send funds or authorize
+> callers against them.
+
+**Example transaction:** `registerLocation` confirmed on-chain on Arc Testnet — verify current activity on [ArcScan](https://testnet.arcscan.app/address/0x53ba90e17bbe96e924979723c744475d55cccc16).
 
 ---
 

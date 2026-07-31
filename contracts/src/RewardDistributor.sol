@@ -60,6 +60,11 @@ error Paused();
 error NotContributor(bytes32 contributionId, address caller);
 error DuplicateVerifier(address verifier, bytes32 contributionId);
 error CooldownActive(uint256 blockNumber, uint256 unlockBlock);
+/// @dev batchPayRewards() — arrays de tamanhos diferentes. Antes reaproveitava
+///      InvalidRewardAmount(), que é semanticamente sobre valor de recompensa,
+///      não sobre formato de array — erro dedicado deixa a causa óbvia pra
+///      quem estiver montando o batch fora da chain.
+error ArrayLengthMismatch(uint256 contributionIdsLength, uint256 contributorsLength, uint256 rewardTypesLength);
 
 // ────────────────────────────────────────────────────────────────────────────
 //  Events (indexed for Goldsky / event monitors)
@@ -170,6 +175,11 @@ contract RewardDistributor {
 
     /// @dev contributionId => verifier address (anti self-verify).
     mapping(bytes32 => address) public contributionVerifier;
+
+    /// @dev contributionId => RewardType efetivamente pago. Sem isto,
+    ///      retryReward() não tinha como saber que tipo reemitir no evento
+    ///      RewardPaid e chumbava sempre RewardType.NewLocation.
+    mapping(bytes32 => RewardType) public contributionRewardType;
 
     // ════════════════════════════════════════════════════════════════════════
     //  Sybil Resistance
@@ -303,6 +313,8 @@ contract RewardDistributor {
 
         // Mark claimed BEFORE transfer (prevents reentrancy)
         rewardClaimed[contributionId] = true;
+        // Guarda o tipo real para retryReward() poder reemitir corretamente.
+        contributionRewardType[contributionId] = rewardType;
 
         // Update reputation tracking
         totalEarned[contributor] += amount;
@@ -339,7 +351,7 @@ contract RewardDistributor {
     ) external onlyAuthorized notPaused {
         uint256 len = contributionIds.length;
         if (len != contributors.length || len != rewardTypes.length) {
-            revert InvalidRewardAmount(); // array length mismatch
+            revert ArrayLengthMismatch(len, contributors.length, rewardTypes.length);
         }
 
         for (uint256 i = 0; i < len; i++) {
@@ -372,6 +384,8 @@ contract RewardDistributor {
 
             // Mark claimed
             rewardClaimed[contributionIds[i]] = true;
+            // Guarda o tipo real para retryReward() poder reemitir corretamente.
+            contributionRewardType[contributionIds[i]] = rewardTypes[i];
 
             // Update reputation
             totalEarned[contributors[i]] += amount;
@@ -537,6 +551,8 @@ contract RewardDistributor {
         uint256 amount,
         bytes32 contributionId
     ) internal {
+        uint256 balanceBefore = USDC.balanceOf(address(this));
+
         (bool success, bytes memory data) = address(USDC).call(
             abi.encodeWithSelector(IERC20.transfer.selector, to, amount)
         );
@@ -546,8 +562,21 @@ contract RewardDistributor {
             return;
         }
 
-        // Double-check balance actually decreased (defense in depth)
-        // Note: balanceOf (6 dec) truncates dust — this check is approximate
+        // Double-check balance actually decreased (defense in depth).
+        // Note: balanceOf (6 dec) truncates dust — this check is approximate.
+        //
+        // Motivo: em Arc, USDC pode ter comportamentos de bloqueio/burn que
+        // não seguem o padrão ERC-20 estrito — em teoria um `transfer` pode
+        // retornar `true` sem mover o saldo esperado (ex.: quirk específico
+        // de blocklist). `success == true` sozinho não é prova suficiente.
+        // Usa adição em vez de subtração para nunca reverter por underflow
+        // aqui — isto é uma rede de segurança que só deve *registrar* uma
+        // falha, nunca travar o restante da função (o claim já foi marcado).
+        uint256 balanceAfter = USDC.balanceOf(address(this));
+        bool balanceDecreasedEnough = balanceAfter + amount <= balanceBefore;
+        if (!balanceDecreasedEnough) {
+            emit RewardFailed(contributionId, to, amount, bytes("balance did not decrease as expected"));
+        }
     }
 
     /// @dev Get reward amount by type.
@@ -583,8 +612,20 @@ contract RewardDistributor {
     ///      create a decimal mismatch with our ERC-20 accounting. We reject
     ///      native sends and require fundTreasury() via ERC-20 transferFrom.
     ///
-    ///      ⚠️ If you need to recover native USDC sent by mistake, use
-    ///         recoverNativeUSDC() below.
+    ///      DECISÃO DE DESIGN (não é um bug): não trocamos este revert por um
+    ///      caminho que aceite USDC nativo. Aceitar aqui reabriria exatamente
+    ///      o risco de decimal mismatch que este contrato existe para evitar
+    ///      (6 dec ERC-20 vs 18 dec nativo, mesmo ativo). O revert é a escolha
+    ///      certa, não um esquecimento.
+    ///
+    ///      Isso NÃO deixa fundos presos: `receive()`/`fallback()` só
+    ///      interceptam transferências normais. Uma técnica de baixo nível
+    ///      (ex.: outro contrato chamando SELFDESTRUCT tendo este endereço
+    ///      como destino) força o envio de saldo nativo SEM passar por
+    ///      receive() — é o único jeito de USDC nativo entrar aqui mesmo
+    ///      revertendo sempre. `recoverNativeUSDC()` abaixo existe
+    ///      especificamente para esse cenário, então nenhum valor fica
+    ///      irrecuperável mesmo com o revert incondicional.
     receive() external payable {
         revert("Use fundTreasury() - native USDC not accepted to avoid decimal mismatch");
     }
@@ -633,7 +674,9 @@ contract RewardDistributor {
             contributionId,
             contributor,
             amount,
-            RewardType.NewLocation, // best-effort type for retry
+            // Tipo real gravado em payReward/batchPayRewards — antes chumbava
+            // NewLocation mesmo quando a recompensa original era de outro tipo.
+            contributionRewardType[contributionId],
             block.number
         );
     }

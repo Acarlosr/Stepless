@@ -11,6 +11,7 @@ pragma solidity ^0.8.24;
 
 interface IERC20 {
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
+    function transfer(address to, uint256 amount) external returns (bool);
     function balanceOf(address account) external view returns (uint256);
 }
 
@@ -69,6 +70,13 @@ contract X402API {
     uint256 public feeBulkExport        = 50_000;    // $0.05 per export
     uint256 public feeVerificationStatus = 500;      // $0.0005 per check
 
+    /// @notice Limite de hashes por chamada de queryAreaSearch.
+    /// @dev    bytes32 é um tipo de tamanho fixo — não existe "hash de
+    ///         tamanho errado" para validar. O risco real é array vazio
+    ///         (cobra taxa sem consultar nada) ou array gigante (grief de
+    ///         gas). Este limite cobre o segundo caso.
+    uint256 public constant MAX_AREA_QUERY_HASHES = 200;
+
     // Subscription plans (monthly)
     struct Plan {
         uint256 monthlyFee;  // 6-dec USDC
@@ -122,6 +130,13 @@ contract X402API {
 
     /// @notice Query all locations in an area (bounding box computed off-chain).
     function queryAreaSearch(bytes32[] calldata locationHashes) external notPaused {
+        // Validação mínima: array vazio cobraria a taxa sem consultar nada
+        // (bytes32 não permite "hash de tamanho errado" — é tipo fixo), e um
+        // array acima do limite é grief de gas para quem processa off-chain.
+        if (locationHashes.length == 0 || locationHashes.length > MAX_AREA_QUERY_HASHES) {
+            revert InvalidQuery();
+        }
+
         uint256 fee = feeAreaSearch;
         _chargeFee(msg.sender, fee);
 
@@ -189,9 +204,14 @@ contract X402API {
         uint256 balance = USDC.balanceOf(address(this));
         if (amount > balance) revert InsufficientPayment(amount, balance);
 
-        // Single clean ERC-20 transfer (6 decimals)
+        // Single clean ERC-20 transfer (6 decimals).
+        // Seletor tipado (IERC20.transfer.selector) em vez de
+        // bytes4(keccak256("transfer(address,uint256)")) escrito à mão —
+        // o compilador garante que a assinatura bate com a interface, e
+        // uma eventual mudança na interface quebra a build em vez de
+        // silenciosamente chamar a função errada.
         (bool ok, bytes memory data) = address(USDC).call(
-            abi.encodeWithSelector(bytes4(keccak256("transfer(address,uint256)")), to, amount)
+            abi.encodeWithSelector(IERC20.transfer.selector, to, amount)
         );
         if (!ok || (data.length > 0 && !abi.decode(data, (bool)))) {
             revert InsufficientPayment(amount, balance);

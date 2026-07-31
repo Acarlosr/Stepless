@@ -37,6 +37,10 @@ contract SteplessOracle {
     error NotAVerifier(address addr);
     error SelfVerificationForbidden();
     error CooldownActive();
+    /// @dev verifyContribution() foi chamado antes de setRewardDistributor().
+    ///      Sem isto, o contrato reverteria ao chamar recordVerification()
+    ///      em address(0) — um revert opaco, sem razão legível.
+    error RewardDistributorNotSet();
 
     // ── Events ──────────────────────────────────────────────────────────────
     event LocationRegistered(
@@ -69,6 +73,11 @@ contract SteplessOracle {
         string reason,
         uint256 blockNumber
     );
+
+    /// @dev Emitido quando a chamada ao Memo (attachMemo) falha e é engolida
+    ///      pelo try/catch. Sem isto, a perda de metadados era silenciosa —
+    ///      ninguém saberia que o registro no Goldsky ficou incompleto.
+    event MemoAttachFailed(bytes32 indexed id, uint256 blockNumber);
 
     // ── Enums ───────────────────────────────────────────────────────────────
     enum ContributionType { NewLocation, Update, Photo, Verification }
@@ -170,8 +179,13 @@ contract SteplessOracle {
 
         // Attach memo with structured metadata (Arc Memo contract)
         // This emits a Memo event indexable by Goldsky without expensive storage
-        // try/catch: memo may not be available on all Arc testnet instances
-        try memo.attachMemo(locationHash, abi.encodePacked(latPacked, lngPacked, dataHash)) {} catch {}
+        // try/catch: memo may not be available on all Arc testnet instances.
+        // Falha aqui não deve reverter o registro do local (o Memo é só
+        // indexação auxiliar), mas silenciar de vez não deixa rastro de que
+        // o Goldsky ficou sem esses metadados — por isso o catch emite um
+        // evento em vez de `{}` vazio.
+        try memo.attachMemo(locationHash, abi.encodePacked(latPacked, lngPacked, dataHash)) {}
+        catch { emit MemoAttachFailed(locationHash, block.number); }
 
         emit LocationRegistered(locationHash, actualContributor, latPacked, lngPacked, block.number);
     }
@@ -209,8 +223,9 @@ contract SteplessOracle {
             rejectReason: ""
         });
 
-        // Memo for contribution metadata
-        try memo.attachMemo(contributionId, abi.encodePacked(locationHash, dataHash)) {} catch {}
+        // Memo for contribution metadata (mesma lógica: falha vira evento, não silêncio)
+        try memo.attachMemo(contributionId, abi.encodePacked(locationHash, dataHash)) {}
+        catch { emit MemoAttachFailed(contributionId, block.number); }
 
         emit ContributionSubmitted(
             contributionId,
@@ -233,6 +248,9 @@ contract SteplessOracle {
         Contribution storage c = contributions[contributionId];
         if (c.contributor == address(0)) revert ContributionNotFound(contributionId);
         if (c.verified || c.rejected) revert AlreadyVerified(contributionId);
+        // Sem isto, um distributor não configurado (_distributorSet == false)
+        // faria a chamada abaixo mirar address(0) e reverter sem motivo legível.
+        if (!_distributorSet) revert RewardDistributorNotSet();
 
         // Record verification in RewardDistributor (cooldown + self-verify check)
         rewardDistributor.recordVerification(contributionId, msg.sender, c.contributor);
