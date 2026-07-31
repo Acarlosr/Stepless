@@ -562,12 +562,19 @@ textarea:focus-visible {
 
 /* Colapsa para menu hamburguer mais cedo — com wallet conectada a nav
    do index.html não cabe abaixo de ~1100px e sobrepunha o logo */
-/* Faixa apertada: entre o hambúrguer (1100px) e a largura confortável.
-   Com a carteira conectada, endereço + saldo + botão comem ~330px e o
-   menu transbordava, cortando "Roadmap" no meio de uma letra — parecia
-   defeito. Aqui comprimimos o menu e escondemos o saldo (que continua
-   visível na seção de recompensas) para tudo caber inteiro. */
-@media (min-width: 1101px) and (max-width: 1400px) {
+/* Com a carteira conectada, endereço + saldo + botão comem ~330px e o
+   menu transbordava, cortando "Dashboard"/"Roadmap" no meio de uma letra —
+   parecia defeito. Aqui comprimimos o menu e escondemos o saldo (que
+   continua visível na seção de recompensas) para tudo caber inteiro.
+   SEM limite superior de largura: a faixa anterior (1101–1400px) parava
+   de valer acima de 1400px, e em telas largas a soma de 8 links + seletor
+   de idioma + tema + endereço+saldo+desconectar ainda passava da largura
+   disponível — o nav-links tem overflow-x:auto com scrollbar escondida
+   (propositalmente, por estética), então o corte ficava invisível e sem
+   nenhuma pista de que dava pra rolar. Continua valendo em qualquer
+   largura ≥1101px agora, conectado ou não (inofensivo quando desconectado,
+   só um pouco mais compacto). */
+@media (min-width: 1101px) {
   .nav { gap: 8px; }
   .nav-links { gap: 2px; }
   .nav-links a { padding: 4px 5px; font-size: 0.78rem; }
