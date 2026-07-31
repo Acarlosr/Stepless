@@ -545,7 +545,10 @@ const STEPLESS_ORACLE_ABI = [
   { type: "error", name: "AlreadyVerified", inputs: [{ name: "contributionId", type: "bytes32" }] },
   { type: "error", name: "NotAVerifier", inputs: [{ name: "addr", type: "address" }] },
   { type: "error", name: "SelfVerificationForbidden", inputs: [] },
-  { type: "error", name: "CooldownActive", inputs: [] },
+  // CooldownActive é lançado pelo RewardDistributor (2 argumentos), não pelo
+  // Oracle — mas o revert bubbla até aqui via verifyContribution(). Assinatura
+  // errada (0 args) fazia o viem não decodificar e mostrar erro genérico.
+  { type: "error", name: "CooldownActive", inputs: [{ name: "blockNumber", type: "uint256" }, { name: "unlockBlock", type: "uint256" }] },
   { type: "error", name: "RewardDistributorNotSet", inputs: [] },
 ];
 
