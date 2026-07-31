@@ -113,6 +113,9 @@ export const ORACLE_ABI = [
   // Oracle — mas o revert bubbla até aqui via verifyContribution(). Assinatura
   // errada (0 args) fazia o viem não decodificar e mostrar erro genérico.
   { type: 'error', name: 'CooldownActive', inputs: [{ name: 'blockNumber', type: 'uint256' }, { name: 'unlockBlock', type: 'uint256' }] },
+  { type: 'error', name: 'RewardDistributorNotSet', inputs: [] },
+  // Também bubbla do RewardDistributor via recordVerification().
+  { type: 'error', name: 'DuplicateVerifier', inputs: [{ name: 'verifier', type: 'address' }, { name: 'contributionId', type: 'bytes32' }] },
 ];
 
 export const DISTRIBUTOR_ABI = [
@@ -323,9 +326,33 @@ export function clientIp(req) {
   return (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
 }
 
+/**
+ * Junta TODAS as partes de um erro do viem numa string única para casar regex.
+ *
+ * ⚠️ Por que isto existe: para custom errors do Solidity, o `shortMessage` do
+ * viem é sempre genérico — 'The contract function "X" reverted.' — e o NOME do
+ * erro (ContributionNotFound, CooldownActive, ...) só aparece em
+ * `metaMessages` (ex.: 'Error: ContributionNotFound(bytes32 contributionId)').
+ * Olhar só o shortMessage fazia todo revert de custom error cair no fallback
+ * genérico, escondendo a causa real de quem estava operando o app.
+ */
+function collectErrorText(err) {
+  const parts = [];
+  let cur = err;
+  for (let depth = 0; cur && depth < 5; depth++) {
+    if (cur.shortMessage) parts.push(cur.shortMessage);
+    if (Array.isArray(cur.metaMessages)) parts.push(cur.metaMessages.join(' '));
+    if (cur.name) parts.push(cur.name);
+    if (cur.data?.errorName) parts.push(cur.data.errorName);
+    if (cur.message) parts.push(cur.message);
+    cur = cur.cause;
+  }
+  return parts.length ? parts.join(' | ') : String(err);
+}
+
 /** Traduz erros de contrato/RPC em mensagens amigáveis + status HTTP. */
 export function translateError(err) {
-  const msg = err?.shortMessage || err?.message || String(err);
+  const msg = collectErrorText(err);
   const map = [
     [/returned no data|no data \("0x"\)/i, 500, 'Não existe contrato nesse endereço na Arc Testnet. Confira DISTRIBUTOR_ADDRESS / ORACLE_ADDRESS.'],
     [/blocklist|blocked/i, 403, 'Endereço bloqueado pelo sistema anti-drenagem da Arc.'],
@@ -338,7 +365,10 @@ export function translateError(err) {
     [/DuplicateVerifier|SelfVerificationForbidden/i, 403, 'Verificador não pode validar a própria contribuição.'],
     [/NotAVerifier/i, 403, 'Endereço não é um verificador aprovado. Rode POST /api/setup.'],
     [/CooldownActive/i, 429, 'Aguarde alguns segundos (cooldown do verificador) e tente de novo.'],
-    [/ContributionNotFound/i, 404, 'Contribuição ou local não encontrado.'],
+    [/ContributionNotFound|LocationNotFound/i, 404,
+      'Contribuição não existe no contrato atual. Se os contratos foram redeployados, '
+      + 'as pendências antigas ficaram no contrato anterior e precisam ser registradas de novo.'],
+    [/RewardDistributorNotSet/i, 503, 'Oracle sem RewardDistributor configurado. Rode POST /api/setup.'],
     [/Unauthorized/i, 403, 'Chamador não autorizado no contrato. Rode POST /api/setup.'],
     [/Paused/i, 503, 'Contrato pausado pelo admin.'],
   ];
