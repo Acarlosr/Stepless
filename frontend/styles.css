@@ -1044,6 +1044,38 @@ input[type="file"]::file-selector-button {
 }
 .evid-badge.is-ok  { background: var(--success-bg); color: var(--success); }
 .evid-badge.is-bad { background: var(--danger-bg);  color: var(--danger); }
+.evid-badge.is-warn{ background: var(--warning-bg, var(--accent-bg)); color: var(--warning); }
+
+/* Selo de risco da submissão. Não usa APENAS cor para comunicar gravidade —
+   cada nível vem com um símbolo e uma palavra, para quem não distingue as
+   cores (o app é sobre acessibilidade; a ferramenta interna também tem que
+   ser acessível). */
+.evid-risk {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+.evid-risk.is-low    { background: var(--success-bg); color: var(--success); border-color: var(--success); }
+.evid-risk.is-medium { background: var(--warning-bg, var(--accent-bg)); color: var(--warning); border-color: var(--warning); }
+.evid-risk.is-high   { background: var(--danger-bg);  color: var(--danger);  border-color: var(--danger); }
+
+/* Lista de motivos por trás do score — recolhida por padrão para não poluir
+   a tabela, aberta com um clique quando o verificador quer o porquê. */
+.evid-why { margin-top: 4px; }
+.evid-why > summary {
+  cursor: pointer;
+  font-size: .74rem;
+  color: var(--text-muted);
+  list-style: none;
+}
+.evid-why > summary::-webkit-details-marker { display: none; }
+.evid-why > summary::before { content: '▸ '; }
+.evid-why[open] > summary::before { content: '▾ '; }
+.evid-why ul { margin: 4px 0 0; padding-left: 16px; }
+.evid-why li { font-size: .74rem; line-height: 1.45; color: var(--text-muted); }
 
 .evid-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .evid-chip {

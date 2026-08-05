@@ -17,6 +17,7 @@ import {
   REWARD_TYPE, store, contribKey, PENDING_LIST_KEY, cors, clientIp, translateError, requireAdminSecret,
   verifySignedRequest,
 } from './_stepless.js';
+import { bumpReputation } from './_risk.js';
 
 export default async function handler(req, res) {
   cors(res);
@@ -82,6 +83,10 @@ export default async function handler(req, res) {
     if (!approve) {
       await store.setJSON(contribKey(contributionId), { ...meta, status: 'rejected', reason, rejectedAt: Date.now(), approvedBy });
       await store.listRemove(PENDING_LIST_KEY, contributionId);
+      // Fecha o ciclo da reputação: sem isto, rejeitar não tinha custo nenhum
+      // e a mesma carteira reaparecia amanhã com o mesmo score de estreante.
+      // É o que faz o esforço de fraudar crescer a cada tentativa.
+      if (meta.user) await bumpReputation(meta.user, 'rejected');
       return res.status(200).json({ success: true, approved: false, verifyTx, approvedBy });
     }
 
@@ -113,6 +118,9 @@ export default async function handler(req, res) {
       ...meta, status: 'paid', verifyTx, payTx, paidTo: recipient, paidAt: Date.now(), approvedBy,
     });
     await store.listRemove(PENDING_LIST_KEY, contributionId);
+    // Histórico limpo baixa o risco das próximas submissões desta carteira —
+    // quem contribui de verdade encontra menos atrito com o tempo.
+    await bumpReputation(recipient, 'approved');
 
     return res.status(200).json({ success: true, approved: true, verifyTx, payTx, paidTo: recipient, approvedBy });
   } catch (err) {

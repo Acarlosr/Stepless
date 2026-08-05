@@ -72,6 +72,23 @@ interface AddLocationForm {
   lat: number;
   lng: number;
   photoUri: string | null;
+  /**
+   * Prova de captura da foto — medida NO MOMENTO em que a câmera dispara, e
+   * independente de lat/lng do formulário.
+   *
+   * Antes, o app mandava `exifLat: input.exifLat ?? lat`, ou seja, devolvia a
+   * própria coordenada declarada como se fosse a prova dela mesma. A checagem
+   * de distância no relayer dava sempre 0m e o anti-fraude não existia de fato
+   * no mobile. Agora, se estes campos vierem nulos, o backend sabe que não há
+   * prova nenhuma — e trata como tal, em vez de receber um zero falso.
+   */
+  photoLat: number | null;
+  photoLng: number | null;
+  photoTimestamp: string | null;
+  /** 'exif' = veio dos metadados da imagem; 'device' = GPS lido no disparo. */
+  photoGpsSource: 'exif' | 'device' | null;
+  /** Precisão do GPS em metros no momento da captura (quando conhecida). */
+  photoAccuracyM: number | null;
 }
 
 // ─── Category Metadata ────────────────────────────────────────────────
@@ -145,6 +162,11 @@ export default function MapScreen() {
     lat: 0,
     lng: 0,
     photoUri: null,
+    photoLat: null,
+    photoLng: null,
+    photoTimestamp: null,
+    photoGpsSource: null,
+    photoAccuracyM: null,
   });
 
   // ─── Request location permissions ─────────────────────────────────
@@ -253,6 +275,11 @@ export default function MapScreen() {
       lat: userLocation.lat,
       lng: userLocation.lng,
       photoUri: null,
+      photoLat: null,
+      photoLng: null,
+      photoTimestamp: null,
+      photoGpsSource: null,
+      photoAccuracyM: null,
     });
     setSubmissionStatus('idle');
     setPendingReward(null);
@@ -270,14 +297,78 @@ export default function MapScreen() {
 
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
+        // allowsEditing dispara o recorte nativo, que reescreve o arquivo e
+        // DESCARTA o bloco EXIF — inclusive o GPS. Como o EXIF é justamente a
+        // prova de onde a foto foi tirada, o recorte fica desligado.
+        allowsEditing: false,
         quality: 0.7,
         base64: false,
+        exif: true,
       });
 
       if (!result.canceled && result.assets[0]) {
-        setFormData((prev) => ({ ...prev, photoUri: result.assets[0].uri }));
+        const asset = result.assets[0];
+
+        // ── Prova de captura ────────────────────────────────────────────
+        // Preferimos o EXIF da própria imagem: ele é gravado pela câmera do
+        // sistema, fora do alcance do JS do app. O GPS do dispositivo lido
+        // agora é o plano B — vale menos como prova (um app malicioso pode
+        // falsificar a posição), mas ainda amarra a submissão a onde o
+        // aparelho estava, e é o que temos quando o usuário mantém a
+        // geolocalização da câmera desligada.
+        let photoLat: number | null = null;
+        let photoLng: number | null = null;
+        let photoGpsSource: 'exif' | 'device' | null = null;
+        let photoAccuracyM: number | null = null;
+        let photoTimestamp: string | null = null;
+
+        const exif = (asset as any).exif as Record<string, any> | undefined;
+        if (exif) {
+          const lat = Number(exif.GPSLatitude);
+          const lng = Number(exif.GPSLongitude);
+          if (Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0)) {
+            // iOS entrega o valor já com sinal; Android costuma entregar o
+            // módulo mais uma referência N/S e E/W separada. Sem aplicar a
+            // referência, uma foto em São Paulo (lat negativa) viraria uma
+            // coordenada no hemisfério norte e a distância explodiria.
+            const latRef = String(exif.GPSLatitudeRef || '').toUpperCase();
+            const lngRef = String(exif.GPSLongitudeRef || '').toUpperCase();
+            photoLat = latRef === 'S' ? -Math.abs(lat) : lat;
+            photoLng = lngRef === 'W' ? -Math.abs(lng) : lng;
+            photoGpsSource = 'exif';
+          }
+          // DateTimeOriginal vem como "2026:08:05 14:32:10" (dois-pontos na
+          // data), que o construtor de Date não entende — normalizamos.
+          const raw = exif.DateTimeOriginal || exif.DateTime || exif.CreateDate;
+          if (typeof raw === 'string') {
+            const iso = raw.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3').replace(' ', 'T');
+            const d = new Date(iso);
+            if (!Number.isNaN(d.getTime())) photoTimestamp = d.toISOString();
+          }
+        }
+
+        if (photoGpsSource === null) {
+          try {
+            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+            photoLat = loc.coords.latitude;
+            photoLng = loc.coords.longitude;
+            photoAccuracyM = loc.coords.accuracy ?? null;
+            photoGpsSource = 'device';
+          } catch {
+            // Sem EXIF e sem GPS: seguimos sem prova. O backend decide se
+            // aceita ou manda para revisão — mentir aqui seria pior.
+          }
+        }
+
+        setFormData((prev) => ({
+          ...prev,
+          photoUri: asset.uri,
+          photoLat,
+          photoLng,
+          photoTimestamp: photoTimestamp ?? new Date().toISOString(),
+          photoGpsSource,
+          photoAccuracyM,
+        }));
       }
     } catch (error) {
       console.error('Camera error:', error);
@@ -326,6 +417,14 @@ export default function MapScreen() {
         name: formData.name.trim(),
         categories,
         photoUri: formData.photoUri,
+        // Prova de captura medida na câmera — nunca as coordenadas do
+        // formulário. Se for null, o backend enxerga "sem prova" em vez de
+        // uma confirmação circular.
+        exifLat: formData.photoLat,
+        exifLng: formData.photoLng,
+        exifTimestamp: formData.photoTimestamp,
+        gpsSource: formData.photoGpsSource,
+        gpsAccuracyM: formData.photoAccuracyM,
       });
 
       console.log('[Stepless] Local registrado. TX:', result.txHash, 'contrib:', result.contributionId);

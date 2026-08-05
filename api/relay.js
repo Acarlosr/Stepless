@@ -22,6 +22,8 @@ import { createWalletClient, createPublicClient, http, fallback, keccak256, enco
 import { privateKeyToAccount } from 'viem/accounts';
 import { createHash } from 'crypto';
 import { store, contribKey, PENDING_LIST_KEY, clientIp } from './_stepless.js';
+import { checkPlace } from './_placecheck.js';
+import { getReputation, bumpReputation, withinDailyQuota, scoreSubmission, shouldBlock } from './_risk.js';
 
 // ─── Off-chain metadata storage (Upstash Redis REST API) ────────────────────
 // O contrato só guarda locationHash (um hash unidirecional) — o nome e as
@@ -154,10 +156,27 @@ const MAX_DISTANCE_KM = 0.5; // 500 metros
 // MAX_PHOTO_AGE_DAYS: foto não pode ter mais de 7 dias
 const MAX_PHOTO_AGE_DAYS = 7;
 
+/**
+ * Retorna { ok, severity, error, distKm }.
+ *
+ * `severity` separa dois problemas que antes eram tratados igual:
+ *
+ *   'missing'  — a foto não trouxe GPS. Não é indício de fraude: muita gente
+ *                usa a câmera com geolocalização desligada, e no Android o
+ *                recorte da imagem apaga o EXIF. Punir isso com bloqueio
+ *                excluiria contribuidores legítimos, então respeita a env
+ *                EXIF_REQUIRED.
+ *   'stale'    — foto antiga. Idem, é um sinal fraco.
+ *   'mismatch' — a foto TEM GPS e ele aponta para longe do ponto declarado.
+ *                Aqui não há interpretação benigna plausível: bloqueia sempre,
+ *                independente de EXIF_REQUIRED. Era o buraco mais grave —
+ *                bastava EXIF_REQUIRED=false para uma foto tirada em outra
+ *                cidade passar com um aviso no log.
+ */
 function validateExif(exifLat, exifLng, exifTimestamp, latPacked, lngPacked) {
   // Se EXIF não veio, bloqueia — foto é obrigatória
   if (exifLat == null || exifLng == null) {
-    return { ok: false, error: 'Foto sem dados de GPS. Ative a localização na câmera e tente novamente.' };
+    return { ok: false, severity: 'missing', error: 'Foto sem dados de GPS. Ative a localização na câmera e tente novamente.' };
   }
 
   // Verifica timestamp (foto recente)
@@ -166,7 +185,7 @@ function validateExif(exifLat, exifLng, exifTimestamp, latPacked, lngPacked) {
     const ageMs = Date.now() - photoDate.getTime();
     const ageDays = ageMs / (1000 * 60 * 60 * 24);
     if (ageDays > MAX_PHOTO_AGE_DAYS) {
-      return { ok: false, error: `Foto muito antiga (${Math.round(ageDays)} dias). Use uma foto tirada nos últimos ${MAX_PHOTO_AGE_DAYS} dias.` };
+      return { ok: false, severity: 'stale', error: `Foto muito antiga (${Math.round(ageDays)} dias). Use uma foto tirada nos últimos ${MAX_PHOTO_AGE_DAYS} dias.` };
     }
   }
 
@@ -185,11 +204,13 @@ function validateExif(exifLat, exifLng, exifTimestamp, latPacked, lngPacked) {
   if (distKm > MAX_DISTANCE_KM) {
     return {
       ok: false,
+      severity: 'mismatch',
+      distKm,
       error: `GPS da foto (${distKm.toFixed(1)}km de distância) não corresponde ao local registrado. A foto deve ser tirada no local.`,
     };
   }
 
-  return { ok: true, distKm };
+  return { ok: true, severity: null, distKm };
 }
 
 // ─── Handler principal ───────────────────────────────────────────────────────
@@ -226,6 +247,19 @@ export default async function handler(req, res) {
   if (!/^0x[0-9a-fA-F]{40}$/.test(userAddress)) {
     return res.status(400).json({ success: false, error: 'Invalid userAddress' });
   }
+
+  // ── Quota diária por CARTEIRA ────────────────────────────────────────────
+  // O rate limit por IP acima trava rajadas, mas trocar de rede o anula. Como
+  // o endereço é onde o USDC cai, limitar por endereço é o que de fato limita
+  // quanto uma pessoa consegue extrair por dia.
+  if (!(await withinDailyQuota(userAddress))) {
+    return res.status(429).json({
+      success: false,
+      error: `Limite diário de contribuições atingido para esta carteira (${process.env.MAX_SUBMISSIONS_PER_DAY || 10}/dia). Tente novamente amanhã.`,
+    });
+  }
+
+  const reputation = await getReputation(userAddress);
 
   try {
     const pk = process.env.RELAYER_PRIVATE_KEY.startsWith('0x')
@@ -273,7 +307,13 @@ export default async function handler(req, res) {
 
     let txHash;
     let contributionId = null;
-    let exifEvidence = null; // evidência da checagem de GPS, para o verificador
+    // Evidências que o verificador humano vai ler antes de aprovar. Nenhuma
+    // delas bloqueia sozinha (salvo o mismatch de GPS); elas existem para que
+    // a aprovação deixe de ser um clique às cegas.
+    let exifEvidence = null;  // onde/quando a foto foi capturada
+    let placeEvidence = null; // o que o OpenStreetMap diz sobre o ponto
+    let riskAssessment = null; // os dois acima + histórico, num score só
+    let placePromise = null;  // consulta ao OSM em voo, aguardada após as txs
 
     // ── submitContribution ────────────────────────────────────────────────
     if (action === 'submitContribution') {
@@ -298,7 +338,7 @@ export default async function handler(req, res) {
 
     // ── registerLocation ──────────────────────────────────────────────────
     if (action === 'registerLocation') {
-      const { locationHash, latPacked, lngPacked, dataHash, exifLat, exifLng, exifTimestamp } = submissionData;
+      const { locationHash, latPacked, lngPacked, dataHash, exifLat, exifLng, exifTimestamp, gpsSource, gpsAccuracyM } = submissionData;
 
       if (!locationHash || latPacked == null || lngPacked == null) {
         return res.status(400).json({
@@ -308,28 +348,70 @@ export default async function handler(req, res) {
       }
 
       // ── Anti-fraude: valida EXIF GPS ──────────────────────────────────
-      // EXIF_REQUIRED=true  → bloqueia (produção)
-      // EXIF_REQUIRED=false → loga mas não bloqueia (testnet/demo)
+      // EXIF_REQUIRED só governa os sinais AMBÍGUOS (foto sem GPS, foto
+      // antiga). Um GPS que existe e aponta para longe é contradição direta e
+      // bloqueia sempre — deixar isso passar com EXIF_REQUIRED=false permitia
+      // registrar um local do outro lado do país com uma foto qualquer.
       const exifRequired = process.env.EXIF_REQUIRED !== 'false';
       const exifCheck = validateExif(exifLat, exifLng, exifTimestamp, Number(latPacked), Number(lngPacked));
       if (!exifCheck.ok) {
-        if (exifRequired) {
+        if (exifCheck.severity === 'mismatch' || exifRequired) {
           return res.status(422).json({ success: false, error: exifCheck.error });
-        } else {
-          // Testnet: log mas continua
-          console.warn('[relay] EXIF warning (not enforced on testnet):', exifCheck.error);
         }
+        console.warn('[relay] EXIF warning (sinal fraco, não bloqueia):', exifCheck.error);
       }
       // Guarda o resultado da checagem para o verificador ver depois. A foto
       // em si nunca é armazenada (só o hash), então esta é a única evidência
       // que sobra sobre onde/quando a imagem foi capturada.
       exifEvidence = {
         ok: exifCheck.ok,
+        severity: exifCheck.severity ?? null,
         distKm: exifCheck.distKm ?? null,
         hasGps: exifLat != null && exifLng != null,
+        gpsSource: gpsSource ?? null,
+        gpsAccuracyM: Number.isFinite(Number(gpsAccuracyM)) ? Number(gpsAccuracyM) : null,
         photoTs: exifTimestamp || null,
         warning: exifCheck.ok ? null : exifCheck.error,
       };
+
+      // ── Anti-fraude: o local declarado existe no mundo? ───────────────
+      // O EXIF prova presença, não identidade do lugar. Esta é a checagem que
+      // responde "isso é mesmo uma padaria?" — ver api/_placecheck.js.
+      //
+      // ⚠️ LATÊNCIA: o Overpass é um serviço público lento e pode custar
+      // segundos. Esta função já gasta o orçamento dela com DUAS transações
+      // on-chain (registerLocation + submitContribution, ambas com espera de
+      // recibo) dentro do maxDuration de 30s do vercel.json. Por isso a
+      // consulta é DISPARADA aqui mas só é aguardada depois das transações —
+      // o tempo do Overpass corre em paralelo com o da blockchain e some.
+      const realLat = Number(latPacked) / 1e6 - 90;
+      const realLng = Number(lngPacked) / 1e6 - 180;
+      placePromise = checkPlace({ lat: realLat, lng: realLng, name: submissionData.name || '' });
+      // Sem isto, uma rejeição do Overpass entre o disparo e o await vira
+      // unhandled rejection e derruba o processo em algumas runtimes.
+      placePromise.catch(() => {});
+
+      // A exceção é quando o operador LIGOU o bloqueio automático
+      // (RISK_BLOCK_THRESHOLD). Aí não dá para paralelizar: precisamos do
+      // veredito antes de gastar gas, e quem ligou a trava aceitou a espera.
+      if (Number(process.env.RISK_BLOCK_THRESHOLD || 0) > 0) {
+        placeEvidence = await placePromise;
+        riskAssessment = scoreSubmission({
+          exif: exifEvidence,
+          place: placeEvidence,
+          reputation,
+          gpsSource: gpsSource ?? null,
+          gpsAccuracyM: Number(gpsAccuracyM),
+          photoTs: exifTimestamp || null,
+        });
+        if (shouldBlock(riskAssessment.score)) {
+          return res.status(422).json({
+            success: false,
+            error: 'Não foi possível validar este local automaticamente.',
+            reasons: riskAssessment.top,
+          });
+        }
+      }
 
       // dataHash inclui hash da foto + coords EXIF para prova imutável
       const finalDataHash = dataHash || keccak256(encodePacked(
@@ -372,6 +454,26 @@ export default async function handler(req, res) {
       }
     }
 
+    // ── Resolve o cross-check com o OSM ───────────────────────────────────
+    // Disparado lá em cima, correu em paralelo com as transações — a esta
+    // altura quase sempre já terminou e o await é instantâneo. Nunca deixamos
+    // uma falha aqui derrubar um registro que já está gravado na chain.
+    if (placePromise && !placeEvidence) {
+      try {
+        placeEvidence = await placePromise;
+      } catch (pErr) {
+        placeEvidence = { verdict: 'unknown', risk: 0, reason: `Checagem de local indisponível (${pErr?.message || pErr}).`, pois: [] };
+      }
+      riskAssessment = scoreSubmission({
+        exif: exifEvidence,
+        place: placeEvidence,
+        reputation,
+        gpsSource: submissionData.gpsSource ?? null,
+        gpsAccuracyM: Number(submissionData.gpsAccuracyM),
+        photoTs: submissionData.exifTimestamp || null,
+      });
+    }
+
     // ── Registra pendência p/ verificação + atribuição do usuário real ────
     if (contributionId) {
       // Desempacota as coordenadas para o verificador poder situar o local no
@@ -387,11 +489,17 @@ export default async function handler(req, res) {
         lat: Number.isFinite(pLat) ? pLat / 1e6 - 90 : null,
         lng: Number.isFinite(pLng) ? pLng / 1e6 - 180 : null,
         exif: exifEvidence,
+        place: placeEvidence,
+        risk: riskAssessment,
+        // Congelado no momento da submissão: se a carteira for rejeitada
+        // depois, o verificador ainda vê qual era o histórico quando decidiu.
+        reputationAtSubmit: reputation,
         rewardType: action === 'registerLocation' ? 'NewLocation' : 'LocationUpdate',
         status: 'pending',
         ts: Date.now(),
       });
       await store.listPush(PENDING_LIST_KEY, contributionId);
+      await bumpReputation(userAddress, 'submitted');
     }
 
     // Salva nome + categorias + lat/lng fora da chain (best-effort — não bloqueia a resposta em caso de falha)
@@ -415,6 +523,10 @@ export default async function handler(req, res) {
       contributionTx,
       blockNumber: receipt.blockNumber?.toString(),
       status: receipt.status,
+      // Devolvido para o app poder avisar o usuário que a contribuição vai
+      // demorar mais para ser aprovada — melhor do que silêncio seguido de
+      // uma rejeição inexplicada dias depois.
+      risk: riskAssessment ? { level: riskAssessment.level, score: riskAssessment.score } : null,
     });
 
   } catch (err) {

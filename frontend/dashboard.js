@@ -1029,7 +1029,16 @@ async function handleRegisterLocation(e) {
       body: JSON.stringify({
         action: 'registerLocation',
         userAddress: walletAddress,
-        submissionData: { locationHash, latPacked, lngPacked, dataHash, exifLat, exifLng, exifTimestamp, name: fullName, categories },
+        submissionData: {
+          locationHash, latPacked, lngPacked, dataHash,
+          exifLat, exifLng, exifTimestamp,
+          // Na web a coordenada só pode vir do EXIF do arquivo escolhido — não
+          // há como o navegador atestar que a câmera tirou a foto agora. O
+          // backend usa isto para pesar o risco: EXIF real vale mais que
+          // ausência de EXIF, e ausência não é mais silenciosa.
+          gpsSource: (exifLat != null && exifLng != null) ? 'exif' : null,
+          name: fullName, categories,
+        },
       }),
     });
 
@@ -1157,9 +1166,43 @@ function renderCategoryChips(categories) {
   return `<div class="evid-chips">${chips}</div>`;
 }
 
+// Verdicts do cross-check com o OpenStreetMap (api/_placecheck.js) traduzidos
+// para algo que o verificador entenda em um segundo de leitura.
+const PLACE_VERDICT_UI = {
+  type_match:        { icon: '✓', tone: 'is-ok',   label: 'Confirmado no OpenStreetMap' },
+  name_match:        { icon: '✓', tone: 'is-ok',   label: 'Nome bate com o OpenStreetMap' },
+  commercial_nearby: { icon: '•', tone: 'is-warn', label: 'Há comércio por perto' },
+  type_mismatch:     { icon: '!', tone: 'is-bad',  label: 'Tipo declarado não existe aqui' },
+  residential_only:  { icon: '!', tone: 'is-bad',  label: 'Área só residencial' },
+  unmapped:          { icon: '?', tone: 'is-warn', label: 'Área não mapeada' },
+  unknown:           { icon: '?', tone: 'is-warn', label: 'Checagem indisponível' },
+};
+
+const RISK_UI = {
+  low:    { icon: '✓', label: 'Risco baixo' },
+  medium: { icon: '•', label: 'Risco médio' },
+  high:   { icon: '!', label: 'Risco alto' },
+};
+
 function renderEvidence(p) {
   const s = getStrings();
   const parts = [];
+
+  // Score primeiro: é a leitura de um segundo. O detalhe fica logo abaixo,
+  // para quem quiser conferir de onde saiu o número antes de aprovar.
+  if (p.risk && RISK_UI[p.risk.level]) {
+    const r = RISK_UI[p.risk.level];
+    parts.push(
+      `<div class="evid-line"><span class="evid-risk is-${p.risk.level}">` +
+      `${r.icon} ${r.label} (${p.risk.score})</span></div>`
+    );
+    if (Array.isArray(p.risk.reasons) && p.risk.reasons.length) {
+      const items = p.risk.reasons
+        .map((x) => `<li>${escapeHtml(x.text)}${x.points > 0 ? ` <strong>+${x.points}</strong>` : ''}</li>`)
+        .join('');
+      parts.push(`<details class="evid-why"><summary>por quê</summary><ul>${items}</ul></details>`);
+    }
+  }
 
   // Coordenada + link para o mapa, para o verificador conferir onde é
   if (Number.isFinite(p.lat) && Number.isFinite(p.lng)) {
@@ -1185,6 +1228,42 @@ function renderEvidence(p) {
     );
   } else if (e && !e.hasGps) {
     parts.push(`<div class="evid-line evid-warn">${s.evid_no_gps || 'Foto sem GPS — não foi possível conferir'}</div>`);
+  }
+
+  // Origem da coordenada: EXIF da câmera é prova bem mais forte que o GPS
+  // lido pelo app, e o verificador precisa saber qual das duas está vendo.
+  if (e && e.hasGps && e.gpsSource) {
+    const strong = e.gpsSource === 'exif';
+    parts.push(
+      `<div class="evid-line evid-dim">${strong ? 'EXIF da câmera' : 'GPS do aparelho'}` +
+      `${Number.isFinite(e.gpsAccuracyM) ? ` (±${Math.round(e.gpsAccuracyM)}m)` : ''}</div>`
+    );
+  }
+
+  // Cross-check com o OpenStreetMap — a resposta para "isso é mesmo uma
+  // padaria?", que o GPS sozinho nunca conseguiu dar.
+  const pl = p.place;
+  if (pl && PLACE_VERDICT_UI[pl.verdict]) {
+    const v = PLACE_VERDICT_UI[pl.verdict];
+    parts.push(
+      `<div class="evid-line"><span class="evid-badge ${v.tone}">${v.icon} ${v.label}</span></div>` +
+      `<div class="evid-line evid-dim">${escapeHtml(pl.reason || '')}</div>`
+    );
+    if (Array.isArray(pl.pois) && pl.pois.length) {
+      const chips = pl.pois.slice(0, 5).map((poi) =>
+        `<span class="evid-chip">${escapeHtml(poi.name || poi.type)}${Number.isFinite(poi.distM) ? ` · ${poi.distM}m` : ''}</span>`
+      ).join('');
+      parts.push(`<div class="evid-chips">${chips}</div>`);
+    }
+  }
+
+  // Histórico da carteira no momento da submissão.
+  const rep = p.reputationAtSubmit;
+  if (rep && (rep.approved || rep.rejected || rep.submitted)) {
+    parts.push(
+      `<div class="evid-line evid-dim">Carteira: ${rep.approved || 0} aprovadas · ` +
+      `${rep.rejected || 0} rejeitadas · ${rep.submitted || 0} enviadas</div>`
+    );
   }
 
   // Data da foto

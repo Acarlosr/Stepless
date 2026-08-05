@@ -58,15 +58,24 @@ export interface RegisterLocationInput {
   categories?: string[];          // ex.: ['ramp'] — salvo fora da chain (Upstash)
   photoUri?: string | null;       // uri local da foto tirada no app
   /**
-   * Coordenadas/timestamp de "prova" da foto para o anti-fraude do relayer.
-   * Como o mapeamento é feito no local via GPS do aparelho, por padrão usamos
-   * a própria posição do dispositivo e o horário atual. No testnet o relayer
-   * roda com EXIF_REQUIRED=false, então isso não bloqueia; em produção, passar
-   * o GPS real do EXIF da foto.
+   * Prova de captura da foto para o anti-fraude do relayer.
+   *
+   * ⚠️ NUNCA preencher isto com `lat`/`lng` do formulário. A versão anterior
+   * fazia `exifLat: input.exifLat ?? lat`, o que entregava a coordenada
+   * declarada como prova dela mesma: a distância no relayer dava sempre 0m e
+   * qualquer submissão passava na checagem. Um `null` honesto é infinitamente
+   * mais útil que um zero falso — com null o backend sabe que não há prova e
+   * pontua o risco de acordo.
+   *
+   * Origem esperada: EXIF da imagem (forte) ou GPS lido no disparo (fraco).
    */
   exifLat?: number | null;
   exifLng?: number | null;
   exifTimestamp?: string | null;
+  /** De onde vieram as coordenadas acima — o backend pondera o risco por isso. */
+  gpsSource?: 'exif' | 'device' | null;
+  /** Precisão do GPS em metros, quando conhecida. */
+  gpsAccuracyM?: number | null;
 }
 
 export interface RegisterLocationResult {
@@ -102,10 +111,13 @@ export async function registerLocation(input: RegisterLocationInput): Promise<Re
       latPacked,
       lngPacked,
       dataHash: dataHash ?? undefined,
-      // Prova para o anti-fraude (ver nota no tipo acima)
-      exifLat: input.exifLat ?? lat,
-      exifLng: input.exifLng ?? lng,
-      exifTimestamp: input.exifTimestamp ?? new Date().toISOString(),
+      // Prova para o anti-fraude (ver nota no tipo acima). Repassada como
+      // chegou — sem fallback para lat/lng, que anulava a checagem.
+      exifLat: input.exifLat ?? null,
+      exifLng: input.exifLng ?? null,
+      exifTimestamp: input.exifTimestamp ?? null,
+      gpsSource: input.gpsSource ?? null,
+      gpsAccuracyM: input.gpsAccuracyM ?? null,
       name,
       categories,
     },
