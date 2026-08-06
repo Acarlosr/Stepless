@@ -52,9 +52,17 @@ export const CONTRACT_ADDRESSES = {
   // Memo contract (Arc-native memo system)
   MEMO: '0x5294E9927c3306DcBaDb03fe70b92e01cCede505' as Address,
   // Stepless protocol contracts — v4 LIVE on Arc Testnet (redeploy 2026-07-31).
-  // Os v3 (oracle 0x53ba90e1..., distributor 0xdf8fa455...) ficaram ÓRFÃOS: o
-  // redeploy zera o estado on-chain, então apontar para eles mostraria locais
-  // que o backend não enxerga mais.
+  //
+  // Os v3 (oracle 0x53ba90e1..., distributor 0xdf8fa455...) NÃO sumiram: eles
+  // seguem on-chain, com 34 locais registrados e saldo em tesouraria. O que
+  // acontece é que o relayer parou de escrever neles — o ORACLE_ADDRESS passou
+  // a apontar para o v4. Apontar o app para o v3 mostraria locais que o backend
+  // não consegue mais verificar nem pagar.
+  //
+  // A distinção importa na hora de conferir: o v3 parece MAIS ativo que o v4
+  // (34 locais contra 1), então contar locais leva à conclusão errada. Confira
+  // com `node scripts/check-live-contracts.mjs` e pela data da última transação
+  // no ArcScan, não pelo volume.
   // lowercase de propósito: o viem no ambiente RN/browser valida checksum EIP-55
   // estritamente; usar tudo minúsculo evita erro de checksum (o backend normaliza).
   STEPLESS_ORACLE: '0x69b3f9caca6514f76dd2f0dc4b54409e6d5da5cc' as Address,

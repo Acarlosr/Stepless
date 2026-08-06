@@ -56,9 +56,23 @@ const TOKENS = {
  *  Contract addresses
  * ────────────────────────────────────────────────────────────── */
 
+/*
+ *  ⚠️ Estes endereços têm que bater com ORACLE_ADDRESS / DISTRIBUTOR_ADDRESS
+ *  do relayer (Vercel) e com mobile/src/services/contracts.ts. Quando os três
+ *  divergem, cada parte do projeto lê de um contrato diferente e o site passa
+ *  a mostrar dados que o backend não enxerga.
+ *
+ *  Foi o que aconteceu entre 31/07 e 05/08/2026: o redeploy para o v4
+ *  atualizou só o mobile, e a web ficou lendo o v3 — que continua on-chain,
+ *  com 34 locais e saldo, mas sem receber escrita nenhuma. Justamente por
+ *  parecer mais movimentado, era o mais fácil de confundir com o vivo.
+ *
+ *  Para conferir qual par está em uso: node scripts/check-live-contracts.mjs
+ */
 const CONTRACTS = {
-  RewardDistributor: "0xdf8fa455f01965866ac99ebc553ad3c2b58a0368",
-  SteplessOracle:    "0x53ba90e17bbe96e924979723c744475d55cccc16",
+  // v4 — deploy de 31/07/2026, par ativo do relayer.
+  RewardDistributor: "0xef5d148b126d8dcdc7d344dfa367c61acbb02ea0",
+  SteplessOracle:    "0x69b3f9caca6514f76dd2f0dc4b54409e6d5da5cc",
   X402API:           "0x0D318864C80eCe8d28800a750bdA06b6E52ffCc9",
   Multicall3:        "0xcA11bde05977b3631167028862bE2a173976CA11",
   Memo:              "0x5294E9927c3306DcBaDb03fe70b92e01cCede505",

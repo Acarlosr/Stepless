@@ -699,12 +699,12 @@ Accessibility data is a public good. Locking it behind proprietary licenses woul
 
 ## Appendix A: Contract Addresses (Arc Testnet)
 
-> Live v3 contracts, deployed and operational on Arc Testnet (Chain ID 5042002).
+> Live v4 contracts, deployed 2026-07-31 and operational on Arc Testnet (Chain ID 5042002).
 
 | Contract | Address | ArcScan |
 |---|---|---|
-| SteplessOracle.sol (v3) | `0x53ba90e17bbe96e924979723c744475d55cccc16` | [View](https://testnet.arcscan.app/address/0x53ba90e17bbe96e924979723c744475d55cccc16) |
-| RewardDistributor.sol (v3) | `0xdf8fa455f01965866ac99ebc553ad3c2b58a0368` | [View](https://testnet.arcscan.app/address/0xdf8fa455f01965866ac99ebc553ad3c2b58a0368) |
+| SteplessOracle.sol (v4) | `0x69b3f9caca6514f76dd2f0dc4b54409e6d5da5cc` | [View](https://testnet.arcscan.app/address/0x69b3f9caca6514f76dd2f0dc4b54409e6d5da5cc) |
+| RewardDistributor.sol (v4) | `0xef5d148b126d8dcdc7d344dfa367c61acbb02ea0` | [View](https://testnet.arcscan.app/address/0xef5d148b126d8dcdc7d344dfa367c61acbb02ea0) |
 | X402API.sol | _[Integration pending — see roadmap]_ | _[Link]_ |
 
 **Arc Memo Contract:** `0x5294E9927c3306DcBaDb03fe70b92e01cCede505`  
