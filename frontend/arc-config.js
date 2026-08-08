@@ -1,37 +1,63 @@
 /**
- * Stepless — Arc Testnet Configuration
- * Arc is Circle's stablecoin-native L1. Gas is paid in USDC, not Gwei.
- * Chain ID: 5042002
+ * Stepless — configuração de chain e ABIs do frontend.
  *
- * This file is vanilla JS (no build step). It attaches everything to
- * `window.SteplessConfig` so it can be consumed by index.html and dashboard.html
- * via <script type="module">.
+ * Arc é a L1 stablecoin-native da Circle. O gas é pago em USDC, não em Gwei.
+ *
+ * ⚠️ Nada de rede é chumbado aqui. chainId, RPC, explorer, USDC e Memo vêm de
+ * `window.STEPLESS_NETWORK`, gerado por scripts/gen-network.mjs a partir de
+ * config/networks.json — a mesma fonte que o backend e o mobile leem.
+ *
+ * Carregue frontend/network.js ANTES deste arquivo.
+ *
+ * POR QUE: entre 31/07 e 05/08/2026 o redeploy para o v4 atualizou o mobile e
+ * esqueceu a web, que ficou lendo o par v3 — que continua on-chain, com saldo e
+ * 34 locais, e por isso era o mais fácil de confundir com o par vivo. Enquanto
+ * os valores estiverem espalhados por 12 arquivos, a próxima divergência é
+ * questão de tempo.
+ *
+ * Este arquivo é JS puro (sem build step). Tudo fica em `window.SteplessConfig`.
  */
+
+if (!window.STEPLESS_NETWORK) {
+  throw new Error(
+    "frontend/network.js precisa ser carregado antes de arc-config.js. "
+    + "Rode `npm run gen:network` se o arquivo não existir."
+  );
+}
 
 /* ──────────────────────────────────────────────────────────────
  *  Chain configuration
  * ────────────────────────────────────────────────────────────── */
 
-const ARC_TESTNET = {
-  id: 5042002,
-  name: "Arc Testnet",
-  nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 }, // MetaMask exige 18; formatação real usa 6 decimais separadamente
+const NET = window.STEPLESS_NETWORK;
+
+const ARC_CHAIN = {
+  id: NET.chainId,
+  name: NET.name,
+  // 18 — decimais do USDC NATIVO (gas). A formatação de valores usa os 6
+  // decimais da interface ERC-20, que ficam em TOKENS.USDC.decimals.
+  // Os dois números coexistem porque na Arc é o MESMO ativo com duas
+  // interfaces; misturá-los faz saldos aparecerem 1e12 vezes maiores.
+  nativeCurrency: NET.nativeCurrency,
   rpcUrls: {
     // O nó dedicado fica atrás do proxy serverless; a credencial não é
-    // publicada no JavaScript. O nó oficial continua como fallback.
-    default: { http: [`${window.location.origin}/api/rpc`, "https://rpc.testnet.arc.network"] },
-    public: { http: [`${window.location.origin}/api/rpc`, "https://rpc.testnet.arc.network"] },
+    // publicada no JavaScript. Os públicos ficam como fallback.
+    default: { http: NET.httpRpcUrls },
+    public: { http: NET.httpRpcUrls },
   },
   wsUrls: {
-    default: { webSocket: ["wss://rpc.testnet.arc.network"] },
-    public: { webSocket: ["wss://rpc.testnet.arc.network"] },
+    default: { webSocket: NET.wsUrls },
+    public: { webSocket: NET.wsUrls },
   },
-  blockExplorers: {
-    default: { name: "ArcScan", url: "https://testnet.arcscan.app" },
-  },
-  faucets: ["https://faucet.circle.com"],
-  testnet: true,
+  blockExplorers: NET.explorerUrl
+    ? { default: { name: NET.explorerName, url: NET.explorerUrl } }
+    : undefined,
+  faucets: NET.faucetUrl ? [NET.faucetUrl] : [],
+  testnet: NET.testnet,
 };
+
+/** @deprecated Use ARC_CHAIN. Mantido para não quebrar referências antigas. */
+const ARC_TESTNET = ARC_CHAIN;
 
 /* ──────────────────────────────────────────────────────────────
  *  Token addresses
@@ -39,16 +65,10 @@ const ARC_TESTNET = {
 
 const TOKENS = {
   USDC: {
-    address: "0x3600000000000000000000000000000000000000",
-    decimals: 6,
+    address: NET.usdc.erc20Address,
+    decimals: NET.usdc.erc20Decimals, // 6 — interface ERC-20
     symbol: "USDC",
     name: "USD Coin",
-  },
-  EURC: {
-    address: "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a",
-    decimals: 6,
-    symbol: "EURC",
-    name: "Euro Coin",
   },
 };
 
@@ -57,25 +77,16 @@ const TOKENS = {
  * ────────────────────────────────────────────────────────────── */
 
 /*
- *  ⚠️ Estes endereços têm que bater com ORACLE_ADDRESS / DISTRIBUTOR_ADDRESS
- *  do relayer (Vercel) e com mobile/src/services/contracts.ts. Quando os três
- *  divergem, cada parte do projeto lê de um contrato diferente e o site passa
- *  a mostrar dados que o backend não enxerga.
- *
- *  Foi o que aconteceu entre 31/07 e 05/08/2026: o redeploy para o v4
- *  atualizou só o mobile, e a web ficou lendo o v3 — que continua on-chain,
- *  com 34 locais e saldo, mas sem receber escrita nenhuma. Justamente por
- *  parecer mais movimentado, era o mais fácil de confundir com o vivo.
- *
- *  Para conferir qual par está em uso: node scripts/check-live-contracts.mjs
+ *  Vêm de config/networks.json, a mesma fonte que o backend e o mobile leem —
+ *  é o que impede a divergência de 31/07–05/08/2026 de acontecer de novo.
+ *  Para conferir qual par está vivo: node scripts/check-live-contracts.mjs
  */
 const CONTRACTS = {
-  // v4 — deploy de 31/07/2026, par ativo do relayer.
-  RewardDistributor: "0xef5d148b126d8dcdc7d344dfa367c61acbb02ea0",
-  SteplessOracle:    "0x69b3f9caca6514f76dd2f0dc4b54409e6d5da5cc",
-  X402API:           "0x0D318864C80eCe8d28800a750bdA06b6E52ffCc9",
-  Multicall3:        "0xcA11bde05977b3631167028862bE2a173976CA11",
-  Memo:              "0x5294E9927c3306DcBaDb03fe70b92e01cCede505",
+  RewardDistributor: NET.contracts.RewardDistributor,
+  SteplessOracle:    NET.contracts.SteplessOracle,
+  X402API:           NET.contracts.X402API,
+  Multicall3:        NET.predeploys.multicall3,
+  Memo:              NET.predeploys.memo,
 };
 
 /**
@@ -128,24 +139,21 @@ const REWARD_DISTRIBUTOR_ABI = [
     stateMutability: "nonpayable",
   },
   {
+    // v5: entrada E saída neutras do conjunto de verificadores.
+    // Antes só existia slashVerifier(), que além de revogar zerava o
+    // totalEarned da pessoa — não havia como desligar sem punir.
     type: "function",
-    name: "registerVerifier",
-    inputs: [{ name: "verifier", type: "address", internalType: "address" }],
+    name: "setVerifier",
+    inputs: [
+      { name: "verifier", type: "address", internalType: "address" },
+      { name: "authorized", type: "bool", internalType: "bool" },
+    ],
     outputs: [],
     stateMutability: "nonpayable",
   },
   {
-    type: "function",
-    name: "autoPromoteVerifier",
-    inputs: [{ name: "contributor", type: "address", internalType: "address" }],
-    outputs: [],
-    stateMutability: "nonpayable",
-  },
-  {
-    // Não existe removeVerifier() no contrato — a única forma de tirar
-    // alguém do conjunto de verificadores é slashVerifier(), que também
-    // zera totalEarned (é punição, não um "desligar" neutro). Ver
-    // api/verifiers.js para o aviso completo sobre essa decisão de design.
+    // Punição explícita: revoga E zera os ganhos. Separado de setVerifier de
+    // propósito — quem sai da equipe não é fraudador.
     type: "function",
     name: "slashVerifier",
     inputs: [
@@ -183,6 +191,9 @@ const REWARD_DISTRIBUTOR_ABI = [
     stateMutability: "nonpayable",
   },
   {
+    // v5: duas fases. Só transferir não muda nada; o sucessor precisa chamar
+    // acceptAdmin(). A v1 do projeto foi perdida por uma transferência de uma
+    // fase para um endereço que ninguém controlava.
     type: "function",
     name: "transferAdmin",
     inputs: [{ name: "newAdmin", type: "address", internalType: "address" }],
@@ -190,11 +201,17 @@ const REWARD_DISTRIBUTOR_ABI = [
     stateMutability: "nonpayable",
   },
   {
-    // Ordem real do contrato é (amount, to) — inverter os argumentos aqui
-    // faria a chamada reverter (ou pior, se algum dia os dois parâmetros
-    // fossem do mesmo tipo por coincidência, enviaria pro endereço errado).
     type: "function",
-    name: "withdrawTreasury",
+    name: "acceptAdmin",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    // v5: saque em duas fases, com 48h de espera entre pedir e executar.
+    // Um saque anômalo fica visível antes de ser irreversível.
+    type: "function",
+    name: "requestWithdrawal",
     inputs: [
       { name: "amount", type: "uint256", internalType: "uint256" },
       { name: "to", type: "address", internalType: "address" },
@@ -204,23 +221,55 @@ const REWARD_DISTRIBUTOR_ABI = [
   },
   {
     type: "function",
-    name: "retryReward",
-    inputs: [
-      { name: "contributionId", type: "bytes32", internalType: "bytes32" },
-      { name: "contributor", type: "address", internalType: "address" },
-      { name: "amount", type: "uint256", internalType: "uint256" },
-    ],
+    name: "executeWithdrawal",
+    inputs: [],
     outputs: [],
     stateMutability: "nonpayable",
   },
   {
     type: "function",
-    name: "recoverNativeUSDC",
-    inputs: [{ name: "to", type: "address", internalType: "address" }],
+    name: "cancelWithdrawal",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    // v5: sem valor e destinatário livres — ambos vêm de failedRewards[],
+    // gravado no momento da falha. Como não há nada a escolher, é
+    // permissionless: qualquer um pode destravar o pagamento de outra pessoa.
+    type: "function",
+    name: "retryReward",
+    inputs: [{ name: "contributionId", type: "bytes32", internalType: "bytes32" }],
     outputs: [],
     stateMutability: "nonpayable",
   },
   // ── Read ──
+  {
+    // Saldo livre = tesouraria menos o que está reservado para reenviar
+    // recompensas que falharam.
+    type: "function",
+    name: "availableBalance",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getFailedReward",
+    inputs: [{ name: "contributionId", type: "bytes32", internalType: "bytes32" }],
+    outputs: [
+      { name: "recipient", type: "address", internalType: "address" },
+      { name: "amount", type: "uint256", internalType: "uint256" },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "pendingAdmin",
+    inputs: [],
+    outputs: [{ name: "", type: "address", internalType: "address" }],
+    stateMutability: "view",
+  },
   {
     type: "function",
     name: "getContributorStats",
@@ -618,17 +667,40 @@ const X402_API_ABI = [
     stateMutability: "view",
   },
   {
+    // v5: getter do mapping `subscriptions`. Substitui `subscriptionExpiry`,
+    // que nunca existiu no contrato — a ABI descrevia uma função imaginária.
+    // Também mudou de blocos para timestamp: a v4 assumia 5.400.000 blocos =
+    // 30 dias a 0,48s/bloco, e duração de contrato comercial não deve depender
+    // do tempo de bloco continuar o mesmo.
     type: "function",
-    name: "subscriptionExpiry",
-    inputs: [{ name: "subscriber", type: "address", internalType: "address" }],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    name: "subscriptions",
+    inputs: [{ name: "", type: "address", internalType: "address" }],
+    outputs: [
+      { name: "planId", type: "uint256", internalType: "uint256" },
+      { name: "endTime", type: "uint256", internalType: "uint256" },
+      { name: "queriesUsed", type: "uint256", internalType: "uint256" },
+    ],
+    stateMutability: "view",
+  },
+  {
+    // v5: getter do mapping `plans`. Substitui `planPrice`.
+    // `queryLimit` agora é ENFORÇADO — na v4 era gravado e nunca lido, então o
+    // "limite de 10 mil consultas" do plano de $100 não existia de fato.
+    type: "function",
+    name: "plans",
+    inputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    outputs: [
+      { name: "monthlyFee", type: "uint256", internalType: "uint256" },
+      { name: "queryLimit", type: "uint256", internalType: "uint256" },
+      { name: "active", type: "bool", internalType: "bool" },
+    ],
     stateMutability: "view",
   },
   {
     type: "function",
-    name: "planPrice",
-    inputs: [{ name: "planId", type: "uint8", internalType: "uint8" }],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    name: "remainingQueries",
+    inputs: [{ name: "consumer", type: "address", internalType: "address" }],
+    outputs: [{ name: "remaining", type: "uint256", internalType: "uint256" }],
     stateMutability: "view",
   },
   // ── Events ──

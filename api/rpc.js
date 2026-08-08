@@ -2,9 +2,13 @@
  * Proxy JSON-RPC público com rate limit. Mantém ARC_RPC_URL somente no servidor
  * e evita publicar a credencial do provedor nos bundles web/mobile.
  */
-import { store, clientIp, cors } from './_stepless.js';
+import { store, clientIp, cors, allowedOrigins } from './_stepless.js';
+import { publicRpcUrl } from './_network.js';
 
-const PUBLIC_RPC_URL = 'https://rpc.testnet.arc.network';
+// Vem de config/networks.json. O valor que estava chumbado aqui
+// (rpc.testnet.arc.network) é de um domínio que a documentação da Arc já não
+// lista — a partir de 2026 os endpoints ficam em *.arc.io.
+const PUBLIC_RPC_URL = publicRpcUrl();
 const MAX_BATCH_SIZE = 20;
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_CALL_DATA_BYTES = 32 * 1024;
@@ -16,8 +20,23 @@ const ALLOWED_METHODS = new Set([
   'eth_getBlockTransactionCountByHash', 'eth_getBlockTransactionCountByNumber',
   'eth_getCode', 'eth_getLogs', 'eth_getStorageAt', 'eth_getTransactionByHash',
   'eth_getTransactionCount', 'eth_getTransactionReceipt', 'eth_maxPriorityFeePerGas',
-  'eth_sendRawTransaction', 'net_version', 'web3_clientVersion',
+  'net_version', 'web3_clientVersion',
 ]);
+
+/**
+ * eth_sendRawTransaction fica FORA da allowlist por padrão (auditoria de
+ * mainnet, achado A5).
+ *
+ * O app não precisa dele: quem escreve on-chain é o relayer, pelo backend. Com
+ * ele aberto, este endpoint vira um relay de transações de terceiros pago pela
+ * cota do nó dedicado — em mainnet, custo direto e nenhum benefício.
+ *
+ * Se algum fluxo futuro precisar (ex.: verificador assinando do navegador),
+ * ligue RPC_ALLOW_SEND_RAW_TX=true conscientemente.
+ */
+if (process.env.RPC_ALLOW_SEND_RAW_TX === 'true') {
+  ALLOWED_METHODS.add('eth_sendRawTransaction');
+}
 
 function hexByteLength(value) {
   return typeof value === 'string' && /^0x[0-9a-fA-F]*$/.test(value)
@@ -59,9 +78,19 @@ export function validateRpcPayload(payload) {
 }
 
 export default async function handler(req, res) {
-  cors(res);
+  cors(res, 'POST, OPTIONS', req);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Barra o uso do proxy a partir de sites de terceiros. Não é defesa contra
+  // scripts (que simplesmente não mandam Origin), mas impede o caso comum: um
+  // site qualquer embutir este endpoint e queimar a cota do nó dedicado usando
+  // o navegador dos visitantes dele.
+  const origin = req.headers?.origin;
+  if (origin && !allowedOrigins().includes(origin)) {
+    return res.status(403).json({ error: 'Origem não autorizada para o proxy RPC.' });
+  }
+
   const serializedBody = JSON.stringify(req.body ?? null);
   if (Buffer.byteLength(serializedBody) > MAX_BODY_BYTES) {
     return res.status(413).json({ error: 'Payload JSON-RPC excede o limite permitido.' });

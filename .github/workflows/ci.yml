@@ -8,14 +8,13 @@ on:
 
 jobs:
   # ─────────────────────────────────────────────
-  # Job 1: Solidity compile + test (Foundry)
+  # Job 1: Solidity — compila e testa
   # ─────────────────────────────────────────────
   solidity:
     name: Solidity Compile & Test
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -33,67 +32,123 @@ jobs:
         with:
           path: |
             ~/.foundry/cache
-            out
-            cache
-          key: foundry-${{ runner.os }}-${{ hashFiles('**/*.sol', 'foundry.toml') }}
-          restore-keys: |
-            foundry-${{ runner.os }}-
+            contracts/out
+            contracts/cache
+          key: foundry-${{ runner.os }}-${{ hashFiles('**/*.sol', 'contracts/foundry.toml') }}
+          restore-keys: foundry-${{ runner.os }}-
 
-      - name: Compile contracts
+      - name: Compile
         working-directory: contracts
         run: forge build
 
-      - name: Run tests
+      # -W: warnings viram erro. Um `unused variable` num contrato que guarda
+      # dinheiro costuma indicar que alguém esqueceu de usar o valor.
+      - name: Lint (warnings as errors)
+        working-directory: contracts
+        run: forge build --force -W
+
+      - name: Test
         working-directory: contracts
         run: forge test -vvv
 
-      - name: Verify deployment bytecode is current
-        run: node scripts/sync-distributor-bytecode.mjs --check
+      # Cobertura mínima nas funções que movem dinheiro. Antes da v5 não havia
+      # NENHUM teste para saque, retry ou fundeio da tesouraria.
+      - name: Coverage
+        working-directory: contracts
+        run: forge coverage --report lcov --report summary
 
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: lcov.info
+          path: contracts/lcov.info
           if-no-files-found: ignore
 
   # ─────────────────────────────────────────────
-  # Job 2: Frontend validation (vanilla HTML/JS)
+  # Job 2: JS — sintaxe, testes e config de rede
+  # ─────────────────────────────────────────────
+  javascript:
+    name: JS Checks & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      # Falha se frontend/network.js ou mobile/src/config/network.generated.ts
+      # estiverem fora de sincronia com config/networks.json. É o que impede a
+      # divergência de 31/07–05/08/2026 (web no v3, mobile no v4) de se repetir.
+      - name: Sintaxe e config de rede
+        run: npm run check
+
+      # Inclui test/mainnet-hardening.test.js, que trava cada correção da
+      # auditoria de mainnet — uma regressão quebra aqui, não em produção.
+      - name: Testes
+        run: npm test
+
+  # ─────────────────────────────────────────────
+  # Job 3: Segredos no histórico
+  # ─────────────────────────────────────────────
+  secrets:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # histórico completo: uma chave vazada continua vazada
+
+      # O cabeçalho do antigo api/rotate-admin.js registrava que a chave do
+      # relayer "vazou no histórico do git". Sem varredura automática, a
+      # próxima vez também só se descobre depois.
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─────────────────────────────────────────────
+  # Job 4: Frontend
   # ─────────────────────────────────────────────
   frontend:
-    name: Frontend Lint & Build
+    name: Frontend Validation
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Validate HTML files exist
-        run: |
-          echo "Checking frontend files..."
-          test -f frontend/dashboard.html && echo "✅ dashboard.html" || (echo "❌ dashboard.html missing" && exit 1)
-          test -f frontend/index.html    && echo "✅ index.html"     || (echo "❌ index.html missing"     && exit 1)
-          test -f frontend/dashboard.js  && echo "✅ dashboard.js"   || (echo "❌ dashboard.js missing"   && exit 1)
-          test -f frontend/arc-config.js && echo "✅ arc-config.js"  || (echo "❌ arc-config.js missing"  && exit 1)
-          test -f api/relay.js           && echo "✅ api/relay.js"   || (echo "❌ api/relay.js missing"   && exit 1)
-          echo "✅ All frontend files present"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-      - name: Validate JS syntax
+      - name: Arquivos obrigatórios
         run: |
-          node --input-type=module < frontend/arc-config.js && echo "✅ arc-config.js syntax OK" || echo "⚠️ arc-config.js syntax warning"
+          for f in frontend/index.html frontend/dashboard.html frontend/dashboard.js \
+                   frontend/arc-config.js frontend/network.js \
+                   api/relay.js api/upload.js config/networks.json; do
+            test -f "$f" && echo "✅ $f" || { echo "❌ falta $f"; exit 1; }
+          done
+
+      # network.js precisa ser carregado antes de qualquer script que use
+      # window.STEPLESS_NETWORK — senão a página quebra em runtime, não no CI.
+      - name: network.js carregado nas páginas
+        run: |
+          for f in frontend/index.html frontend/dashboard.html frontend/buscar.html; do
+            grep -q 'src="network.js"' "$f" || { echo "❌ $f não carrega network.js"; exit 1; }
+            echo "✅ $f"
+          done
 
   # ─────────────────────────────────────────────
-  # Job 3: Subgraph manifest validation
+  # Job 5: Subgraph
   # ─────────────────────────────────────────────
   subgraph:
-    name: Subgraph Build Validation
+    name: Subgraph Manifest
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Validate subgraph files
-        run: |
-          test -f subgraph/subgraph.yaml && echo "✅ subgraph.yaml" || (echo "❌ subgraph.yaml missing" && exit 1)
-          test -f subgraph/schema.graphql && echo "✅ schema.graphql" || (echo "❌ schema.graphql missing" && exit 1)
-          echo "✅ Subgraph manifest validated"
+      - uses: actions/checkout@v4
+      - run: |
+          test -f subgraph/subgraph.yaml && echo "✅ subgraph.yaml" || { echo "❌ falta"; exit 1; }
+          test -f subgraph/schema.graphql && echo "✅ schema.graphql" || { echo "❌ falta"; exit 1; }

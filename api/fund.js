@@ -1,75 +1,58 @@
 /**
- * api/fund.js — Funda a tesouraria do RewardDistributor com USDC do relayer,
- * usando a interface ERC-20 (o contrato rejeita USDC nativo de propósito).
+ * api/fund.js — Saldos do relayer e da tesouraria. SOMENTE LEITURA.
  *
- * GET  /api/fund            → mostra saldos (relayer e tesouraria)
- * POST /api/fund {amount}   → transfere `amount` USDC (ex.: 5 = 5 USDC) do
- *                             relayer para o RewardDistributor
+ * GET /api/fund → mostra os saldos
+ *
+ * ⚠️ O POST FOI REMOVIDO (auditoria de mainnet, achado C4).
+ *
+ * Antes, um POST aqui com o header administrativo movia até 1000 USDC do
+ * relayer para a tesouraria. Mover dinheiro por rota HTTP protegida só por uma
+ * string em env var é a definição de superfície desnecessária: fundear a
+ * tesouraria acontece algumas vezes por mês, não a cada requisição.
+ *
+ * Agora: `node scripts/fund-treasury.mjs <valor>`, no terminal de quem tem a
+ * chave — ou, melhor ainda, um `approve` + `fundTreasury` assinado direto pelo
+ * multisig.
  */
 
-import { publicClient, walletFor, relayerAccount, distributorAddress, cors, translateError, requireAdminSecret } from './_stepless.js';
+import { publicClient, relayerAccount, distributorAddress, cors, translateError } from './_stepless.js';
+import { usdcAddress, NETWORK_NAME } from './_network.js';
 
-const USDC_ERC20 = '0x3600000000000000000000000000000000000000';
 const ERC20_ABI = [
-  { name: 'transfer', type: 'function', stateMutability: 'nonpayable',
-    inputs: [{ name: 'to', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ type: 'bool' }] },
   { name: 'balanceOf', type: 'function', stateMutability: 'view',
     inputs: [{ name: '', type: 'address' }], outputs: [{ type: 'uint256' }] },
 ];
 
 export default async function handler(req, res) {
-  cors(res, 'GET, POST, OPTIONS');
+  cors(res, 'GET, OPTIONS', req);
   if (req.method === 'OPTIONS') return res.status(200).end();
-
-  if (!process.env.RELAYER_PRIVATE_KEY) {
-    return res.status(500).json({ success: false, error: 'Relayer não configurado.' });
+  if (req.method !== 'GET') {
+    return res.status(405).json({
+      success: false,
+      error: 'Somente GET. Fundear a tesouraria saiu desta rota por segurança.',
+      hint: 'Rode localmente: node scripts/fund-treasury.mjs <valor em USDC>',
+    });
   }
-  if (!['GET', 'POST'].includes(req.method)) return res.status(405).json({ success: false, error: 'Method not allowed' });
-  if (req.method === 'POST' && !requireAdminSecret(req, res)) return;
 
   const pub = publicClient();
-  const relayer = relayerAccount();
   const distributor = distributorAddress();
+  const usdc = usdcAddress();
 
   try {
+    const relayer = relayerAccount();
     const [relayerBal, treasuryBal] = await Promise.all([
-      pub.readContract({ address: USDC_ERC20, abi: ERC20_ABI, functionName: 'balanceOf', args: [relayer.address] }),
-      pub.readContract({ address: USDC_ERC20, abi: ERC20_ABI, functionName: 'balanceOf', args: [distributor] }),
+      pub.readContract({ address: usdc, abi: ERC20_ABI, functionName: 'balanceOf', args: [relayer.address] }),
+      pub.readContract({ address: usdc, abi: ERC20_ABI, functionName: 'balanceOf', args: [distributor] }),
     ]);
 
-    if (req.method === 'GET') {
-      return res.status(200).json({
-        relayer: relayer.address,
-        distributor,
-        relayerUSDC: (Number(relayerBal) / 1e6).toFixed(2),
-        treasuryUSDC: (Number(treasuryBal) / 1e6).toFixed(2),
-        howTo: 'POST {"amount": 5} para transferir 5 USDC do relayer para a tesouraria.',
-      });
-    }
-
-    const amount = Number((req.body || {}).amount);
-    if (!amount || amount <= 0 || amount > 1000) {
-      return res.status(400).json({ success: false, error: 'Informe {"amount": N} entre 0 e 1000 USDC.' });
-    }
-    const units = BigInt(Math.round(amount * 1e6)); // 6 decimais
-
-    if (relayerBal < units) {
-      return res.status(402).json({
-        success: false,
-        error: `Relayer só tem ${(Number(relayerBal) / 1e6).toFixed(2)} USDC. Envie USDC do faucet para ${relayer.address} primeiro.`,
-      });
-    }
-
-    const hash = await walletFor(relayer).writeContract({
-      address: USDC_ERC20, abi: ERC20_ABI, functionName: 'transfer', args: [distributor, units],
-    });
-    await pub.waitForTransactionReceipt({ hash });
-
-    const newBal = await pub.readContract({ address: USDC_ERC20, abi: ERC20_ABI, functionName: 'balanceOf', args: [distributor] });
     return res.status(200).json({
-      success: true,
-      txHash: hash,
-      treasuryUSDC: (Number(newBal) / 1e6).toFixed(2),
+      network: NETWORK_NAME,
+      relayer: relayer.address,
+      distributor,
+      usdc,
+      relayerUSDC: (Number(relayerBal) / 1e6).toFixed(2),
+      treasuryUSDC: (Number(treasuryBal) / 1e6).toFixed(2),
+      howTo: 'node scripts/fund-treasury.mjs 5   (ou approve + fundTreasury pelo multisig)',
     });
   } catch (err) {
     console.error('[fund] Error:', err);

@@ -1,12 +1,16 @@
 {
   "name": "stepless",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
-  "description": "Stepless — Decentralized accessibility mapping on Arc Testnet",
+  "description": "Stepless — Decentralized accessibility mapping on Arc",
   "scripts": {
-    "test": "node --test",
-    "check": "node --check api/_stepless.js && node --check api/rpc.js && node --check api/relay.js && node --check api/verify.js && node --check api/_placecheck.js && node --check api/_risk.js && node --check frontend/dashboard.js && node scripts/sync-distributor-bytecode.mjs --check",
-    "sync:bytecode": "node scripts/sync-distributor-bytecode.mjs",
+    "test": "node --test test/*.test.js",
+    "check": "npm run check:syntax && npm run gen:network -- --check",
+    "check:syntax": "node --check api/_stepless.js && node --check api/_network.js && node --check api/rpc.js && node --check api/relay.js && node --check api/upload.js && node --check api/verify.js && node --check api/setup.js && node --check api/fund.js && node --check api/verifiers.js && node --check api/_placecheck.js && node --check api/_risk.js && node --check frontend/dashboard.js",
+    "gen:network": "node scripts/gen-network.mjs",
+    "contracts:check": "node scripts/check-live-contracts.mjs",
+    "setup:contracts": "node scripts/setup-contracts.mjs",
+    "fund": "node scripts/fund-treasury.mjs",
     "preview": "node scripts/preview.mjs"
   },
   "dependencies": {

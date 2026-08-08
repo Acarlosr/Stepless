@@ -1,0 +1,119 @@
+{
+  "$comment": [
+    "FONTE ÚNICA DE VERDADE de rede para o Stepless.",
+    "",
+    "Antes deste arquivo, chainId/RPC/explorer/USDC/Memo estavam chumbados em 12",
+    "arquivos diferentes (api, frontend, mobile, contratos). Entre 31/07 e 05/08/2026",
+    "isso já causou um incidente real: o redeploy para o v4 atualizou o mobile e",
+    "esqueceu a web, que ficou lendo o par v3 — que continua on-chain, com saldo e",
+    "34 locais, e por isso era o mais fácil de confundir com o par vivo.",
+    "",
+    "Quem consome este arquivo:",
+    "  api/_network.js              (backend, via STEPLESS_NETWORK)",
+    "  scripts/gen-network.mjs      (gera frontend/network.js e mobile/src/config/network.generated.ts)",
+    "  scripts/check-live-contracts.mjs",
+    "",
+    "Depois de editar: rode `npm run gen:network`. O CI roda `--check` e falha se",
+    "os arquivos gerados estiverem fora de sincronia."
+  ],
+
+  "default": "arc-testnet",
+
+  "networks": {
+    "arc-testnet": {
+      "name": "Arc Testnet",
+      "chainId": 5042002,
+      "testnet": true,
+
+      "rpcUrls": [
+        "https://rpc.testnet.arc.io",
+        "https://rpc.blockdaemon.testnet.arc.io",
+        "https://rpc.drpc.testnet.arc.io"
+      ],
+      "wsUrls": ["wss://rpc.testnet.arc.io"],
+      "explorerName": "ArcScan",
+      "explorerUrl": "https://testnet.arcscan.app",
+      "faucetUrl": "https://faucet.circle.com",
+
+      "$rpcNote": "O domínio arc.network foi substituído por arc.io na documentação da Arc (docs.arc.io/arc/references/connect-to-arc, conferido em 2026-08-06). O código antigo apontava para rpc.testnet.arc.network.",
+
+      "nativeCurrency": {
+        "name": "USDC",
+        "symbol": "USDC",
+        "decimals": 18,
+        "$note": "USDC nativo (gas) usa 18 decimais; a interface ERC-20 usa 6. É o MESMO ativo. viem usa este valor para formatar saldo e estimar gas — 6 aqui faz o saldo aparecer 1e12 vezes maior."
+      },
+
+      "usdc": {
+        "erc20Address": "0x3600000000000000000000000000000000000000",
+        "erc20Decimals": 6
+      },
+
+      "predeploys": {
+        "memo": "0x5294E9927c3306DcBaDb03fe70b92e01cCede505",
+        "multicall3": "0xcA11bde05977b3631167028862bE2a173976CA11",
+        "multicall3From": "0x522fAf9A91c41c443c66765030741e4AaCe147D0",
+        "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+        "create2Factory": "0x4e59b44847b379578588920cA78FbF26c0B4956C"
+      },
+
+      "contracts": {
+        "$note": "Par v4, deploy de 31/07/2026. Substituir pelos endereços da v5 depois do redeploy.",
+        "SteplessOracle": "0x69b3f9caca6514f76dd2f0dc4b54409e6d5da5cc",
+        "RewardDistributor": "0xef5d148b126d8dcdc7d344dfa367c61acbb02ea0",
+        "X402API": "0x0D318864C80eCe8d28800a750bdA06b6E52ffCc9"
+      },
+
+      "deprecatedContracts": {
+        "$note": "NÃO USAR. Continuam on-chain com saldo; o backend não escreve neles há tempo. Listados aqui para que uma checagem automática consiga detectar se algum voltou a aparecer no código ou na UI.",
+        "v3": {
+          "SteplessOracle": "0x53ba90e17bbe96e924979723c744475d55cccc16",
+          "RewardDistributor": "0xdf8fa455f01965866ac99ebc553ad3c2b58a0368"
+        },
+        "v1": {
+          "SteplessOracle": "0x2Ac87a4E9b3D5d8F0D6E8b0c8F5F5F5F5F5F5F48",
+          "$v1Note": "Órfão por incidente de rotação de chave — sem admin acessível."
+        }
+      }
+    },
+
+    "arc-mainnet": {
+      "name": "Arc",
+      "chainId": null,
+      "testnet": false,
+
+      "$status": "PENDENTE. A Arc lança o mainnet público em 16/09/2026, mas em 2026-08-06 a documentação oficial ainda diz textualmente: 'Mainnet addresses are not yet available' (docs.arc.io/arc/references/contract-addresses). Os campos null são INTENCIONAIS: qualquer código que tente usar esta rede antes de preenchê-los deve falhar alto, não adivinhar. Um endereço de USDC errado em mainnet é irreversível — o contrato marcaria recompensas como pagas sem mover nada.",
+
+      "rpcUrls": [],
+      "wsUrls": [],
+      "explorerName": "ArcScan",
+      "explorerUrl": null,
+      "faucetUrl": null,
+
+      "nativeCurrency": {
+        "name": "USDC",
+        "symbol": "USDC",
+        "decimals": 18
+      },
+
+      "usdc": {
+        "erc20Address": null,
+        "erc20Decimals": 6
+      },
+
+      "predeploys": {
+        "memo": null,
+        "multicall3": null,
+        "multicall3From": null,
+        "permit2": null,
+        "create2Factory": null
+      },
+
+      "contracts": {
+        "SteplessOracle": null,
+        "RewardDistributor": null,
+        "X402API": null
+      }
+    }
+  }
+}

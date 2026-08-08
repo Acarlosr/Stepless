@@ -1,26 +1,52 @@
 // SPDX-License-Identifier: MIT
 // ════════════════════════════════════════════════════════════════════════════
-//  ♿ Stepless — RewardDistributor.sol
-//  Micro-USDC reward distribution for accessibility contributions on Arc.
+//  ♿ Stepless — RewardDistributor.sol  (v5 — mainnet-ready)
+//  Distribuição de micro-recompensas em USDC por contribuições de acessibilidade.
 //
-//  Built on Arc (Circle's stablecoin-native L1) — USDC is the native gas token.
+//  Construído sobre a Arc (L1 stablecoin-native da Circle) — USDC é o gas nativo.
 //
-//  Arc-specific considerations baked into this contract:
-//    1. USDC is BOTH native (18 decimals) AND ERC-20 (6 decimals) — SAME asset.
-//       This contract uses the ERC-20 interface (6 decimals) for all transfers
-//       to keep reward amounts intuitive ($0.10 = 100_000 in 6-dec units).
-//    2. Native transfers can revert even with sufficient balance (blocklist,
-//       zero address, burn, drain-empty-account). All sends use try/catch.
-//    3. Never pair native USDC vs ERC-20 USDC — they are the same asset.
-//    4. PREVRANDAO returns 0 on Arc — no on-chain randomness (verifier selection
-//       uses off-chain pseudo-random with block.number as entropy seed).
-//    5. SELFDESTRUCT is avoided entirely.
-//    6. block.timestamp is non-strictly-increasing (sub-second blocks share
-//       timestamps) — block.number is used for ordering.
-//    7. Circle Gas Station can sponsor txs for SCA wallets (testnet).
+//  Particularidades da Arc consideradas neste contrato:
+//    1. USDC é nativo (18 decimais) E ERC-20 (6 decimais) — MESMO ativo.
+//       Este contrato usa a interface ERC-20 (6 dec) em todas as transferências,
+//       para manter os valores intuitivos ($0.10 = 100_000).
+//    2. Transferências podem reverter mesmo com saldo suficiente (blocklist,
+//       endereço zero, burn, drenagem de conta vazia). Todo envio é protegido.
+//    3. Nunca parear USDC nativo com USDC ERC-20 — são o mesmo ativo.
+//    4. PREVRANDAO retorna 0 na Arc — sem aleatoriedade on-chain.
+//    5. SELFDESTRUCT é evitado por completo.
+//    6. block.timestamp não é estritamente crescente (blocos sub-segundo
+//       compartilham timestamp) — block.number é usado para ordenação.
+//
+//  ── Mudanças da v4 para a v5 (auditoria de mainnet, 2026-08-06) ────────────
+//   1. USDC virou `immutable` recebido no construtor, com validação de que há
+//      código no endereço e que decimals() == 6. O 0x3600… é da TESTNET e a
+//      Circle ainda não publicou o de mainnet. Como `constant`, um endereço
+//      errado seria impossível de corrigir — e pior: `.call` para um endereço
+//      SEM CÓDIGO retorna success=true, então o contrato marcaria a recompensa
+//      como paga e emitiria RewardPaid sem mover um centavo.
+//   2. recoverNativeUSDC() REMOVIDA. Apesar do nome, ela transferia o saldo
+//      ERC-20 INTEIRO — era um segundo caminho de saque total, sem limite e
+//      sem evento. E era redundante: na Arc o saldo nativo e o ERC-20 são o
+//      mesmo, então withdrawTreasury() já alcança fundos enviados à força.
+//   3. retryReward() não aceita mais valor e destinatário arbitrários. Agora lê
+//      de failedRewards[], preenchido quando uma transferência de fato falha,
+//      e é PERMISSIONLESS — o destino é fixo, então não há motivo para exigir
+//      admin. Antes, o admin podia reenviar qualquer valor, quantas vezes
+//      quisesse, para qualquer endereço.
+//   4. Saques passaram a ter timelock de 48h (request → execute), para que um
+//      saque anômalo seja visível antes de ser irreversível.
+//   5. autoPromoteVerifier() REMOVIDA (sybil barato). Verificador agora entra e
+//      sai por setVerifier(addr, bool) — remoção neutra, sem punição embutida.
+//   6. payReward() confere que o destinatário é o contribuidor registrado no
+//      Oracle, em vez de aceitar qualquer endereço do chamador autorizado.
+//   7. recordVerification() só aceita chamada vinda do Oracle.
+//   8. Admin em duas fases + guarda de reentrância.
 // ════════════════════════════════════════════════════════════════════════════
 
 pragma solidity ^0.8.24;
+
+import {Admin2Step, Unauthorized, ZeroAddress} from "./lib/Admin2Step.sol";
+import {ReentrancyGuard} from "./lib/ReentrancyGuard.sol";
 
 // ────────────────────────────────────────────────────────────────────────────
 //  Interfaces
@@ -35,39 +61,42 @@ interface IERC20 {
 }
 
 interface ISteplessOracle {
-    /// @notice Returns the verification status of a location contribution.
-    /// @return verified   Whether the contribution passed verification.
-    /// @return verifier  The address that verified it (address(0) if none).
-    /// @return timestamp Block timestamp of verification.
     function getContribution(bytes32 contributionId)
         external
         view
-        returns (bool verified, address verifier, uint256 timestamp);
+        returns (bool verified, address verifier, uint256 blockNumber);
+    function getContributor(bytes32 contributionId) external view returns (address);
 }
 
 // ────────────────────────────────────────────────────────────────────────────
 //  Errors
 // ────────────────────────────────────────────────────────────────────────────
 
-error Unauthorized();
 error ContributionNotVerified(bytes32 contributionId);
 error RewardAlreadyClaimed(bytes32 contributionId);
-error ZeroAddress();
 error InsufficientTreasury(uint256 needed, uint256 available);
 error RewardTransferFailed(bytes32 contributionId, address recipient, bytes reason);
 error InvalidRewardAmount();
 error Paused();
-error NotContributor(bytes32 contributionId, address caller);
 error DuplicateVerifier(address verifier, bytes32 contributionId);
 error CooldownActive(uint256 blockNumber, uint256 unlockBlock);
-/// @dev batchPayRewards() — arrays de tamanhos diferentes. Antes reaproveitava
-///      InvalidRewardAmount(), que é semanticamente sobre valor de recompensa,
-///      não sobre formato de array — erro dedicado deixa a causa óbvia pra
-///      quem estiver montando o batch fora da chain.
 error ArrayLengthMismatch(uint256 contributionIdsLength, uint256 contributorsLength, uint256 rewardTypesLength);
+/// @dev Lote grande demais — o loop estouraria o gas do bloco e reverteria tudo.
+error BatchTooLarge(uint256 length, uint256 max);
+/// @dev O destinatário informado não é o contribuidor registrado no Oracle.
+error ContributorMismatch(bytes32 contributionId, address expected, address provided);
+/// @dev O endereço passado como USDC não tem código, ou não usa 6 decimais.
+error InvalidUsdc(address usdc);
+/// @dev Só o Oracle pode registrar verificações.
+error OnlyOracle(address caller);
+/// @dev Não há recompensa falha registrada para esta contribuição.
+error NoFailedReward(bytes32 contributionId);
+/// @dev Timelock de saque: não existe pedido, ou ainda não amadureceu.
+error NoPendingWithdrawal();
+error WithdrawalNotReady(uint256 nowTs, uint256 readyAt);
 
 // ────────────────────────────────────────────────────────────────────────────
-//  Events (indexed for Goldsky / event monitors)
+//  Events (indexados para Goldsky / monitores)
 // ────────────────────────────────────────────────────────────────────────────
 
 event RewardPaid(
@@ -85,20 +114,23 @@ event RewardFailed(
     bytes reason
 );
 
-event TreasuryFunded(address indexed funder, uint256 amount, uint256 newBalance);
+event RewardRecovered(bytes32 indexed contributionId, address indexed recipient, uint256 amount);
 
-event TreasuryWithdrawn(address indexed admin, uint256 amount, uint256 newBalance);
+event TreasuryFunded(address indexed funder, uint256 amount, uint256 newBalance);
+event TreasuryWithdrawn(address indexed admin, address indexed to, uint256 amount, uint256 newBalance);
+
+event WithdrawalRequested(address indexed admin, address indexed to, uint256 amount, uint256 readyAt);
+event WithdrawalCancelled(address indexed admin);
 
 event RewardAmountUpdated(RewardType indexed rewardType, uint256 oldAmount, uint256 newAmount);
 
-event VerifierRegistered(address indexed verifier, uint256 blockNumber);
-
+event VerifierUpdated(address indexed verifier, bool authorized, uint256 blockNumber);
 event VerifierSlashed(address indexed verifier, uint256 slashedAmount, string reason);
+
+event AuthorizedCallerUpdated(address indexed caller, bool authorized);
 
 event PausedEvent(address indexed admin);
 event UnpausedEvent(address indexed admin);
-
-event AdminChanged(address indexed oldAdmin, address indexed newAdmin);
 
 // ────────────────────────────────────────────────────────────────────────────
 //  Enums
@@ -116,26 +148,24 @@ enum RewardType {
 //  Contract
 // ────────────────────────────────────────────────────────────────────────────
 
-contract RewardDistributor {
+contract RewardDistributor is Admin2Step, ReentrancyGuard {
     // ════════════════════════════════════════════════════════════════════════
-    //  Immutable & Constant State
+    //  Immutable State
     // ════════════════════════════════════════════════════════════════════════
 
-    /// @notice USDC ERC-20 interface on Arc Testnet.
-    /// @dev    Address 0x3600000000000000000000000000000000000000 from Arc docs.
-    ///         Uses 6 decimals. Native USDC uses 18 decimals — SAME asset.
-    ///         We use ERC-20 (6 dec) for all application-level transfers.
-    IERC20 public constant USDC =
-        IERC20(0x3600000000000000000000000000000000000000);
+    /// @notice Interface ERC-20 do USDC na rede em uso.
+    /// @dev    immutable, NÃO constant — o endereço muda entre testnet e mainnet.
+    ///         Validado no construtor: precisa ter código e usar 6 decimais.
+    IERC20 public immutable USDC;
 
-    /// @notice Arc Testnet USDC decimals (ERC-20 interface).
+    /// @notice Decimais da interface ERC-20 do USDC (checado no construtor).
     uint8 public constant USDC_DECIMALS = 6;
 
-    /// @notice Reference to the SteplessOracle for verification checks.
+    /// @notice SteplessOracle, para checagens de verificação.
     ISteplessOracle public immutable oracle;
 
     // ════════════════════════════════════════════════════════════════════════
-    //  Reward Amounts (in 6-decimal USDC units)
+    //  Valores de recompensa (unidades de 6 decimais)
     //  $0.10 = 100_000 | $0.05 = 50_000 | $0.02 = 20_000
     //  $0.03 = 30_000  | $5.00 = 5_000_000
     // ════════════════════════════════════════════════════════════════════════
@@ -146,53 +176,74 @@ contract RewardDistributor {
     uint256 public rewardLocationUpdate    = 30_000;    // $0.03
     uint256 public rewardTopContributor    = 5_000_000; // $5.00
 
-    // ════════════════════════════════════════════════════════════════════════
-    //  Access Control
-    // ════════════════════════════════════════════════════════════════════════
-
-    address public admin;
-    mapping(address => bool) public verifiers;      // approved verifier set
-    mapping(address => bool) public authorizedCallers; // oracle, backend, etc.
+    /// @notice Teto por recompensa individual. Um admin comprometido não
+    ///         consegue transformar setRewardAmount() num saque disfarçado.
+    uint256 public constant MAX_REWARD_AMOUNT = 100_000_000; // $100
 
     // ════════════════════════════════════════════════════════════════════════
-    //  Anti-Double-Spend & Reputation
+    //  Controle de acesso
     // ════════════════════════════════════════════════════════════════════════
 
-    /// @dev contributionId => true if reward already claimed.
+    mapping(address => bool) public verifiers;          // conjunto de verificadores
+    mapping(address => bool) public authorizedCallers;  // relayer, backend, etc.
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  Anti-double-spend e reputação
+    // ════════════════════════════════════════════════════════════════════════
+
     mapping(bytes32 => bool) public rewardClaimed;
-
-    /// @dev contributor => total rewards earned (6-dec USDC).
     mapping(address => uint256) public totalEarned;
-
-    /// @dev contributor => count of verified contributions.
     mapping(address => uint256) public contributionCount;
-
-    /// @dev verifier => count of verifications performed.
     mapping(address => uint256) public verificationCount;
-
-    /// @dev verifier => block number of last verification (cooldown).
     mapping(address => uint256) public lastVerificationBlock;
-
-    /// @dev contributionId => verifier address (anti self-verify).
     mapping(bytes32 => address) public contributionVerifier;
-
-    /// @dev contributionId => RewardType efetivamente pago. Sem isto,
-    ///      retryReward() não tinha como saber que tipo reemitir no evento
-    ///      RewardPaid e chumbava sempre RewardType.NewLocation.
     mapping(bytes32 => RewardType) public contributionRewardType;
 
+    /// @notice Recompensas cuja transferência falhou e podem ser reenviadas.
+    /// @dev    Sem este registro, retryReward() não tinha como saber QUANTO
+    ///         reenviar nem PARA QUEM — e por isso aceitava os dois como
+    ///         parâmetro livre do admin, virando um saque arbitrário.
+    struct FailedReward {
+        address recipient;
+        uint256 amount;
+    }
+    mapping(bytes32 => FailedReward) public failedRewards;
+
+    /// @notice Total já reservado para recompensas que falharam e não foram
+    ///         reenviadas. Serve para o operador saber quanto do saldo não é
+    ///         livre.
+    uint256 public totalFailedPending;
+
     // ════════════════════════════════════════════════════════════════════════
-    //  Sybil Resistance
+    //  Resistência a Sybil
     // ════════════════════════════════════════════════════════════════════════
 
-    /// @notice Minimum blocks between verifications by the same verifier.
-    /// @dev    Arc block time ~0.48s, so 10 blocks ≈ 4.8 seconds.
-    ///         This prevents a single verifier from spamming verifications.
+    /// @notice Blocos mínimos entre verificações do mesmo verificador.
+    /// @dev    Bloco da Arc ~0.48s, então 10 blocos ≈ 4.8 segundos.
     uint256 public constant VERIFIER_COOLDOWN_BLOCKS = 10;
 
-    /// @notice Maximum verifications per contributor before they must be
-    ///         promoted to verifier status (reputation threshold).
-    uint256 public constant VERIFIER_PROMOTION_THRESHOLD = 20;
+    /// @notice Máximo de itens por batchPayRewards.
+    uint256 public constant MAX_BATCH_SIZE = 50;
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  Timelock de saque
+    // ════════════════════════════════════════════════════════════════════════
+
+    /// @notice Espera obrigatória entre pedir e executar um saque.
+    /// @dev    Usa block.timestamp e não block.number de propósito: o alerta do
+    ///         projeto sobre timestamps não-monotônicos vale para ORDENAR
+    ///         eventos em blocos sub-segundo, não para medir 48 horas. Em
+    ///         contrapartida, block.number depende do tempo de bloco continuar
+    ///         em 0.48s — uma premissa que não quero embutir num contrato de
+    ///         mainnet.
+    uint256 public constant WITHDRAWAL_DELAY = 48 hours;
+
+    struct PendingWithdrawal {
+        address to;
+        uint256 amount;
+        uint256 readyAt;
+    }
+    PendingWithdrawal public pendingWithdrawal;
 
     // ════════════════════════════════════════════════════════════════════════
     //  Pausable
@@ -204,18 +255,8 @@ contract RewardDistributor {
     //  Modifiers
     // ════════════════════════════════════════════════════════════════════════
 
-    modifier onlyAdmin() {
-        if (msg.sender != admin) revert Unauthorized();
-        _;
-    }
-
     modifier onlyAuthorized() {
         if (!authorizedCallers[msg.sender] && msg.sender != admin) revert Unauthorized();
-        _;
-    }
-
-    modifier onlyVerifier() {
-        if (!verifiers[msg.sender]) revert Unauthorized();
         _;
     }
 
@@ -228,29 +269,38 @@ contract RewardDistributor {
     //  Constructor
     // ════════════════════════════════════════════════════════════════════════
 
-    /// @param _oracle     Address of the deployed SteplessOracle contract.
-    /// @param _admin      Address of the admin (should be a multisig in prod).
-    constructor(address _oracle, address _admin) {
-        if (_oracle == address(0) || _admin == address(0)) revert ZeroAddress();
+    /// @param _oracle  Endereço do SteplessOracle já deployado.
+    /// @param _admin   Multisig em produção.
+    /// @param _usdc    Interface ERC-20 do USDC na rede alvo.
+    constructor(address _oracle, address _admin, address _usdc) Admin2Step(_admin) {
+        if (_oracle == address(0)) revert ZeroAddress();
+        if (_usdc == address(0)) revert ZeroAddress();
+
+        // Sem isto, um endereço de USDC errado (ex.: o de testnet usado em
+        // mainnet) passaria despercebido: `.call` para endereço sem código
+        // retorna success=true e o contrato "pagaria" recompensas no vazio.
+        if (_usdc.code.length == 0) revert InvalidUsdc(_usdc);
+        try IERC20(_usdc).decimals() returns (uint8 d) {
+            if (d != USDC_DECIMALS) revert InvalidUsdc(_usdc);
+        } catch {
+            revert InvalidUsdc(_usdc);
+        }
+
         oracle = ISteplessOracle(_oracle);
-        admin = _admin;
+        USDC = IERC20(_usdc);
         authorizedCallers[_admin] = true;
-        emit AdminChanged(address(0), _admin);
+        emit AuthorizedCallerUpdated(_admin, true);
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    //  Treasury Management
+    //  Tesouraria
     // ════════════════════════════════════════════════════════════════════════
 
-    /// @notice Fund the treasury with USDC via ERC-20 transferFrom.
-    /// @dev    Caller must have approved this contract to spend USDC.
-    ///         Uses ERC-20 (6 decimals) — standard approve/transferFrom flow.
-    ///         ⚠️ On Arc, native USDC and ERC-20 USDC are the SAME asset.
-    ///         Funding via msg.value is NOT used to avoid decimal confusion.
-    function fundTreasury(uint256 amount) external notPaused {
+    /// @notice Fundeia a tesouraria via ERC-20 transferFrom.
+    /// @dev    O chamador precisa ter aprovado este contrato antes.
+    function fundTreasury(uint256 amount) external notPaused nonReentrant {
         if (amount == 0) revert InvalidRewardAmount();
 
-        // ERC-20 transferFrom — 6 decimal precision
         bool success = USDC.transferFrom(msg.sender, address(this), amount);
         if (!success) revert RewardTransferFailed(
             bytes32(0), msg.sender, "treasury funding transferFrom failed"
@@ -259,64 +309,91 @@ contract RewardDistributor {
         emit TreasuryFunded(msg.sender, amount, USDC.balanceOf(address(this)));
     }
 
-    /// @notice Admin can withdraw excess treasury funds.
-    /// @dev    Uses ERC-20 transfer. Recipient must NOT be blocklisted on Arc.
-    function withdrawTreasury(uint256 amount, address to) external onlyAdmin {
+    /// @notice Fase 1 do saque — registra a intenção e inicia a espera de 48h.
+    /// @dev    Um pedido novo substitui o anterior e reinicia o relógio.
+    function requestWithdrawal(uint256 amount, address to) external onlyAdmin {
         if (to == address(0)) revert ZeroAddress();
+        if (amount == 0) revert InvalidRewardAmount();
 
-        uint256 balance = USDC.balanceOf(address(this));
-        if (amount > balance) revert InsufficientTreasury(amount, balance);
-
-        // try/catch — Arc native transfers can revert (blocklist, burn, etc.)
-        _safeTransfer(to, amount, bytes32(0));
-
-        emit TreasuryWithdrawn(msg.sender, amount, USDC.balanceOf(address(this)));
+        uint256 readyAt = block.timestamp + WITHDRAWAL_DELAY;
+        pendingWithdrawal = PendingWithdrawal({ to: to, amount: amount, readyAt: readyAt });
+        emit WithdrawalRequested(msg.sender, to, amount, readyAt);
     }
 
-    /// @notice Returns the current treasury balance in 6-decimal USDC.
-    /// @dev    ⚠️ balanceOf (6 dec) TRUNCATES dust below 1e-6 USDC.
-    ///         For exact native balance, use address(this).balance (18 dec).
+    /// @notice Cancela o saque pendente.
+    function cancelWithdrawal() external onlyAdmin {
+        if (pendingWithdrawal.readyAt == 0) revert NoPendingWithdrawal();
+        delete pendingWithdrawal;
+        emit WithdrawalCancelled(msg.sender);
+    }
+
+    /// @notice Fase 2 do saque — executa depois da espera.
+    function executeWithdrawal() external onlyAdmin nonReentrant {
+        PendingWithdrawal memory w = pendingWithdrawal;
+        if (w.readyAt == 0) revert NoPendingWithdrawal();
+        if (block.timestamp < w.readyAt) revert WithdrawalNotReady(block.timestamp, w.readyAt);
+
+        uint256 balance = USDC.balanceOf(address(this));
+        if (w.amount > balance) revert InsufficientTreasury(w.amount, balance);
+
+        delete pendingWithdrawal;
+
+        (bool ok, bytes memory data) = address(USDC).call(
+            abi.encodeWithSelector(IERC20.transfer.selector, w.to, w.amount)
+        );
+        if (!ok || (data.length > 0 && !abi.decode(data, (bool)))) {
+            revert RewardTransferFailed(bytes32(0), w.to, data);
+        }
+
+        emit TreasuryWithdrawn(msg.sender, w.to, w.amount, USDC.balanceOf(address(this)));
+    }
+
+    /// @notice Saldo atual da tesouraria em USDC de 6 decimais.
     function treasuryBalance() external view returns (uint256) {
         return USDC.balanceOf(address(this));
     }
 
+    /// @notice Saldo livre — desconta o que está reservado para reenvios falhos.
+    function availableBalance() external view returns (uint256) {
+        uint256 balance = USDC.balanceOf(address(this));
+        return balance > totalFailedPending ? balance - totalFailedPending : 0;
+    }
+
     // ════════════════════════════════════════════════════════════════════════
-    //  Core: Pay Rewards
+    //  Core: pagamento de recompensas
     // ════════════════════════════════════════════════════════════════════════
 
-    /// @notice Pay reward for a verified contribution.
-    /// @dev    Called by authorized callers (oracle, backend) after verification.
-    ///         Idempotent — each contributionId can only be rewarded once.
-    ///         Uses ERC-20 transfer (6 decimals) with try/catch for Arc safety.
-    ///
-    /// @param contributionId  Unique hash identifying the contribution.
-    /// @param contributor     Address that made the contribution.
-    /// @param rewardType      Type of reward to pay.
+    /// @notice Paga a recompensa de uma contribuição verificada.
+    /// @dev    Idempotente — cada contributionId só é pago uma vez.
     function payReward(
         bytes32 contributionId,
         address contributor,
         RewardType rewardType
-    ) external onlyAuthorized notPaused {
+    ) external onlyAuthorized notPaused nonReentrant {
         if (contributor == address(0)) revert ZeroAddress();
         if (rewardClaimed[contributionId]) revert RewardAlreadyClaimed(contributionId);
 
-        // Verify the contribution passed verification in the oracle
         (bool verified, , ) = oracle.getContribution(contributionId);
         if (!verified) revert ContributionNotVerified(contributionId);
+
+        // v5: o destinatário tem que ser quem o Oracle registrou como
+        // contribuidor. Antes, um chamador autorizado podia direcionar a
+        // recompensa de qualquer contribuição verificada para si mesmo.
+        address registered = oracle.getContributor(contributionId);
+        if (registered != contributor) {
+            revert ContributorMismatch(contributionId, registered, contributor);
+        }
 
         uint256 amount = _getRewardAmount(rewardType);
         if (amount == 0) revert InvalidRewardAmount();
 
-        // Check treasury
         uint256 balance = USDC.balanceOf(address(this));
         if (balance < amount) revert InsufficientTreasury(amount, balance);
 
-        // Mark claimed BEFORE transfer (prevents reentrancy)
+        // Marca antes de transferir (checks-effects-interactions).
         rewardClaimed[contributionId] = true;
-        // Guarda o tipo real para retryReward() poder reemitir corretamente.
         contributionRewardType[contributionId] = rewardType;
 
-        // Update reputation tracking
         totalEarned[contributor] += amount;
         if (rewardType == RewardType.Verification) {
             verificationCount[contributor]++;
@@ -324,116 +401,117 @@ contract RewardDistributor {
             contributionCount[contributor]++;
         }
 
-        // Safe transfer with Arc-specific error handling
-        _safeTransfer(contributor, amount, contributionId);
-
-        emit RewardPaid(
-            contributionId,
-            contributor,
-            amount,
-            rewardType,
-            block.number // Use block.number, NOT block.timestamp (sub-second blocks)
-        );
+        if (_safeTransfer(contributor, amount, contributionId)) {
+            emit RewardPaid(contributionId, contributor, amount, rewardType, block.number);
+        }
     }
 
-    /// @notice Batch pay multiple rewards in a single transaction.
-    /// @dev    Uses Multicall3From pattern internally for gas efficiency.
-    ///         Each reward is processed independently — one failure doesn't
-    ///         revert the batch. Failed rewards emit RewardFailed and can
-    ///         be retried.
-    /// @param contributionIds  Array of contribution hashes.
-    /// @param contributors     Array of contributor addresses.
-    /// @param rewardTypes      Array of reward types.
+    /// @notice Paga várias recompensas numa transação só.
+    /// @dev    Cada item é independente — uma falha não reverte o lote.
     function batchPayRewards(
         bytes32[] calldata contributionIds,
         address[] calldata contributors,
         RewardType[] calldata rewardTypes
-    ) external onlyAuthorized notPaused {
+    ) external onlyAuthorized notPaused nonReentrant {
         uint256 len = contributionIds.length;
         if (len != contributors.length || len != rewardTypes.length) {
             revert ArrayLengthMismatch(len, contributors.length, rewardTypes.length);
         }
+        if (len > MAX_BATCH_SIZE) revert BatchTooLarge(len, MAX_BATCH_SIZE);
 
         for (uint256 i = 0; i < len; i++) {
-            // Skip already-claimed (idempotent batch)
-            if (rewardClaimed[contributionIds[i]]) continue;
+            bytes32 id = contributionIds[i];
+            address to = contributors[i];
 
-            (bool verified, , ) = oracle.getContribution(contributionIds[i]);
+            if (rewardClaimed[id]) continue;
+
+            (bool verified, , ) = oracle.getContribution(id);
             if (!verified) {
-                emit RewardFailed(
-                    contributionIds[i],
-                    contributors[i],
-                    0,
-                    "contribution not verified"
-                );
+                emit RewardFailed(id, to, 0, "contribution not verified");
+                continue;
+            }
+            if (oracle.getContributor(id) != to) {
+                emit RewardFailed(id, to, 0, "contributor mismatch");
                 continue;
             }
 
             uint256 amount = _getRewardAmount(rewardTypes[i]);
+            if (amount == 0) {
+                emit RewardFailed(id, to, 0, "invalid reward amount");
+                continue;
+            }
+
             uint256 balance = USDC.balanceOf(address(this));
-
             if (balance < amount) {
-                emit RewardFailed(
-                    contributionIds[i],
-                    contributors[i],
-                    amount,
-                    "insufficient treasury"
-                );
-                continue; // Don't revert — process remaining rewards
+                emit RewardFailed(id, to, amount, "insufficient treasury");
+                continue; // não reverte — processa o resto
             }
 
-            // Mark claimed
-            rewardClaimed[contributionIds[i]] = true;
-            // Guarda o tipo real para retryReward() poder reemitir corretamente.
-            contributionRewardType[contributionIds[i]] = rewardTypes[i];
+            rewardClaimed[id] = true;
+            contributionRewardType[id] = rewardTypes[i];
 
-            // Update reputation
-            totalEarned[contributors[i]] += amount;
+            totalEarned[to] += amount;
             if (rewardTypes[i] == RewardType.Verification) {
-                verificationCount[contributors[i]]++;
+                verificationCount[to]++;
             } else {
-                contributionCount[contributors[i]]++;
+                contributionCount[to]++;
             }
 
-            // Safe transfer
-            _safeTransfer(contributors[i], amount, contributionIds[i]);
+            if (_safeTransfer(to, amount, id)) {
+                emit RewardPaid(id, to, amount, rewardTypes[i], block.number);
+            }
+        }
+    }
 
+    /// @notice Reenvia uma recompensa cuja transferência falhou.
+    /// @dev    v5: SEM parâmetros de valor e destinatário. Ambos vêm de
+    ///         failedRewards[], gravado no momento da falha. Por isso a função
+    ///         pode ser permissionless: não há nada a escolher, então não há
+    ///         nada que um admin comprometido possa desviar.
+    ///
+    ///         Caso de uso real: o destinatário estava na blocklist da Arc e
+    ///         saiu, ou a falha foi transitória.
+    function retryReward(bytes32 contributionId) external notPaused nonReentrant {
+        FailedReward memory f = failedRewards[contributionId];
+        if (f.amount == 0) revert NoFailedReward(contributionId);
+
+        uint256 balance = USDC.balanceOf(address(this));
+        if (balance < f.amount) revert InsufficientTreasury(f.amount, balance);
+
+        // Limpa antes de transferir; se falhar de novo, _safeTransfer regrava.
+        delete failedRewards[contributionId];
+        totalFailedPending -= f.amount;
+
+        if (_safeTransfer(f.recipient, f.amount, contributionId)) {
+            emit RewardRecovered(contributionId, f.recipient, f.amount);
             emit RewardPaid(
-                contributionIds[i],
-                contributors[i],
-                amount,
-                rewardTypes[i],
+                contributionId,
+                f.recipient,
+                f.amount,
+                contributionRewardType[contributionId],
                 block.number
             );
         }
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    //  Verifier Management (Sybil Resistance)
+    //  Verificadores
     // ════════════════════════════════════════════════════════════════════════
 
-    /// @notice Register a new verifier. Only admin or auto-promote.
-    /// @dev    Contributors with >= VERIFIER_PROMOTION_THRESHOLD verified
-    ///         contributions can be auto-promoted to verifier status.
-    function registerVerifier(address verifier) external onlyAdmin {
+    /// @notice Adiciona ou remove um verificador.
+    /// @dev    v5: substitui registerVerifier() + slashVerifier() como via
+    ///         normal. Antes, a ÚNICA forma de tirar alguém era slashVerifier,
+    ///         que zera o totalEarned da pessoa — ou seja, não existia
+    ///         "desligar" sem punir. Quem sai da equipe não é um fraudador.
+    function setVerifier(address verifier, bool authorized) external onlyAdmin {
         if (verifier == address(0)) revert ZeroAddress();
-        verifiers[verifier] = true;
-        emit VerifierRegistered(verifier, block.number);
+        verifiers[verifier] = authorized;
+        emit VerifierUpdated(verifier, authorized, block.number);
     }
 
-    /// @notice Auto-promote a contributor to verifier based on reputation.
-    /// @dev    Anyone can call this — the threshold check is on-chain.
-    function autoPromoteVerifier(address contributor) external notPaused {
-        if (contributionCount[contributor] >= VERIFIER_PROMOTION_THRESHOLD) {
-            verifiers[contributor] = true;
-            emit VerifierRegistered(contributor, block.number);
-        } else {
-            revert Unauthorized();
-        }
-    }
-
-    /// @notice Slash a verifier for fraudulent verification.
-    /// @dev    Slashes their earned rewards (future implementation: stake).
+    /// @notice Pune um verificador fraudulento: revoga E zera os ganhos.
+    /// @dev    Mantido separado de setVerifier de propósito — a punição tem que
+    ///         ser uma escolha explícita, não um efeito colateral de remover.
     function slashVerifier(address verifier, string calldata reason)
         external
         onlyAdmin
@@ -441,26 +519,30 @@ contract RewardDistributor {
         verifiers[verifier] = false;
         uint256 slashed = totalEarned[verifier];
         totalEarned[verifier] = 0;
+        emit VerifierUpdated(verifier, false, block.number);
         emit VerifierSlashed(verifier, slashed, reason);
     }
 
-    /// @notice Check verifier cooldown (Sybil resistance).
-    /// @dev    Verifiers must wait VERIFIER_COOLDOWN_BLOCKS between verifications.
+    /// @notice Verifica o cooldown de um verificador.
     function canVerify(address verifier) external view returns (bool) {
         if (!verifiers[verifier]) return false;
         uint256 lastBlock = lastVerificationBlock[verifier];
         return lastBlock == 0 || block.number >= lastBlock + VERIFIER_COOLDOWN_BLOCKS;
     }
 
-    /// @notice Record that a verifier verified a contribution (called by oracle).
-    /// @dev    Prevents self-verification and enforces cooldown.
+    /// @notice Registra que um verificador verificou uma contribuição.
+    /// @dev    v5: SÓ o Oracle pode chamar. Antes era `onlyAuthorized`, então
+    ///         o relayer — que também está nessa lista — podia registrar
+    ///         verificações direto, pulando o Oracle inteiro.
     function recordVerification(
         bytes32 contributionId,
         address verifier,
         address contributor
-    ) external onlyAuthorized {
+    ) external {
+        if (msg.sender != address(oracle)) revert OnlyOracle(msg.sender);
         if (!verifiers[verifier]) revert Unauthorized();
         if (verifier == contributor) revert DuplicateVerifier(verifier, contributionId);
+
         uint256 lastBlock = lastVerificationBlock[verifier];
         if (lastBlock != 0 && block.number < lastBlock + VERIFIER_COOLDOWN_BLOCKS) {
             revert CooldownActive(block.number, lastBlock + VERIFIER_COOLDOWN_BLOCKS);
@@ -471,50 +553,44 @@ contract RewardDistributor {
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    //  Admin: Reward Configuration
+    //  Admin
     // ════════════════════════════════════════════════════════════════════════
 
-    /// @notice Update reward amount for a specific reward type.
+    /// @notice Atualiza o valor de um tipo de recompensa.
+    /// @dev    Teto em MAX_REWARD_AMOUNT: sem isso, setRewardAmount(tipo, saldo)
+    ///         seguido de um payReward seria um saque sem passar pelo timelock.
     function setRewardAmount(RewardType rewardType, uint256 newAmount)
         external
         onlyAdmin
     {
-        if (newAmount == 0) revert InvalidRewardAmount();
+        if (newAmount == 0 || newAmount > MAX_REWARD_AMOUNT) revert InvalidRewardAmount();
         uint256 oldAmount = _getRewardAmount(rewardType);
         _setRewardAmount(rewardType, newAmount);
         emit RewardAmountUpdated(rewardType, oldAmount, newAmount);
     }
 
-    /// @notice Pause all reward distributions (emergency).
+    /// @notice Pausa todas as distribuições (emergência). Sem timelock, de
+    ///         propósito: parar tem que ser instantâneo.
     function setPaused(bool _paused) external onlyAdmin {
         paused = _paused;
         if (_paused) emit PausedEvent(msg.sender);
         else emit UnpausedEvent(msg.sender);
     }
 
-    /// @notice Add or remove an authorized caller (oracle, backend service).
     function setAuthorizedCaller(address caller, bool authorized) external onlyAdmin {
         if (caller == address(0)) revert ZeroAddress();
         authorizedCallers[caller] = authorized;
-    }
-
-    /// @notice Transfer admin role.
-    function transferAdmin(address newAdmin) external onlyAdmin {
-        if (newAdmin == address(0)) revert ZeroAddress();
-        emit AdminChanged(admin, newAdmin);
-        admin = newAdmin;
+        emit AuthorizedCallerUpdated(caller, authorized);
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    //  View Functions
+    //  Views
     // ════════════════════════════════════════════════════════════════════════
 
-    /// @notice Get reward amount for a type.
     function getRewardAmount(RewardType rewardType) external view returns (uint256) {
         return _getRewardAmount(rewardType);
     }
 
-    /// @notice Get contributor stats.
     function getContributorStats(address contributor)
         external
         view
@@ -527,59 +603,81 @@ contract RewardDistributor {
         );
     }
 
-    /// @notice Check if a contribution has been rewarded.
     function isRewardClaimed(bytes32 contributionId) external view returns (bool) {
         return rewardClaimed[contributionId];
     }
 
+    function getFailedReward(bytes32 contributionId)
+        external
+        view
+        returns (address recipient, uint256 amount)
+    {
+        FailedReward memory f = failedRewards[contributionId];
+        return (f.recipient, f.amount);
+    }
+
     // ════════════════════════════════════════════════════════════════════════
-    //  Internal Functions
+    //  Internas
     // ════════════════════════════════════════════════════════════════════════
 
-    /// @dev Safe USDC transfer with Arc-specific error handling.
-    ///      On Arc, a transfer can revert even with sufficient balance because:
-    ///        - Recipient is blocklisted (test addr: 0x70997970...79C8)
-    ///        - Recipient is address(0) — "Zero address not allowed"
-    ///        - Recipient has self-destructed — forbidden burn
-    ///        - Draining empty account (zero balance, zero nonce, no code)
+    /// @dev Transferência de USDC com o tratamento de erro que a Arc exige.
+    ///      Na Arc uma transferência pode reverter mesmo com saldo suficiente:
+    ///        - destinatário na blocklist
+    ///        - destinatário é address(0) — "Zero address not allowed"
+    ///        - destinatário se autodestruiu — burn proibido
+    ///        - drenagem de conta vazia
     ///
-    ///      This function catches reverts and emits RewardFailed instead of
-    ///      reverting the entire transaction. The contribution is marked as
-    ///      claimed, but the admin can manually retry via retryReward().
+    ///      Quando falha, NÃO reverte: registra em failedRewards[] e emite
+    ///      RewardFailed. O claim já está marcado, então sem esse registro a
+    ///      recompensa simplesmente evaporava — foi o que a v4 fazia.
+    ///
+    /// @return success true se o USDC de fato saiu daqui.
     function _safeTransfer(
         address to,
         uint256 amount,
         bytes32 contributionId
-    ) internal {
+    ) internal returns (bool success) {
         uint256 balanceBefore = USDC.balanceOf(address(this));
 
-        (bool success, bytes memory data) = address(USDC).call(
+        (bool ok, bytes memory data) = address(USDC).call(
             abi.encodeWithSelector(IERC20.transfer.selector, to, amount)
         );
 
-        if (!success || (data.length > 0 && !abi.decode(data, (bool)))) {
-            emit RewardFailed(contributionId, to, amount, data);
-            return;
+        if (!ok || (data.length > 0 && !abi.decode(data, (bool)))) {
+            _recordFailure(contributionId, to, amount, data);
+            return false;
         }
 
-        // Double-check balance actually decreased (defense in depth).
-        // Note: balanceOf (6 dec) truncates dust — this check is approximate.
+        // Confere que o saldo caiu de verdade. Na Arc, o USDC tem
+        // comportamentos de bloqueio/burn fora do ERC-20 estrito — em teoria um
+        // `transfer` pode retornar true sem mover o saldo esperado. `ok == true`
+        // sozinho não é prova.
         //
-        // Motivo: em Arc, USDC pode ter comportamentos de bloqueio/burn que
-        // não seguem o padrão ERC-20 estrito — em teoria um `transfer` pode
-        // retornar `true` sem mover o saldo esperado (ex.: quirk específico
-        // de blocklist). `success == true` sozinho não é prova suficiente.
-        // Usa adição em vez de subtração para nunca reverter por underflow
-        // aqui — isto é uma rede de segurança que só deve *registrar* uma
-        // falha, nunca travar o restante da função (o claim já foi marcado).
+        // Usa adição em vez de subtração para nunca reverter por underflow: esta
+        // é uma rede de segurança que deve REGISTRAR a falha, nunca travar a
+        // função.
         uint256 balanceAfter = USDC.balanceOf(address(this));
-        bool balanceDecreasedEnough = balanceAfter + amount <= balanceBefore;
-        if (!balanceDecreasedEnough) {
-            emit RewardFailed(contributionId, to, amount, bytes("balance did not decrease as expected"));
+        if (balanceAfter + amount > balanceBefore) {
+            _recordFailure(contributionId, to, amount, bytes("balance did not decrease as expected"));
+            return false;
         }
+
+        return true;
     }
 
-    /// @dev Get reward amount by type.
+    function _recordFailure(bytes32 contributionId, address to, uint256 amount, bytes memory reason) internal {
+        // contributionId == 0 é o caminho de saque/fundeio, que não tem
+        // recompensa a reenviar — nesse caso a função chamadora reverte.
+        if (contributionId != bytes32(0)) {
+            FailedReward storage f = failedRewards[contributionId];
+            if (f.amount == 0) {
+                failedRewards[contributionId] = FailedReward({ recipient: to, amount: amount });
+                totalFailedPending += amount;
+            }
+        }
+        emit RewardFailed(contributionId, to, amount, reason);
+    }
+
     function _getRewardAmount(RewardType rewardType)
         internal
         view
@@ -593,7 +691,6 @@ contract RewardDistributor {
         return 0;
     }
 
-    /// @dev Set reward amount by type.
     function _setRewardAmount(RewardType rewardType, uint256 amount) internal {
         if (rewardType == RewardType.NewLocation)       rewardNewLocation = amount;
         else if (rewardType == RewardType.Verification) rewardVerification = amount;
@@ -603,81 +700,22 @@ contract RewardDistributor {
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    //  Receive & Fallback
+    //  Receive
     // ════════════════════════════════════════════════════════════════════════
 
-    /// @dev Reject direct native USDC sends.
-    ///      On Arc, native USDC (18 dec) and ERC-20 USDC (6 dec) are the SAME
-    ///      asset. Sending native USDC to this contract would work but would
-    ///      create a decimal mismatch with our ERC-20 accounting. We reject
-    ///      native sends and require fundTreasury() via ERC-20 transferFrom.
+    /// @dev Rejeita envios diretos de USDC nativo.
+    ///      Na Arc, USDC nativo (18 dec) e ERC-20 (6 dec) são o MESMO ativo.
+    ///      Aceitar aqui reabriria o risco de mistura de decimais que este
+    ///      contrato existe para evitar. Use fundTreasury().
     ///
-    ///      DECISÃO DE DESIGN (não é um bug): não trocamos este revert por um
-    ///      caminho que aceite USDC nativo. Aceitar aqui reabriria exatamente
-    ///      o risco de decimal mismatch que este contrato existe para evitar
-    ///      (6 dec ERC-20 vs 18 dec nativo, mesmo ativo). O revert é a escolha
-    ///      certa, não um esquecimento.
-    ///
-    ///      Isso NÃO deixa fundos presos: `receive()`/`fallback()` só
-    ///      interceptam transferências normais. Uma técnica de baixo nível
-    ///      (ex.: outro contrato chamando SELFDESTRUCT tendo este endereço
-    ///      como destino) força o envio de saldo nativo SEM passar por
-    ///      receive() — é o único jeito de USDC nativo entrar aqui mesmo
-    ///      revertendo sempre. `recoverNativeUSDC()` abaixo existe
-    ///      especificamente para esse cenário, então nenhum valor fica
-    ///      irrecuperável mesmo com o revert incondicional.
+    ///      Isso NÃO prende fundos: qualquer valor que entre à força (ex.: via
+    ///      SELFDESTRUCT, que não passa por receive()) aparece no
+    ///      USDC.balanceOf() deste contrato — é o mesmo saldo — e sai por
+    ///      requestWithdrawal/executeWithdrawal como qualquer outro valor.
+    ///      Era exatamente por não perceber isso que a v4 tinha uma
+    ///      recoverNativeUSDC() separada, que na prática era um segundo caminho
+    ///      de saque total.
     receive() external payable {
         revert("Use fundTreasury() - native USDC not accepted to avoid decimal mismatch");
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    //  Recovery (Admin Only)
-    // ════════════════════════════════════════════════════════════════════════
-
-    /// @notice Recover native USDC sent to this contract by mistake.
-    /// @dev    Converts native (18 dec) awareness to ERC-20 (6 dec) context.
-    ///         Native balance (18 dec) includes dust that ERC-20 balanceOf (6 dec)
-    ///         truncates. We transfer the ERC-20-visible amount to avoid issues.
-    function recoverNativeUSDC(address to) external onlyAdmin {
-        if (to == address(0)) revert ZeroAddress();
-
-        // Use ERC-20 balanceOf (6 dec) — the safe, truncated view
-        uint256 erc20Balance = USDC.balanceOf(address(this));
-
-        // Transfer via ERC-20 interface
-        (bool success, bytes memory data) = address(USDC).call(
-            abi.encodeWithSelector(IERC20.transfer.selector, to, erc20Balance)
-        );
-        if (!success || (data.length > 0 && !abi.decode(data, (bool)))) {
-            revert RewardTransferFailed(bytes32(0), to, "native recovery failed");
-        }
-    }
-
-    /// @notice Retry a failed reward transfer.
-    /// @dev    For contributions where _safeTransfer emitted RewardFailed.
-    ///         The contribution is already marked as claimed, so this is a
-    ///         manual retry path for admin.
-    function retryReward(
-        bytes32 contributionId,
-        address contributor,
-        uint256 amount
-    ) external onlyAdmin notPaused {
-        // Must have been claimed but failed
-        if (!rewardClaimed[contributionId]) revert RewardAlreadyClaimed(contributionId);
-
-        uint256 balance = USDC.balanceOf(address(this));
-        if (balance < amount) revert InsufficientTreasury(amount, balance);
-
-        _safeTransfer(contributor, amount, contributionId);
-
-        emit RewardPaid(
-            contributionId,
-            contributor,
-            amount,
-            // Tipo real gravado em payReward/batchPayRewards — antes chumbava
-            // NewLocation mesmo quando a recompensa original era de outro tipo.
-            contributionRewardType[contributionId],
-            block.number
-        );
     }
 }

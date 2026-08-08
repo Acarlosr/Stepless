@@ -226,6 +226,9 @@
       color: #86efac;
     }
   </style>
+  <!-- Config de rede: gerado por scripts/gen-network.mjs a partir de config/networks.json.
+       Precisa vir ANTES de qualquer script que use window.STEPLESS_NETWORK. -->
+  <script src="network.js"></script>
 </head>
 <body>
   <a href="#main" class="skip-link" data-i18n="skip_link">Pular para o conteúdo</a>
@@ -403,10 +406,18 @@
     import { createPublicClient, http, fallback } from 'https://esm.sh/viem@2.21.0';
 
     // ── Config ──────────────────────────────────────────
-    // Mesmo Oracle usado pelo dashboard/relayer. Manter sincronizado com
-    // frontend/arc-config.js para que locais recém-registrados apareçam aqui.
-    const ORACLE_ADDRESS = '0x53ba90e17bbe96e924979723c744475d55cccc16';
-    const EXPLORER       = 'https://testnet.arcscan.app';
+    // Vem de window.STEPLESS_NETWORK (frontend/network.js ← config/networks.json),
+    // a mesma fonte que o relayer lê.
+    //
+    // ⚠️ ESTAVA CHUMBADO AQUI — e apontava para o Oracle v3
+    // (0x53ba90e1…), que o README marca como morto. Ou seja: a página de busca
+    // consultava um contrato que o backend parou de alimentar em 31/07/2026.
+    // Ele continua on-chain com 34 locais, então a página "funcionava" e
+    // mostrava resultados — só que nenhum local novo aparecia nunca.
+    const NET = window.STEPLESS_NETWORK;
+    if (!NET) throw new Error('network.js não carregou. Rode: npm run gen:network');
+    const ORACLE_ADDRESS = NET.contracts.SteplessOracle;
+    const EXPLORER       = NET.explorerUrl;
 
     const I18N = {
       pt: {
@@ -627,13 +638,10 @@
       },
     };
 
-    const ARC_CHAIN = {
-      id: 5042002,
-      name: 'Arc Testnet',
-      nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 6 },
-      rpcUrls: { default: { http: [`${window.location.origin}/api/rpc`, 'https://rpc.testnet.arc.network'] } },
-    };
-    const MULTICALL_ADDRESS = '0xcA11bde05977b3631167028862bE2a173976CA11';
+    // decimals: 18 — USDC NATIVO. Estava 6 aqui, o que faz o viem formatar
+    // saldos de gas 1e12 vezes maiores. Os 6 decimais são da interface ERC-20.
+    const ARC_CHAIN = NET.chain;
+    const MULTICALL_ADDRESS = NET.predeploys.multicall3;
 
     // ABI baseado no contrato real deployado
     const ORACLE_ABI = [

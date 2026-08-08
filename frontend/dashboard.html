@@ -10,6 +10,9 @@
   <!-- Leaflet + OpenStreetMap — grátis, sem API key, sem conta, UMD via CDN (sem build step) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦿</text></svg>" />
+  <!-- Config de rede: gerado por scripts/gen-network.mjs a partir de config/networks.json.
+       Precisa vir ANTES de qualquer script que use window.STEPLESS_NETWORK. -->
+  <script src="network.js"></script>
 </head>
 <body>
   <a href="#main" class="skip-link">Pular para o conteúdo / Skip to content / Saltar al contenido</a>
@@ -505,7 +508,7 @@
         footer_text:"Stepless Dashboard — Arc Testnet. Recompensas em USDC.", built_on_arc:"Built on",
         cat_ramp:"Rampa", cat_elevator:"Elevador", cat_restroom:"Banheiro Acessível", cat_parking:"Vaga PCD", cat_signage:"Sinalização", cat_audio:"Áudio Descrição", cat_braille:"Braile", cat_other:"Outro",
         err_no_wallet:"Nenhuma wallet detectada. Instale MetaMask ou outra wallet compatível.",
-        err_wrong_chain:"Rede incorreta. Conecte-se à Arc Testnet (Chain ID: 5042002).",
+        err_wrong_chain:"Rede incorreta. Conecte-se à rede {network} (Chain ID: {chainId}).",
         err_tx_failed:"Transação falhou",
         err_blocklist:"Endereço bloqueado pelo sistema anti-drenagem da Arc.",
         err_drain:"Tentativa de drenagem detectada. Transação bloqueada.",
@@ -558,7 +561,7 @@
         footer_text:"Stepless Dashboard — Arc Testnet. Rewards in USDC.", built_on_arc:"Built on",
         cat_ramp:"Ramp", cat_elevator:"Elevator", cat_restroom:"Accessible Restroom", cat_parking:"Accessible Parking", cat_signage:"Signage", cat_audio:"Audio Description", cat_braille:"Braille", cat_other:"Other",
         err_no_wallet:"No wallet detected. Install MetaMask or another compatible wallet.",
-        err_wrong_chain:"Wrong network. Connect to Arc Testnet (Chain ID: 5042002).",
+        err_wrong_chain:"Wrong network. Connect to {network} (Chain ID: {chainId}).",
         err_tx_failed:"Transaction failed",
         err_blocklist:"Address blocked by Arc anti-drain system.",
         err_drain:"Drain attempt detected. Transaction blocked.",
@@ -606,7 +609,7 @@
         footer_text:"Stepless Dashboard — Arc Testnet. Recompensas en USDC.", built_on_arc:"Built on",
         cat_ramp:"Rampa", cat_elevator:"Ascensor", cat_restroom:"Baño Accesible", cat_parking:"Estacionamiento Accesible", cat_signage:"Señalización", cat_audio:"Audiodescripción", cat_braille:"Braille", cat_other:"Otro",
         err_no_wallet:"No se detectó wallet. Instala MetaMask u otra wallet compatible.",
-        err_wrong_chain:"Red incorrecta. Conéctate a Arc Testnet (Chain ID: 5042002).",
+        err_wrong_chain:"Red incorrecta. Conéctate a {network} (Chain ID: {chainId}).",
         err_tx_failed:"Transacción falló",
         err_blocklist:"Dirección bloqueada por el sistema anti-drenaje de Arc.",
         err_drain:"Intento de drenaje detectado. Transacción bloqueada.",

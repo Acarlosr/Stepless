@@ -26,33 +26,29 @@ Stepless turns accessibility mapping into on-chain, instantly-settled USDC rewar
 
 ---
 
-## Deployed Contracts (Arc Testnet — Chain ID 5042002)
+## Contratos
 
-| Contract | Address | Purpose |
-|---|---|---|
-| **SteplessOracle** | [`0x69b3f9caca6514f76dd2f0dc4b54409e6d5da5cc`](https://testnet.arcscan.app/address/0x69b3f9caca6514f76dd2f0dc4b54409e6d5da5cc) | Location registry + contribution tracking |
-| **RewardDistributor** | [`0xef5d148b126d8dcdc7d344dfa367c61acbb02ea0`](https://testnet.arcscan.app/address/0xef5d148b126d8dcdc7d344dfa367c61acbb02ea0) | USDC treasury + reward payments |
-| **X402API** | [`0x0D318864C80eCe8d28800a750bdA06b6E52ffCc9`](https://testnet.arcscan.app/address/0x0D318864C80eCe8d28800a750bdA06b6E52ffCc9) | HTTP 402 payment protocol for API access |
+Os endereços de **todas** as redes vivem em [`config/networks.json`](config/networks.json)
+— fonte única lida pelo backend, pelo frontend e pelo app. Não há endereço
+chumbado em código.
 
-> These are the **v4** contracts, deployed 2026-07-31. The relayer's
-> `ORACLE_ADDRESS` points here, so every new location and reward goes through
-> this pair.
->
-> **Earlier deployments — do not use.** The v3 pair (oracle
-> `0x53ba90e1…`, distributor `0xdf8fa455…`) is still on-chain and still holds
-> 34 locations plus a USDC balance, but the backend no longer writes to it: its
-> last activity predates the v4 deploy. It is easy to mistake for the live pair
-> precisely because it looks busier. Older still are the v1 contracts
-> (`0x2Ac87a4E…`, `0x4959d0BB…`), orphaned by a key-rotation incident and with
-> no accessible admin key. Do not send funds or authorize callers against any
-> of them.
->
-> To confirm which pair is live at any time, run
-> `node scripts/check-live-contracts.mjs`.
+```bash
+node scripts/check-live-contracts.mjs   # pergunta para a própria Arc qual par está vivo
+```
 
-**Example transaction:** `registerLocation` confirmed on-chain on Arc Testnet — verify current activity on [ArcScan](https://testnet.arcscan.app/address/0x69b3f9caca6514f76dd2f0dc4b54409e6d5da5cc).
+**Status de mainnet:** a Arc lança o mainnet público em **16/09/2026**, mas a
+Circle ainda não publicou os endereços de USDC e Memo dessa rede
+("Mainnet addresses are not yet available", [docs.arc.io](https://docs.arc.io/arc/references/contract-addresses)).
+Por isso a entrada `arc-mainnet` do JSON está com campos `null` de propósito, e
+o backend **falha ao subir** nela. É melhor não subir do que subir com um
+endereço chutado: na Arc, uma chamada para um endereço sem código retorna
+sucesso, e o contrato marcaria recompensas como pagas sem mover um centavo.
 
----
+> **Contratos antigos — não usar.** Os pares v3 (`0x53ba90e1…` / `0xdf8fa455…`)
+> e v1 continuam on-chain e ainda têm saldo. O v3 parece *mais* movimentado que
+> o par vivo (34 locais contra poucos), então contar locais leva à conclusão
+> errada sobre qual está em uso. Eles estão listados em `deprecatedContracts`
+> no JSON, e um teste do CI falha se algum reaparecer no frontend ou no app.
 
 ## How It Works
 
@@ -70,13 +66,18 @@ Stepless turns accessibility mapping into on-chain, instantly-settled USDC rewar
 User (browser)
       │
       ▼
-stepless.vercel.app          ← Vanilla HTML/JS frontend
+stepless.vercel.app          ← Frontend HTML/JS puro
       │
       ▼
-/api/relay.js                ← Vercel serverless relayer (pays gas in USDC)
-      │  EXIF GPS validation (anti-fraud)
+/api/upload.js               ← Recebe a FOTO; extrai o EXIF no servidor,
+      │                        calcula dataHash = keccak256(bytes) e
+      │                        guarda a imagem no IPFS. Devolve um token.
       ▼
-SteplessOracle.sol           ← Location registry on Arc Testnet
+/api/relay.js                ← Relayer serverless (paga o gas em USDC).
+      │  Valida o GPS da foto  Usa SÓ a prova do token — o cliente não
+      │  contra o local        declara coordenadas nem hash.
+      ▼
+SteplessOracle.sol           ← Registro de locais na Arc
       │
       ▼
 RewardDistributor.sol        ← USDC treasury + reward settlement
@@ -168,6 +169,16 @@ Live: [stepless.vercel.app](https://stepless.vercel.app)
 - [x] GPS + EXIF anti-fraud validation
 - [x] Contributor dashboard (vanilla HTML/JS)
 - [x] `registerLocation` confirmed on-chain
+
+### Phase 1.5 — Endurecimento para mainnet (2026-08-06)
+- [x] Contratos v5: USDC/Memo `immutable`, admin em duas fases, timelock de 48h
+      no saque, `failedRewards` com reenvio permissionless, guarda de reentrância
+- [x] Prova de foto server-side (a imagem passa a ser enviada e armazenada)
+- [x] Chaves separadas: admin (multisig) / relayer / verificador
+- [x] Endpoints de deploy e de rotação de admin removidos da API
+- [x] `config/networks.json` como fonte única de rede
+- [ ] Auditoria externa dos contratos — **congelar o código em 29/08**
+- [ ] Deploy dos contratos v5 e migração do estado
 
 ### Phase 2 — Community (in progress)
 - [ ] Goldsky subgraph deploy (rewards history + map)

@@ -24,7 +24,7 @@ import {
   decodeFunctionResult,
   type Log,
 } from 'viem';
-import { ARC_TESTNET_CONFIG } from '../config/arc';
+import { ARC_CONFIG, ARC_TESTNET_CONFIG } from '../config/arc';
 
 // ─── Arc Testnet Chain Definition ─────────────────────────────────────
 export const arcTestnet: Chain = {
@@ -46,29 +46,26 @@ export const arcTestnet: Chain = {
 };
 
 // ─── Contract Addresses ───────────────────────────────────────────────
+//
+// Todos vêm de config/networks.json via config/arc.ts. Estavam chumbados aqui,
+// e essa duplicação já custou caro: entre 31/07 e 05/08/2026 o mobile apontava
+// para o v4 e a web para o v3, sem ninguém notar por dias. O v3 segue on-chain,
+// com 34 locais e saldo — ele parece MAIS ativo que o v4, então contar locais
+// leva à conclusão errada sobre qual é o par vivo. Confira com
+// `node scripts/check-live-contracts.mjs` e pela data da última transação, não
+// pelo volume.
+//
+// lowercase de propósito: o viem no ambiente RN/browser valida checksum EIP-55
+// estritamente; minúsculo evita erro de checksum (o backend normaliza).
+const lower = (a: string | null) => (a ? (a.toLowerCase() as Address) : ('0x0000000000000000000000000000000000000000' as Address));
+
 export const CONTRACT_ADDRESSES = {
-  // USDC ERC-20 (6 decimals) — same asset as native, different representation
-  USDC_ERC20: '0x3600000000000000000000000000000000000000' as Address,
-  // Memo contract (Arc-native memo system)
-  MEMO: '0x5294E9927c3306DcBaDb03fe70b92e01cCede505' as Address,
-  // Stepless protocol contracts — v4 LIVE on Arc Testnet (redeploy 2026-07-31).
-  //
-  // Os v3 (oracle 0x53ba90e1..., distributor 0xdf8fa455...) NÃO sumiram: eles
-  // seguem on-chain, com 34 locais registrados e saldo em tesouraria. O que
-  // acontece é que o relayer parou de escrever neles — o ORACLE_ADDRESS passou
-  // a apontar para o v4. Apontar o app para o v3 mostraria locais que o backend
-  // não consegue mais verificar nem pagar.
-  //
-  // A distinção importa na hora de conferir: o v3 parece MAIS ativo que o v4
-  // (34 locais contra 1), então contar locais leva à conclusão errada. Confira
-  // com `node scripts/check-live-contracts.mjs` e pela data da última transação
-  // no ArcScan, não pelo volume.
-  // lowercase de propósito: o viem no ambiente RN/browser valida checksum EIP-55
-  // estritamente; usar tudo minúsculo evita erro de checksum (o backend normaliza).
-  STEPLESS_ORACLE: '0x69b3f9caca6514f76dd2f0dc4b54409e6d5da5cc' as Address,
-  REWARD_DISTRIBUTOR: '0xef5d148b126d8dcdc7d344dfa367c61acbb02ea0' as Address,
-  // X402API ainda não integrado (ver roadmap) — placeholder até o deploy.
-  X402_API: '0x0000000000000000000000000000000000000000' as Address,
+  // USDC ERC-20 (6 decimais) — mesmo ativo do nativo (18), representação diferente
+  USDC_ERC20: lower(ARC_CONFIG.usdcErc20Address),
+  MEMO: lower(ARC_CONFIG.memoContractAddress),
+  STEPLESS_ORACLE: lower(ARC_CONFIG.contracts.SteplessOracle),
+  REWARD_DISTRIBUTOR: lower(ARC_CONFIG.contracts.RewardDistributor),
+  X402_API: lower(ARC_CONFIG.contracts.X402API),
 } as const;
 
 // ─── RewardDistributor ABI ────────────────────────────────────────────

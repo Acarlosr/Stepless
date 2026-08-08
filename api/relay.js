@@ -1,37 +1,47 @@
 /**
  * api/relay.js — Vercel Serverless Function
- * Relayer para Arc Testnet: recebe dados do usuário, valida GPS via EXIF
- * e submete a transação com o EOA admin (paga o gas em USDC).
+ *
+ * Relayer: recebe a submissão do usuário, confere a PROVA DA FOTO produzida no
+ * servidor (api/upload.js) e submete a transação pagando o gas em USDC.
  *
  * POST /api/relay
  * Body: {
- *   action: 'submitContribution' | 'registerLocation',
+ *   action: 'registerLocation' | 'submitContribution',
  *   userAddress: '0x...',
+ *   photoToken: '<uuid devolvido por /api/upload>',
  *   submissionData: {
- *     locationHash, latPacked, lngPacked, dataHash,
- *     exifLat, exifLng, exifTimestamp,  ← validação anti-fraude
- *     name, categories                  ← salvos fora da chain (Upstash), opcionais
+ *     locationHash, latPacked, lngPacked,
+ *     name, categories,          ← salvos fora da chain (Upstash), opcionais
+ *     gpsSource, gpsAccuracyM    ← contexto para o verificador humano
  *   }
  * }
  *
- * Variáveis de ambiente no Vercel:
- *   RELAYER_PRIVATE_KEY, ORACLE_ADDRESS, ARC_RPC_URL
+ * ── MUDANÇA DE SEGURANÇA (auditoria de mainnet, achado C2) ─────────────────
+ * O cliente NÃO envia mais exifLat/exifLng/exifTimestamp/dataHash. Antes,
+ * enviava — e o servidor comparava dois números que vinham do mesmo POST, o que
+ * tornava todo o anti-fraude decorativo para quem usasse curl. Agora esses
+ * valores vêm do registro criado por /api/upload a partir dos BYTES da foto,
+ * e qualquer coisa que o cliente mande nesses campos é ignorada.
+ *
+ * ── MUDANÇA DE SEGURANÇA (achado C4) ──────────────────────────────────────
+ * A auto-autorização foi removida. O relayer chamava setAuthorizedCaller em si
+ * mesmo quando não estava autorizado — o que só funcionava porque ele era admin
+ * dos contratos. Agora, se não estiver autorizado, falha alto: é erro de
+ * configuração, não algo a se corrigir sozinho em produção.
  */
 
 import { createWalletClient, createPublicClient, http, fallback, keccak256, encodePacked, getAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { createHash } from 'crypto';
-import { store, contribKey, PENDING_LIST_KEY, clientIp } from './_stepless.js';
+import { createHash } from 'node:crypto';
+import { store, contribKey, PENDING_LIST_KEY, clientIp, cors, ORACLE_ABI, translateError, requirePersistentStore } from './_stepless.js';
+import { photoKey, photoHashKey } from './upload.js';
+import { chainConfig, rpcUrls, contractAddresses } from './_network.js';
 import { checkPlace } from './_placecheck.js';
 import { getReputation, bumpReputation, withinDailyQuota, scoreSubmission, shouldBlock } from './_risk.js';
 
-// ─── Off-chain metadata storage (Upstash Redis REST API) ────────────────────
-// O contrato só guarda locationHash (um hash unidirecional) — o nome e as
-// categorias escolhidas pelo usuário nunca vão para a chain. Para exibir isso
-// depois, guardamos locationHash → {name, categories} aqui, fora da chain.
-// Configure UPSTASH_REDIS_REST_URL e UPSTASH_REDIS_REST_TOKEN (free tier em
-// upstash.com) para habilitar; sem eles, o registro on-chain continua
-// funcionando normalmente, só sem nome/categorias salvos.
+// ─── Metadados fora da chain (Upstash Redis REST) ───────────────────────────
+// O contrato só guarda locationHash (hash unidirecional) — nome e categorias
+// nunca vão para a chain. Para exibir depois, guardamos aqui.
 async function saveLocationMeta(locationHash, meta) {
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -41,104 +51,20 @@ async function saveLocationMeta(locationHash, meta) {
     const value = JSON.stringify({
       name: meta.name,
       categories: Array.isArray(meta.categories) ? meta.categories : [],
-      // lat/lng reais calculados a partir do latPacked/lngPacked enviados no registro.
-      // Salvar aqui evita depender de escanear eventos on-chain depois (janela de
-      // blocos limitada e frágil) — a busca por endereço/GPS usa isso diretamente.
       lat: typeof meta.lat === 'number' ? meta.lat : null,
       lng: typeof meta.lng === 'number' ? meta.lng : null,
+      cid: meta.cid || null,
     });
     const res = await fetch(`${url}/set/${encodeURIComponent(key)}/${encodeURIComponent(value)}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) console.warn('[relay] Upstash save failed:', res.status, await res.text().catch(() => ''));
+    if (!res.ok) console.warn('[relay] Upstash save failed:', res.status);
   } catch (err) {
-    console.warn('[relay] Upstash save error (metadata not persisted):', err?.message);
+    console.warn('[relay] Upstash save error:', err?.message);
   }
 }
 
-// ─── RPC endpoints (fallback em ordem) ──────────────────────────────────────
-const ARC_RPC_URLS = [
-  process.env.ARC_RPC_URL, // Vercel: idealmente a URL da Alchemy
-  'https://rpc.testnet.arc.network', // fallback público
-].filter(Boolean);
-
-// ─── Arc Testnet chain config ───────────────────────────────────────────────
-const arcTestnet = {
-  id: 5042002,
-  name: 'Arc Testnet',
-  nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 6 },
-  rpcUrls: {
-    default: { http: ARC_RPC_URLS },
-  },
-  blockExplorers: {
-    default: { name: 'ArcScan', url: 'https://testnet.arcscan.app' },
-  },
-};
-
-// ─── SteplessOracle ABI ─────────────────────────────────────────────────────
-const ORACLE_ABI = [
-  {
-    name: 'registerLocation',
-    type: 'function',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'locationHash', type: 'bytes32' },
-      { name: 'latPacked',    type: 'uint256' },
-      { name: 'lngPacked',    type: 'uint256' },
-      { name: 'dataHash',     type: 'bytes32' },
-      { name: 'contributor',  type: 'address' }, // v2: contribuidor REAL
-    ],
-    outputs: [],
-  },
-  {
-    name: 'submitContribution',
-    type: 'function',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'contributionId',   type: 'bytes32' },
-      { name: 'locationHash',     type: 'bytes32' },
-      { name: 'contributionType', type: 'uint8'   },
-      { name: 'dataHash',         type: 'bytes32' },
-      { name: 'contributor',      type: 'address' }, // v2: contribuidor REAL
-    ],
-    outputs: [],
-  },
-  // Custom errors do contrato — sem isso, viem só mostra a assinatura em hex
-  // (ex: "0x06eaa269") em vez do nome legível ("LocationAlreadyRegistered").
-  { type: 'error', name: 'Unauthorized', inputs: [] },
-  { type: 'error', name: 'ZeroAddress', inputs: [] },
-  { type: 'error', name: 'LocationAlreadyRegistered', inputs: [{ name: 'locationHash', type: 'bytes32' }] },
-  { type: 'error', name: 'LocationNotFound', inputs: [{ name: 'locationHash', type: 'bytes32' }] },
-  { type: 'error', name: 'ContributionAlreadyExists', inputs: [{ name: 'contributionId', type: 'bytes32' }] },
-  { type: 'error', name: 'ContributionNotFound', inputs: [{ name: 'contributionId', type: 'bytes32' }] },
-  { type: 'error', name: 'AlreadyVerified', inputs: [{ name: 'contributionId', type: 'bytes32' }] },
-  { type: 'error', name: 'NotAVerifier', inputs: [{ name: 'addr', type: 'address' }] },
-  { type: 'error', name: 'SelfVerificationForbidden', inputs: [] },
-  { type: 'error', name: 'CooldownActive', inputs: [] },
-];
-
-// ─── ABI para auto-autorização do relayer ───────────────────────────────────
-const AUTH_ABI = [
-  {
-    name: 'setAuthorizedCaller',
-    type: 'function',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'caller',     type: 'address' },
-      { name: 'authorized', type: 'bool'    },
-    ],
-    outputs: [],
-  },
-  {
-    name: 'authorizedCallers',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: '', type: 'address' }],
-    outputs: [{ name: '', type: 'bool' }],
-  },
-];
-
-// ─── Haversine distance (km) ─────────────────────────────────────────────────
+// ─── Distância Haversine (km) ───────────────────────────────────────────────
 function haversineKm(lat1, lng1, lat2, lng2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -150,108 +76,90 @@ function haversineKm(lat1, lng1, lat2, lng2) {
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// ─── EXIF anti-fraud validation ──────────────────────────────────────────────
-// MAX_DISTANCE_KM: distância máxima aceita entre GPS do EXIF e local registrado
-const MAX_DISTANCE_KM = 0.5; // 500 metros
-// MAX_PHOTO_AGE_DAYS: foto não pode ter mais de 7 dias
+// Distância máxima entre o GPS da foto e o local declarado.
+const MAX_DISTANCE_KM = 0.5;
+// Idade máxima da foto.
 const MAX_PHOTO_AGE_DAYS = 7;
 
 /**
- * Retorna { ok, severity, error, distKm }.
+ * Valida a prova de foto MEDIDA PELO SERVIDOR contra o local declarado.
  *
  * `severity` separa dois problemas que antes eram tratados igual:
  *
- *   'missing'  — a foto não trouxe GPS. Não é indício de fraude: muita gente
- *                usa a câmera com geolocalização desligada, e no Android o
- *                recorte da imagem apaga o EXIF. Punir isso com bloqueio
- *                excluiria contribuidores legítimos, então respeita a env
- *                EXIF_REQUIRED.
- *   'stale'    — foto antiga. Idem, é um sinal fraco.
+ *   'missing'  — a foto não trouxe GPS. Não é indício de fraude: muita gente usa
+ *                a câmera com geolocalização desligada, e no Android recortar a
+ *                imagem apaga o EXIF. Bloquear excluiria contribuidores
+ *                legítimos, então respeita a env EXIF_REQUIRED.
+ *   'stale'    — foto antiga. Idem, sinal fraco.
  *   'mismatch' — a foto TEM GPS e ele aponta para longe do ponto declarado.
- *                Aqui não há interpretação benigna plausível: bloqueia sempre,
- *                independente de EXIF_REQUIRED. Era o buraco mais grave —
- *                bastava EXIF_REQUIRED=false para uma foto tirada em outra
- *                cidade passar com um aviso no log.
+ *                Não há leitura benigna: bloqueia sempre, independente de
+ *                EXIF_REQUIRED.
  */
-function validateExif(exifLat, exifLng, exifTimestamp, latPacked, lngPacked) {
-  // Se EXIF não veio, bloqueia — foto é obrigatória
-  if (exifLat == null || exifLng == null) {
-    return { ok: false, severity: 'missing', error: 'Foto sem dados de GPS. Ative a localização na câmera e tente novamente.' };
+function validatePhotoProof(exif, latPacked, lngPacked) {
+  if (!exif.hasGps || exif.lat == null || exif.lng == null) {
+    return {
+      ok: false, severity: 'missing',
+      error: 'Foto sem dados de GPS. Ative a localização na câmera e tire a foto de novo (evite recortar a imagem, isso apaga o GPS).',
+    };
   }
 
-  // Verifica timestamp (foto recente)
-  if (exifTimestamp) {
-    const photoDate = new Date(exifTimestamp);
-    const ageMs = Date.now() - photoDate.getTime();
-    const ageDays = ageMs / (1000 * 60 * 60 * 24);
+  if (exif.timestamp) {
+    const ageDays = (Date.now() - new Date(exif.timestamp).getTime()) / (1000 * 60 * 60 * 24);
     if (ageDays > MAX_PHOTO_AGE_DAYS) {
-      return { ok: false, severity: 'stale', error: `Foto muito antiga (${Math.round(ageDays)} dias). Use uma foto tirada nos últimos ${MAX_PHOTO_AGE_DAYS} dias.` };
+      return {
+        ok: false, severity: 'stale',
+        error: `Foto muito antiga (${Math.round(ageDays)} dias). Use uma foto tirada nos últimos ${MAX_PHOTO_AGE_DAYS} dias.`,
+      };
     }
   }
 
-  // Verifica distância entre EXIF GPS e local registrado.
-  // latPacked/lngPacked chegam com offset (dashboard.js: (lat+90)*1e6 e
-  // (lng+180)*1e6 — ver unpackLat/unpackLng) para caberem em uint256 sem
-  // negativos. Sem subtrair o offset aqui, claimedLat/claimedLng ficavam
-  // ~90/~180 graus errados, o que faz a distância Haversine para QUALQUER
-  // local dar milhares de km — ou seja, com EXIF_REQUIRED=true este check
-  // bloquearia 100% dos registros legítimos (mascarado hoje só porque
-  // EXIF_REQUIRED=false faz o erro virar warning em vez de bloqueio).
+  // latPacked/lngPacked chegam com offset ((lat+90)*1e6, (lng+180)*1e6) para
+  // caberem em uint256 sem negativos. Sem subtrair o offset aqui, a distância
+  // Haversine para QUALQUER local daria milhares de km.
   const claimedLat = latPacked / 1e6 - 90;
   const claimedLng = lngPacked / 1e6 - 180;
-  const distKm = haversineKm(exifLat, exifLng, claimedLat, claimedLng);
+  const distKm = haversineKm(exif.lat, exif.lng, claimedLat, claimedLng);
 
   if (distKm > MAX_DISTANCE_KM) {
     return {
-      ok: false,
-      severity: 'mismatch',
-      distKm,
-      error: `GPS da foto (${distKm.toFixed(1)}km de distância) não corresponde ao local registrado. A foto deve ser tirada no local.`,
+      ok: false, severity: 'mismatch', distKm,
+      error: `O GPS da foto está a ${distKm.toFixed(1)} km do local informado. A foto precisa ser tirada no local.`,
     };
   }
 
   return { ok: true, severity: null, distKm };
 }
 
-// ─── Handler principal ───────────────────────────────────────────────────────
+// ─── Handler ────────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
+  cors(res, 'POST, OPTIONS', req);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
-  if (!process.env.RELAYER_PRIVATE_KEY) {
-    return res.status(500).json({ success: false, error: 'Relayer not configured' });
-  }
-  if (!process.env.ORACLE_ADDRESS) {
-    return res.status(500).json({ success: false, error: 'Oracle address not configured' });
-  }
+  if (!requirePersistentStore(res)) return;
 
-  // ── Rate limit: 6 escritas/min por IP (evita drenagem do gas do relayer) ──
+  // Rate limit por IP: trava rajadas.
   if (!(await store.rateLimit(`relay:${clientIp(req)}`, 6, 60))) {
     return res.status(429).json({ success: false, error: 'Muitas requisições. Aguarde um minuto e tente de novo.' });
   }
 
-  const { action, userAddress, submissionData } = req.body || {};
+  const { action, userAddress, submissionData, photoToken } = req.body || {};
 
   if (!action || !userAddress || !submissionData) {
-    return res.status(400).json({ success: false, error: 'Missing: action, userAddress, submissionData' });
+    return res.status(400).json({ success: false, error: 'Faltando: action, userAddress, submissionData' });
   }
   if (!['submitContribution', 'registerLocation'].includes(action)) {
-    return res.status(400).json({ success: false, error: `Unknown action: ${action}` });
+    return res.status(400).json({ success: false, error: `Ação desconhecida: ${action}` });
   }
   if (!/^0x[0-9a-fA-F]{40}$/.test(userAddress)) {
-    return res.status(400).json({ success: false, error: 'Invalid userAddress' });
+    return res.status(400).json({ success: false, error: 'userAddress inválido' });
   }
 
-  // ── Quota diária por CARTEIRA ────────────────────────────────────────────
-  // O rate limit por IP acima trava rajadas, mas trocar de rede o anula. Como
-  // o endereço é onde o USDC cai, limitar por endereço é o que de fato limita
-  // quanto uma pessoa consegue extrair por dia.
+  // Quota diária por CARTEIRA. O rate limit por IP acima é anulado trocando de
+  // rede; como o endereço é onde o USDC cai, limitar por endereço é o que de
+  // fato limita quanto uma pessoa extrai por dia.
   if (!(await withinDailyQuota(userAddress))) {
     return res.status(429).json({
       success: false,
@@ -259,150 +167,160 @@ export default async function handler(req, res) {
     });
   }
 
+  // ── Prova da foto ────────────────────────────────────────────────────────
+  // Único caminho de entrada para EXIF e dataHash. Nada aqui vem do cliente.
+  if (!photoToken || typeof photoToken !== 'string') {
+    return res.status(400).json({
+      success: false,
+      error: 'Envie a foto em /api/upload primeiro e repasse o photoToken recebido.',
+    });
+  }
+  const photo = await store.getJSON(photoKey(photoToken));
+  if (!photo) {
+    return res.status(422).json({
+      success: false,
+      error: 'Prova da foto expirada ou não encontrada. Envie a foto novamente.',
+    });
+  }
+  if (photo.used) {
+    // Sem isto, a mesma foto registraria N locais diferentes.
+    return res.status(409).json({ success: false, error: 'Esta foto já foi usada em outra contribuição.' });
+  }
+  if (photo.user !== userAddress.toLowerCase()) {
+    return res.status(403).json({ success: false, error: 'Esta foto foi enviada por outra carteira.' });
+  }
+
   const reputation = await getReputation(userAddress);
 
   try {
-    const pk = process.env.RELAYER_PRIVATE_KEY.startsWith('0x')
-      ? process.env.RELAYER_PRIVATE_KEY
-      : `0x${process.env.RELAYER_PRIVATE_KEY}`;
+    const relayerPk = process.env.RELAYER_PRIVATE_KEY;
+    if (!relayerPk) {
+      return res.status(500).json({ success: false, error: 'Relayer não configurado.' });
+    }
+    const account = privateKeyToAccount(relayerPk.startsWith('0x') ? relayerPk : `0x${relayerPk}`);
 
-    const account = privateKeyToAccount(pk);
-    // Resiliência: tenta vários RPCs em ordem (fallback) + retry/backoff em cada.
-    // Timeouts CURTOS de propósito: a função serverless da Vercel tem um limite
-    // de execução (10s no Hobby, configurável em vercel.json). Se o retry total
-    // ultrapassar esse limite, a Vercel mata a função e devolve uma página HTML
-    // de erro — o frontend recebe "Unexpected token" ao tentar parsear como
-    // JSON. Preferimos falhar rápido com uma mensagem JSON clara.
+    // Timeouts CURTOS de propósito: a função serverless tem limite de execução
+    // (maxDuration no vercel.json). Se o retry total ultrapassar esse limite, a
+    // Vercel mata a função e devolve HTML — o frontend recebe "Unexpected
+    // token" ao tentar parsear como JSON. Melhor falhar rápido com JSON claro.
     const rpcTransport = () => fallback(
-      ARC_RPC_URLS.map((url) => http(url, { retryCount: 1, retryDelay: 400, timeout: 6_000 })),
+      rpcUrls().map((url) => http(url, { retryCount: 1, retryDelay: 400, timeout: 6_000 })),
       { rank: false },
     );
-    const publicClient = createPublicClient({ chain: arcTestnet, transport: rpcTransport() });
-    const walletClient = createWalletClient({ account, chain: arcTestnet, transport: rpcTransport() });
-    const oracleAddress = getAddress(process.env.ORACLE_ADDRESS.toLowerCase());
+    const chain = chainConfig();
+    const publicClient = createPublicClient({ chain, transport: rpcTransport() });
+    const walletClient = createWalletClient({ account, chain, transport: rpcTransport() });
 
-    // ── Auto-autorização: verifica e autoriza o relayer se necessário ─────
-    try {
-      const isAuthorized = await publicClient.readContract({
-        address: oracleAddress,
-        abi: AUTH_ABI,
-        functionName: 'authorizedCallers',
-        args: [account.address],
-      });
-      if (!isAuthorized) {
-        console.log('[relay] Not authorized — calling setAuthorizedCaller...');
-        const authTx = await walletClient.writeContract({
-          address: oracleAddress,
-          abi: AUTH_ABI,
-          functionName: 'setAuthorizedCaller',
-          args: [account.address, true],
-        });
-        await publicClient.waitForTransactionReceipt({ hash: authTx });
-        console.log('[relay] Self-authorized successfully:', authTx);
-      }
-    } catch (authErr) {
-      // Se falhar (relayer não é admin), loga e continua — o writeContract vai revelar o erro real
-      console.warn('[relay] Auto-auth skipped:', authErr?.shortMessage || authErr?.message);
+    const oracleRaw = contractAddresses().SteplessOracle;
+    if (!oracleRaw) {
+      return res.status(500).json({ success: false, error: 'Endereço do Oracle não configurado.' });
     }
+    const oracleAddress = getAddress(oracleRaw.toLowerCase());
+
+    // NOTA: a auto-autorização foi REMOVIDA aqui. Se o relayer não estiver
+    // autorizado, o writeContract abaixo reverte com Unauthorized e o
+    // translateError explica o que rodar. Corrigir permissão sozinho, em
+    // produção, exigia que o relayer fosse admin — o acoplamento que a
+    // auditoria pediu para quebrar.
 
     let txHash;
     let contributionId = null;
-    // Evidências que o verificador humano vai ler antes de aprovar. Nenhuma
-    // delas bloqueia sozinha (salvo o mismatch de GPS); elas existem para que
-    // a aprovação deixe de ser um clique às cegas.
-    let exifEvidence = null;  // onde/quando a foto foi capturada
-    let placeEvidence = null; // o que o OpenStreetMap diz sobre o ponto
-    let riskAssessment = null; // os dois acima + histórico, num score só
-    let placePromise = null;  // consulta ao OSM em voo, aguardada após as txs
+    let placePromise = null;
+    let placeEvidence = null;
+    let riskAssessment = null;
+
+    // Evidência derivada dos bytes da foto — é isto que o verificador humano lê.
+    const photoEvidence = {
+      dataHash: photo.dataHash,
+      cid: photo.cid,
+      sha256: photo.sha256,
+      bytes: photo.bytes,
+      hasGps: photo.exif.hasGps,
+      photoTs: photo.exif.timestamp,
+      camera: [photo.exif.make, photo.exif.model].filter(Boolean).join(' ') || null,
+      // Marcado explicitamente: o verificador precisa saber que estes números
+      // foram MEDIDOS aqui, não declarados por quem submeteu.
+      source: 'server-extracted',
+    };
 
     // ── submitContribution ────────────────────────────────────────────────
     if (action === 'submitContribution') {
-      const { locationHash, contributionType, dataHash } = submissionData;
-      if (!locationHash || contributionType === undefined || !dataHash) {
+      const { locationHash, contributionType } = submissionData;
+      if (!locationHash || contributionType === undefined) {
         return res.status(400).json({
           success: false,
-          error: 'submitContribution requires: locationHash, contributionType, dataHash',
+          error: 'submitContribution exige: locationHash, contributionType',
         });
       }
       contributionId = `0x${createHash('sha256')
-        .update(`${locationHash}${userAddress}${Date.now()}`)
+        .update(`${locationHash}${userAddress}${photo.dataHash}${Date.now()}`)
         .digest('hex')}`;
 
       txHash = await walletClient.writeContract({
         address: oracleAddress,
         abi: ORACLE_ABI,
         functionName: 'submitContribution',
-        args: [contributionId, locationHash, Number(contributionType), dataHash, userAddress],
+        args: [contributionId, locationHash, Number(contributionType), photo.dataHash, userAddress],
       });
     }
 
     // ── registerLocation ──────────────────────────────────────────────────
     if (action === 'registerLocation') {
-      const { locationHash, latPacked, lngPacked, dataHash, exifLat, exifLng, exifTimestamp, gpsSource, gpsAccuracyM } = submissionData;
+      const { locationHash, latPacked, lngPacked, gpsSource, gpsAccuracyM } = submissionData;
 
       if (!locationHash || latPacked == null || lngPacked == null) {
         return res.status(400).json({
           success: false,
-          error: 'registerLocation requires: locationHash, latPacked, lngPacked',
+          error: 'registerLocation exige: locationHash, latPacked, lngPacked',
         });
       }
 
-      // ── Anti-fraude: valida EXIF GPS ──────────────────────────────────
-      // EXIF_REQUIRED só governa os sinais AMBÍGUOS (foto sem GPS, foto
-      // antiga). Um GPS que existe e aponta para longe é contradição direta e
-      // bloqueia sempre — deixar isso passar com EXIF_REQUIRED=false permitia
-      // registrar um local do outro lado do país com uma foto qualquer.
+      // ── Anti-fraude: GPS da foto × local declarado ────────────────────
+      // EXIF_REQUIRED governa apenas os sinais AMBÍGUOS (sem GPS, foto antiga).
+      // Um GPS que existe e aponta para longe é contradição direta e bloqueia
+      // sempre.
       const exifRequired = process.env.EXIF_REQUIRED !== 'false';
-      const exifCheck = validateExif(exifLat, exifLng, exifTimestamp, Number(latPacked), Number(lngPacked));
-      if (!exifCheck.ok) {
-        if (exifCheck.severity === 'mismatch' || exifRequired) {
-          return res.status(422).json({ success: false, error: exifCheck.error });
+      const check = validatePhotoProof(photo.exif, Number(latPacked), Number(lngPacked));
+      if (!check.ok) {
+        if (check.severity === 'mismatch' || exifRequired) {
+          return res.status(422).json({ success: false, error: check.error });
         }
-        console.warn('[relay] EXIF warning (sinal fraco, não bloqueia):', exifCheck.error);
+        console.warn('[relay] aviso de foto (sinal fraco, não bloqueia):', check.error);
       }
-      // Guarda o resultado da checagem para o verificador ver depois. A foto
-      // em si nunca é armazenada (só o hash), então esta é a única evidência
-      // que sobra sobre onde/quando a imagem foi capturada.
-      exifEvidence = {
-        ok: exifCheck.ok,
-        severity: exifCheck.severity ?? null,
-        distKm: exifCheck.distKm ?? null,
-        hasGps: exifLat != null && exifLng != null,
-        gpsSource: gpsSource ?? null,
-        gpsAccuracyM: Number.isFinite(Number(gpsAccuracyM)) ? Number(gpsAccuracyM) : null,
-        photoTs: exifTimestamp || null,
-        warning: exifCheck.ok ? null : exifCheck.error,
-      };
+      photoEvidence.ok = check.ok;
+      photoEvidence.severity = check.severity ?? null;
+      photoEvidence.distKm = check.distKm ?? null;
+      photoEvidence.warning = check.ok ? null : check.error;
+      photoEvidence.gpsSource = gpsSource ?? null;
+      photoEvidence.gpsAccuracyM = Number.isFinite(Number(gpsAccuracyM)) ? Number(gpsAccuracyM) : null;
 
       // ── Anti-fraude: o local declarado existe no mundo? ───────────────
-      // O EXIF prova presença, não identidade do lugar. Esta é a checagem que
-      // responde "isso é mesmo uma padaria?" — ver api/_placecheck.js.
+      // O EXIF prova presença, não identidade do lugar. Esta checagem responde
+      // "isso é mesmo uma padaria?" — ver api/_placecheck.js.
       //
-      // ⚠️ LATÊNCIA: o Overpass é um serviço público lento e pode custar
-      // segundos. Esta função já gasta o orçamento dela com DUAS transações
-      // on-chain (registerLocation + submitContribution, ambas com espera de
-      // recibo) dentro do maxDuration de 30s do vercel.json. Por isso a
-      // consulta é DISPARADA aqui mas só é aguardada depois das transações —
-      // o tempo do Overpass corre em paralelo com o da blockchain e some.
+      // ⚠️ LATÊNCIA: o Overpass é um serviço público lento. Esta função já gasta
+      // o orçamento dela com DUAS transações on-chain, ambas com espera de
+      // recibo, dentro do maxDuration. Por isso a consulta é DISPARADA aqui mas
+      // só aguardada depois das transações — o tempo do Overpass corre em
+      // paralelo com o da blockchain e some.
       const realLat = Number(latPacked) / 1e6 - 90;
       const realLng = Number(lngPacked) / 1e6 - 180;
       placePromise = checkPlace({ lat: realLat, lng: realLng, name: submissionData.name || '' });
-      // Sem isto, uma rejeição do Overpass entre o disparo e o await vira
-      // unhandled rejection e derruba o processo em algumas runtimes.
+      // Sem isto, uma rejeição entre o disparo e o await vira unhandled
+      // rejection e derruba o processo em algumas runtimes.
       placePromise.catch(() => {});
 
-      // A exceção é quando o operador LIGOU o bloqueio automático
-      // (RISK_BLOCK_THRESHOLD). Aí não dá para paralelizar: precisamos do
-      // veredito antes de gastar gas, e quem ligou a trava aceitou a espera.
+      // A exceção é quando o operador LIGOU o bloqueio automático: aí precisamos
+      // do veredito antes de gastar gas, e quem ligou a trava aceitou a espera.
       if (Number(process.env.RISK_BLOCK_THRESHOLD || 0) > 0) {
         placeEvidence = await placePromise;
         riskAssessment = scoreSubmission({
-          exif: exifEvidence,
+          exif: photoEvidence,
           place: placeEvidence,
           reputation,
           gpsSource: gpsSource ?? null,
           gpsAccuracyM: Number(gpsAccuracyM),
-          photoTs: exifTimestamp || null,
+          photoTs: photo.exif.timestamp,
         });
         if (shouldBlock(riskAssessment.score)) {
           return res.status(422).json({
@@ -413,51 +331,77 @@ export default async function handler(req, res) {
         }
       }
 
-      // dataHash inclui hash da foto + coords EXIF para prova imutável
-      const finalDataHash = dataHash || keccak256(encodePacked(
-        ['bytes32', 'int256', 'int256'],
-        [locationHash, BigInt(latPacked), BigInt(lngPacked)]
-      ));
-
+      // dataHash = hash dos bytes da foto (calculado em /api/upload).
+      // Antes era calculado pelo cliente e não correspondia a arquivo nenhum.
       txHash = await walletClient.writeContract({
         address: oracleAddress,
         abi: ORACLE_ABI,
         functionName: 'registerLocation',
-        args: [locationHash, BigInt(latPacked), BigInt(lngPacked), finalDataHash, userAddress],
+        args: [locationHash, BigInt(latPacked), BigInt(lngPacked), photo.dataHash, userAddress],
       });
     }
 
+    // Espera a confirmação ANTES de qualquer marcação irreversível.
+    //
+    // writeContract() só garante que a transação foi SUBMETIDA — não que ela
+    // foi minerada com sucesso. Marcar a foto como usada e o hash como
+    // bloqueado permanentemente antes de saber o resultado da tx significava
+    // que uma reversão on-chain (nonce, RPC instável, corrida com outro
+    // registro do mesmo local) queimava a foto de um usuário legítimo para
+    // sempre, sem nenhum local ter sido registrado. Achado de code review,
+    // 2026-08-08.
     const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+    if (receipt.status !== 'success') {
+      return res.status(409).json({
+        success: false,
+        error: 'A transação não foi confirmada on-chain. A foto não foi consumida — tente novamente.',
+        txHash,
+        status: receipt.status,
+      });
+    }
 
-    // ── Cria a contribuição recompensável para o novo local ───────────────
+    // Queima o token E registra o HASH DA IMAGEM permanentemente.
+    //
+    // Queimar só o token não bastava: bastava subir o mesmo arquivo de novo
+    // para receber um token novo. Com o hash registrado, a mesma foto não
+    // serve para um segundo local — que é o ataque mais barato que existe
+    // contra um sistema de recompensa por foto (baixar uma imagem de rampa da
+    // internet e submetê-la N vezes).
+    //
+    // Sem TTL de propósito: a validade da imagem é para sempre. Só grava aqui,
+    // depois de confirmar sucesso — ver comentário acima.
+    await store.setJSON(photoKey(photoToken), { ...photo, used: true }, 15 * 60);
+    await store.setJSON(photoHashKey(photo.dataHash), {
+      user: userAddress.toLowerCase(),
+      locationHash: submissionData.locationHash,
+      cid: photo.cid,
+      ts: Date.now(),
+    });
+
+    // ── Cria a contribuição recompensável do novo local ───────────────────
     // registerLocation sozinho não gera nada "pagável" — o RewardDistributor
-    // paga por contributionId verificado. Então criamos a contribuição
-    // NewLocation aqui, na mesma chamada, e guardamos a atribuição ao
-    // usuário REAL (on-chain o msg.sender é o relayer).
+    // paga por contributionId verificado.
     let contributionTx = null;
     if (action === 'registerLocation') {
-      const { locationHash, dataHash } = submissionData;
+      const { locationHash } = submissionData;
       contributionId = `0x${createHash('sha256')
-        .update(`${locationHash}${userAddress}${Date.now()}`)
+        .update(`${locationHash}${userAddress}${photo.dataHash}${Date.now()}`)
         .digest('hex')}`;
       try {
         contributionTx = await walletClient.writeContract({
           address: oracleAddress,
           abi: ORACLE_ABI,
           functionName: 'submitContribution',
-          args: [contributionId, locationHash, 0 /* NewLocation */, dataHash || locationHash, userAddress],
+          args: [contributionId, locationHash, 0 /* NewLocation */, photo.dataHash, userAddress],
         });
         await publicClient.waitForTransactionReceipt({ hash: contributionTx });
       } catch (cErr) {
-        console.warn('[relay] submitContribution after register failed:', cErr?.shortMessage || cErr?.message);
+        console.warn('[relay] submitContribution após registro falhou:', cErr?.shortMessage || cErr?.message);
         contributionId = null; // local registrado, mas sem contribuição pagável
       }
     }
 
     // ── Resolve o cross-check com o OSM ───────────────────────────────────
-    // Disparado lá em cima, correu em paralelo com as transações — a esta
-    // altura quase sempre já terminou e o await é instantâneo. Nunca deixamos
-    // uma falha aqui derrubar um registro que já está gravado na chain.
     if (placePromise && !placeEvidence) {
       try {
         placeEvidence = await placePromise;
@@ -465,19 +409,17 @@ export default async function handler(req, res) {
         placeEvidence = { verdict: 'unknown', risk: 0, reason: `Checagem de local indisponível (${pErr?.message || pErr}).`, pois: [] };
       }
       riskAssessment = scoreSubmission({
-        exif: exifEvidence,
+        exif: photoEvidence,
         place: placeEvidence,
         reputation,
         gpsSource: submissionData.gpsSource ?? null,
         gpsAccuracyM: Number(submissionData.gpsAccuracyM),
-        photoTs: submissionData.exifTimestamp || null,
+        photoTs: photo.exif.timestamp,
       });
     }
 
-    // ── Registra pendência p/ verificação + atribuição do usuário real ────
+    // ── Pendência para verificação ────────────────────────────────────────
     if (contributionId) {
-      // Desempacota as coordenadas para o verificador poder situar o local no
-      // mapa. Sem isto ele só veria um hash e um nome — aprovação às cegas.
       const pLat = Number(submissionData.latPacked);
       const pLng = Number(submissionData.lngPacked);
 
@@ -488,11 +430,14 @@ export default async function handler(req, res) {
         categories: Array.isArray(submissionData.categories) ? submissionData.categories : [],
         lat: Number.isFinite(pLat) ? pLat / 1e6 - 90 : null,
         lng: Number.isFinite(pLng) ? pLng / 1e6 - 180 : null,
-        exif: exifEvidence,
+        // O verificador consegue ABRIR a foto e conferir o hash — antes só via
+        // um hash sem arquivo por trás.
+        photo: photoEvidence,
+        ipfsUrl: photo.cid ? `https://gateway.pinata.cloud/ipfs/${photo.cid}` : null,
         place: placeEvidence,
         risk: riskAssessment,
-        // Congelado no momento da submissão: se a carteira for rejeitada
-        // depois, o verificador ainda vê qual era o histórico quando decidiu.
+        // Congelado na submissão: se a carteira for rejeitada depois, o
+        // verificador ainda vê qual era o histórico quando decidiu.
         reputationAtSubmit: reputation,
         rewardType: action === 'registerLocation' ? 'NewLocation' : 'LocationUpdate',
         status: 'pending',
@@ -502,10 +447,7 @@ export default async function handler(req, res) {
       await bumpReputation(userAddress, 'submitted');
     }
 
-    // Salva nome + categorias + lat/lng fora da chain (best-effort — não bloqueia a resposta em caso de falha)
     if (action === 'registerLocation' && submissionData.name) {
-      // latPacked/lngPacked vêm empacotados (offset +90/+180, *1e6) — desempacota
-      // para lat/lng reais antes de salvar, no mesmo formato usado no frontend.
       const packedLat = Number(submissionData.latPacked);
       const packedLng = Number(submissionData.lngPacked);
       await saveLocationMeta(submissionData.locationHash, {
@@ -513,6 +455,7 @@ export default async function handler(req, res) {
         categories: submissionData.categories,
         lat: Number.isFinite(packedLat) ? packedLat / 1e6 - 90 : null,
         lng: Number.isFinite(packedLng) ? packedLng / 1e6 - 180 : null,
+        cid: photo.cid,
       });
     }
 
@@ -521,54 +464,25 @@ export default async function handler(req, res) {
       txHash,
       contributionId,
       contributionTx,
+      dataHash: photo.dataHash,
+      cid: photo.cid,
       blockNumber: receipt.blockNumber?.toString(),
       status: receipt.status,
-      // Devolvido para o app poder avisar o usuário que a contribuição vai
-      // demorar mais para ser aprovada — melhor do que silêncio seguido de
-      // uma rejeição inexplicada dias depois.
       risk: riskAssessment ? { level: riskAssessment.level, score: riskAssessment.score } : null,
     });
 
   } catch (err) {
     console.error('[relay] Error:', err);
-    const msg = err?.shortMessage || err?.message || String(err);
-    if (/blocklist|blocked/i.test(msg)) {
-      return res.status(403).json({ success: false, error: 'Endereço bloqueado pelo sistema anti-drenagem da Arc.' });
-    }
-    if (/insufficient|balance/i.test(msg)) {
-      return res.status(402).json({ success: false, error: 'Relayer sem saldo USDC para gas.' });
-    }
-    // Custom errors do contrato — nomes legíveis (viem decodifica via ORACLE_ABI acima)
-    if (/LocationAlreadyRegistered|06eaa269/i.test(msg)) {
-      return res.status(409).json({ success: false, error: 'Esse local (mesma coordenada e nome) já foi registrado antes.' });
-    }
-    if (/AlreadyVerified/i.test(msg)) {
-      return res.status(409).json({ success: false, error: 'Essa contribuição já foi verificada.' });
-    }
-    if (/NotAVerifier/i.test(msg)) {
-      return res.status(403).json({ success: false, error: 'Esse endereço não é um verificador aprovado.' });
-    }
-    if (/SelfVerificationForbidden/i.test(msg)) {
-      return res.status(403).json({ success: false, error: 'Não é permitido verificar sua própria contribuição.' });
-    }
-    if (/CooldownActive/i.test(msg)) {
-      return res.status(429).json({ success: false, error: 'Aguarde o período de cooldown antes de tentar de novo.' });
-    }
-    if (/ContributionNotFound/i.test(msg)) {
-      return res.status(404).json({ success: false, error: 'Contribuição ou local não encontrado.' });
-    }
-    if (/Unauthorized/i.test(msg)) {
-      return res.status(403).json({ success: false, error: 'Relayer não autorizado para essa ação no contrato.' });
-    }
-    // Revert genérico no registro (viem não decodificou o motivo, comum sob RPC
-    // instável): o caso de longe mais frequente é DUPLICATA — o mesmo local
-    // (coordenada + nome) já foi registrado, e o contrato rejeita repetição.
-    if (action === 'registerLocation' && /revert/i.test(msg)) {
+    const t = translateError(err);
+
+    // Revert genérico no registro (o viem não decodificou o motivo, comum sob
+    // RPC instável): o caso mais frequente é DUPLICATA.
+    if (t.status === 500 && action === 'registerLocation' && /revert/i.test(t.detail || t.error || '')) {
       return res.status(409).json({
         success: false,
-        error: 'Não deu pra registrar. Motivo mais provável: este local (mesma coordenada e nome) já foi registrado antes — tente um nome um pouco diferente. Se o RPC estiver instável, aguarde alguns segundos e tente de novo.',
+        error: 'Não deu pra registrar. Motivo mais provável: este local (mesma coordenada e nome) já foi registrado — tente um nome um pouco diferente. Se o RPC estiver instável, aguarde alguns segundos e tente de novo.',
       });
     }
-    return res.status(500).json({ success: false, error: msg });
+    return res.status(t.status).json({ success: false, error: t.error, detail: t.detail });
   }
 }

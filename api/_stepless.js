@@ -4,78 +4,94 @@
  */
 
 import { timingSafeEqual } from 'node:crypto';
-import { createWalletClient, createPublicClient, http, fallback, getAddress, keccak256, toBytes, recoverMessageAddress } from 'viem';
+import { createWalletClient, createPublicClient, http, fallback, getAddress, recoverMessageAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-
-// ─── RPC endpoints ───────────────────────────────────────────────────────────
-// Lista de RPCs tentados em ordem. Se o primeiro falhar (429/timeout/erro),
-// o viem cai para o próximo automaticamente. Configure ARC_RPC_URL na Vercel
-// para colocar um nó dedicado no topo da lista.
-const ARC_RPC_URLS = [
-  process.env.ARC_RPC_URL, // Vercel: idealmente a URL da Alchemy
-  'https://rpc.testnet.arc.network', // fallback público
-].filter(Boolean);
+import { chainConfig, rpcUrls, contractAddresses, NETWORK_NAME } from './_network.js';
 
 // ─── Chain ───────────────────────────────────────────────────────────────────
-export const arcTestnet = {
-  id: 5042002,
-  name: 'Arc Testnet',
-  nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 }, // native = 18 dec
-  rpcUrls: { default: { http: ARC_RPC_URLS } },
-  blockExplorers: { default: { name: 'ArcScan', url: 'https://testnet.arcscan.app' } },
-};
+// Tudo (chainId, RPCs, decimais do nativo, explorer) vem de
+// config/networks.json via api/_network.js. Antes, cada arquivo declarava a
+// sua própria cópia e elas divergiram na prática: relay.js dizia que o USDC
+// nativo tinha 6 decimais e este arquivo dizia 18, para a MESMA rede. O viem
+// usa esse número para formatar saldo e estimar gas.
+export const chain = chainConfig();
+
+/** @deprecated Mantido só para não quebrar imports antigos. Use `chain`. */
+export const arcTestnet = chain;
 
 // Transport resiliente: fallback entre vários RPCs + retry/backoff em cada um.
 // Timeouts curtos de propósito — ver nota em api/relay.js sobre o limite de
 // execução da função serverless da Vercel (evita "Unexpected token" no cliente
 // quando a Vercel mata a função por timeout e devolve HTML em vez de JSON).
 const arcTransport = () => fallback(
-  ARC_RPC_URLS.map((url) => http(url, { retryCount: 1, retryDelay: 400, timeout: 6_000 })),
+  rpcUrls().map((url) => http(url, { retryCount: 1, retryDelay: 400, timeout: 6_000 })),
   { rank: false }, // mantém a ordem da lista (não re-ranqueia por latência)
 );
 
 export function publicClient() {
-  return createPublicClient({ chain: arcTestnet, transport: arcTransport() });
+  return createPublicClient({ chain, transport: arcTransport() });
 }
 
-function normalizePk(pk) {
-  return pk.startsWith('0x') ? pk : `0x${pk}`;
-}
-
-/** Conta do relayer (também é o admin dos contratos no deploy atual). */
-export function relayerAccount() {
-  return privateKeyToAccount(normalizePk(process.env.RELAYER_PRIVATE_KEY));
+function normalizePk(pk, envName) {
+  if (!pk) throw new Error(`${envName} não configurada no ambiente.`);
+  const normalized = pk.startsWith('0x') ? pk : `0x${pk}`;
+  if (!/^0x[0-9a-fA-F]{64}$/.test(normalized)) {
+    throw new Error(`${envName} não é uma chave privada válida (32 bytes em hex).`);
+  }
+  return normalized;
 }
 
 /**
- * Conta do verificador. Usa VERIFIER_PRIVATE_KEY se definida; caso contrário
- * deriva uma chave determinística da chave do relayer (precisa ser um endereço
- * DIFERENTE do relayer, porque o contrato proíbe auto-verificação — o
- * "contributor" on-chain é o próprio relayer).
+ * Conta do relayer — escreve no Oracle em nome dos usuários.
+ *
+ * NÃO deve ser o admin dos contratos. Ela vive numa env var da Vercel, é usada
+ * a cada requisição e já vazou uma vez no histórico do git. O que ela pode
+ * fazer é o teto do estrago quando isso se repetir.
+ */
+export function relayerAccount() {
+  return privateKeyToAccount(normalizePk(process.env.RELAYER_PRIVATE_KEY, 'RELAYER_PRIVATE_KEY'));
+}
+
+/**
+ * Conta do verificador — assina verifyContribution().
+ *
+ * ⚠️ MUDANÇA DE SEGURANÇA (auditoria de mainnet, achado C1): esta função
+ * DERIVAVA a chave do verificador da chave do relayer quando
+ * VERIFIER_PRIVATE_KEY não estava setada:
+ *
+ *     keccak256(RELAYER_PRIVATE_KEY + '-stepless-verifier-v1')
+ *
+ * O contrato proíbe auto-verificação justamente para que registrar e aprovar
+ * sejam atos de pessoas diferentes. Com as duas chaves saindo da mesma
+ * semente, quem obtivesse uma tinha as duas — e fechava sozinho o ciclo
+ * registrar → verificar → pagar, drenando a tesouraria com transações
+ * indistinguíveis de uso normal no explorer.
+ *
+ * Agora a chave é obrigatória e independente. Sem ela, o endpoint de
+ * verificação simplesmente não sobe — o que é preferível a subir com uma
+ * separação que só parece existir.
  */
 export function verifierAccount() {
-  if (process.env.VERIFIER_PRIVATE_KEY) {
-    return privateKeyToAccount(normalizePk(process.env.VERIFIER_PRIVATE_KEY));
-  }
-  const derived = keccak256(toBytes(normalizePk(process.env.RELAYER_PRIVATE_KEY) + '-stepless-verifier-v1'));
-  return privateKeyToAccount(derived);
+  return privateKeyToAccount(normalizePk(process.env.VERIFIER_PRIVATE_KEY, 'VERIFIER_PRIVATE_KEY'));
 }
 
 export function walletFor(account) {
-  return createWalletClient({ account, chain: arcTestnet, transport: arcTransport() });
+  return createWalletClient({ account, chain, transport: arcTransport() });
 }
 
 export function oracleAddress() {
-  return getAddress(process.env.ORACLE_ADDRESS.toLowerCase());
+  const addr = contractAddresses().SteplessOracle;
+  if (!addr) throw new Error(`Endereço do SteplessOracle não definido para a rede ${NETWORK_NAME}.`);
+  return getAddress(addr.toLowerCase());
 }
+
 export function distributorAddress() {
   // Sem fallback silencioso: o valor antigo que ficava aqui apontava para um
-  // distributor órfão (admin inacessível após a migração v3). Se a env var
-  // sumir, é melhor falhar alto do que gravar em um contrato morto.
-  if (!process.env.DISTRIBUTOR_ADDRESS) {
-    throw new Error('DISTRIBUTOR_ADDRESS não configurado no ambiente.');
-  }
-  return getAddress(process.env.DISTRIBUTOR_ADDRESS.toLowerCase());
+  // distributor órfão (admin inacessível após a migração v3). Se sumir, é
+  // melhor falhar alto do que gravar em um contrato morto.
+  const addr = contractAddresses().RewardDistributor;
+  if (!addr) throw new Error(`Endereço do RewardDistributor não definido para a rede ${NETWORK_NAME}.`);
+  return getAddress(addr.toLowerCase());
 }
 
 // ─── ABIs mínimas ────────────────────────────────────────────────────────────
@@ -90,15 +106,24 @@ export const ORACLE_ABI = [
     inputs: [{ name: 'caller', type: 'address' }, { name: 'authorized', type: 'bool' }], outputs: [] },
   { name: 'setRewardDistributor', type: 'function', stateMutability: 'nonpayable',
     inputs: [{ name: '_distributor', type: 'address' }], outputs: [] },
+  // v5: transferAdmin virou duas fases — o sucessor precisa chamar acceptAdmin.
   { name: 'transferAdmin', type: 'function', stateMutability: 'nonpayable',
     inputs: [{ name: 'newAdmin', type: 'address' }], outputs: [] },
+  { name: 'acceptAdmin', type: 'function', stateMutability: 'nonpayable', inputs: [], outputs: [] },
   { name: 'authorizedCallers', type: 'function', stateMutability: 'view',
     inputs: [{ name: '', type: 'address' }], outputs: [{ type: 'bool' }] },
   { name: 'rewardDistributor', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  { name: 'memo', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
   { name: 'admin', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  { name: 'pendingAdmin', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
   { name: 'getContribution', type: 'function', stateMutability: 'view',
     inputs: [{ name: 'contributionId', type: 'bytes32' }],
-    outputs: [{ name: 'verified', type: 'bool' }, { name: 'verifier', type: 'address' }, { name: 'timestamp', type: 'uint256' }] },
+    outputs: [{ name: 'verified', type: 'bool' }, { name: 'verifier', type: 'address' }, { name: 'blockNumber', type: 'uint256' }] },
+  // v5: usado pelo distributor para conferir que a recompensa vai para quem
+  // de fato contribuiu.
+  { name: 'getContributor', type: 'function', stateMutability: 'view',
+    inputs: [{ name: 'contributionId', type: 'bytes32' }], outputs: [{ type: 'address' }] },
+  { name: 'locationCount', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
   // Custom errors (para mensagens legíveis no viem)
   { type: 'error', name: 'Unauthorized', inputs: [] },
   { type: 'error', name: 'ZeroAddress', inputs: [] },
@@ -109,6 +134,7 @@ export const ORACLE_ABI = [
   { type: 'error', name: 'AlreadyVerified', inputs: [{ name: 'contributionId', type: 'bytes32' }] },
   { type: 'error', name: 'NotAVerifier', inputs: [{ name: 'addr', type: 'address' }] },
   { type: 'error', name: 'SelfVerificationForbidden', inputs: [] },
+  { type: 'error', name: 'RejectReasonTooLong', inputs: [{ name: 'length', type: 'uint256' }, { name: 'max', type: 'uint256' }] },
   // CooldownActive é lançado pelo RewardDistributor (2 argumentos), não pelo
   // Oracle — mas o revert bubbla até aqui via verifyContribution(). Assinatura
   // errada (0 args) fazia o viem não decodificar e mostrar erro genérico.
@@ -116,17 +142,31 @@ export const ORACLE_ABI = [
   { type: 'error', name: 'RewardDistributorNotSet', inputs: [] },
   // Também bubbla do RewardDistributor via recordVerification().
   { type: 'error', name: 'DuplicateVerifier', inputs: [{ name: 'verifier', type: 'address' }, { name: 'contributionId', type: 'bytes32' }] },
+  { type: 'error', name: 'OnlyOracle', inputs: [{ name: 'caller', type: 'address' }] },
 ];
 
 export const DISTRIBUTOR_ABI = [
   { name: 'payReward', type: 'function', stateMutability: 'nonpayable',
     inputs: [{ name: 'contributionId', type: 'bytes32' }, { name: 'contributor', type: 'address' }, { name: 'rewardType', type: 'uint8' }], outputs: [] },
-  { name: 'registerVerifier', type: 'function', stateMutability: 'nonpayable',
-    inputs: [{ name: 'verifier', type: 'address' }], outputs: [] },
+  // v5: registerVerifier/slashVerifier deram lugar a setVerifier(addr, bool).
+  // Antes, a única forma de REMOVER alguém era slashVerifier, que também zera
+  // o totalEarned — ou seja, não existia "desligar" sem punir.
+  { name: 'setVerifier', type: 'function', stateMutability: 'nonpayable',
+    inputs: [{ name: 'verifier', type: 'address' }, { name: 'authorized', type: 'bool' }], outputs: [] },
+  { name: 'slashVerifier', type: 'function', stateMutability: 'nonpayable',
+    inputs: [{ name: 'verifier', type: 'address' }, { name: 'reason', type: 'string' }], outputs: [] },
   { name: 'setAuthorizedCaller', type: 'function', stateMutability: 'nonpayable',
     inputs: [{ name: 'caller', type: 'address' }, { name: 'authorized', type: 'bool' }], outputs: [] },
   { name: 'transferAdmin', type: 'function', stateMutability: 'nonpayable',
     inputs: [{ name: 'newAdmin', type: 'address' }], outputs: [] },
+  { name: 'acceptAdmin', type: 'function', stateMutability: 'nonpayable', inputs: [], outputs: [] },
+  // v5: retryReward não aceita mais valor e destinatário livres — ambos vêm de
+  // failedRewards[], e por isso a função é permissionless.
+  { name: 'retryReward', type: 'function', stateMutability: 'nonpayable',
+    inputs: [{ name: 'contributionId', type: 'bytes32' }], outputs: [] },
+  { name: 'getFailedReward', type: 'function', stateMutability: 'view',
+    inputs: [{ name: 'contributionId', type: 'bytes32' }],
+    outputs: [{ name: 'recipient', type: 'address' }, { name: 'amount', type: 'uint256' }] },
   { name: 'authorizedCallers', type: 'function', stateMutability: 'view',
     inputs: [{ name: '', type: 'address' }], outputs: [{ type: 'bool' }] },
   { name: 'verifiers', type: 'function', stateMutability: 'view',
@@ -134,7 +174,13 @@ export const DISTRIBUTOR_ABI = [
   { name: 'rewardClaimed', type: 'function', stateMutability: 'view',
     inputs: [{ name: '', type: 'bytes32' }], outputs: [{ type: 'bool' }] },
   { name: 'treasuryBalance', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  { name: 'availableBalance', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  { name: 'totalFailedPending', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  { name: 'USDC', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  { name: 'oracle', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  { name: 'paused', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'bool' }] },
   { name: 'admin', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  { name: 'pendingAdmin', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
   { type: 'error', name: 'Unauthorized', inputs: [] },
   { type: 'error', name: 'ContributionNotVerified', inputs: [{ name: 'contributionId', type: 'bytes32' }] },
   { type: 'error', name: 'RewardAlreadyClaimed', inputs: [{ name: 'contributionId', type: 'bytes32' }] },
@@ -142,10 +188,15 @@ export const DISTRIBUTOR_ABI = [
   { type: 'error', name: 'DuplicateVerifier', inputs: [{ name: 'verifier', type: 'address' }, { name: 'contributionId', type: 'bytes32' }] },
   { type: 'error', name: 'CooldownActive', inputs: [{ name: 'blockNumber', type: 'uint256' }, { name: 'unlockBlock', type: 'uint256' }] },
   { type: 'error', name: 'Paused', inputs: [] },
+  { type: 'error', name: 'ContributorMismatch', inputs: [{ name: 'contributionId', type: 'bytes32' }, { name: 'expected', type: 'address' }, { name: 'provided', type: 'address' }] },
+  { type: 'error', name: 'BatchTooLarge', inputs: [{ name: 'length', type: 'uint256' }, { name: 'max', type: 'uint256' }] },
+  { type: 'error', name: 'NoFailedReward', inputs: [{ name: 'contributionId', type: 'bytes32' }] },
+  { type: 'error', name: 'OnlyOracle', inputs: [{ name: 'caller', type: 'address' }] },
+  { type: 'error', name: 'InvalidUsdc', inputs: [{ name: 'usdc', type: 'address' }] },
 ];
 
 // RewardType enum do RewardDistributor
-export const REWARD_TYPE = { NewLocation: 0, Verification: 1, QualityPhoto: 2, LocationUpdate: 3 };
+export const REWARD_TYPE = { NewLocation: 0, Verification: 1, QualityPhoto: 2, LocationUpdate: 3, TopContributorBonus: 4 };
 
 // ─── Upstash Redis (REST) com fallback em memória ────────────────────────────
 // Sem Upstash configurado, os dados vivem só na lambda quente (suficiente para
@@ -166,9 +217,18 @@ async function redis(cmd) {
 }
 
 export const store = {
-  async setJSON(key, obj) {
-    try { const r = await redis(['SET', key, JSON.stringify(obj)]); if (r !== null) return; } catch (_) {}
+  /**
+   * @param {number} [ttlSeconds] expira a chave depois desse tempo.
+   *        Usado pelos tokens de foto (api/upload.js): uma prova de captura não
+   *        deve continuar válida indefinidamente.
+   */
+  async setJSON(key, obj, ttlSeconds) {
+    const cmd = ttlSeconds
+      ? ['SET', key, JSON.stringify(obj), 'EX', String(Math.ceil(ttlSeconds))]
+      : ['SET', key, JSON.stringify(obj)];
+    try { const r = await redis(cmd); if (r !== null) return; } catch (_) {}
     mem.kv.set(key, obj);
+    if (ttlSeconds) setTimeout(() => mem.kv.delete(key), ttlSeconds * 1000).unref?.();
   },
   async getJSON(key) {
     try {
@@ -213,11 +273,79 @@ export const store = {
 export const PENDING_LIST_KEY = 'stepless:pending';
 export const contribKey = (id) => `stepless:contrib:${id.toLowerCase()}`;
 
+/**
+ * Há armazenamento compartilhado de verdade, ou só o fallback em memória?
+ *
+ * ⚠️ ISTO VIROU LOAD-BEARING. O fallback em memória vive dentro de UMA instância
+ * de lambda. Como o fluxo de foto tem duas requisições (POST /api/upload e
+ * depois POST /api/relay), elas quase sempre caem em instâncias diferentes — o
+ * token simplesmente não existe na segunda, e toda submissão falha.
+ *
+ * Pior ainda para o dedup: o registro de "esta foto já foi usada" só faz
+ * sentido se for global e permanente. Em memória, ele desaparece quando a
+ * lambda esfria, e a mesma imagem volta a valer.
+ *
+ * Por isso os endpoints que dependem disso recusam a subir sem Upstash, em vez
+ * de funcionarem de forma intermitente e inexplicável.
+ */
+export function hasPersistentStore() {
+  return Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+}
+
+/** Devolve 503 e `false` quando não há armazenamento persistente. */
+export function requirePersistentStore(res) {
+  if (hasPersistentStore()) return true;
+  res.status(503).json({
+    success: false,
+    error: 'Serviço indisponível: armazenamento não configurado.',
+    detail: 'UPSTASH_REDIS_REST_URL e UPSTASH_REDIS_REST_TOKEN são obrigatórias. '
+          + 'Sem elas, o token da foto criado no upload não existe na chamada seguinte '
+          + '(instâncias serverless diferentes) e o registro de fotas já usadas não persiste.',
+  });
+  return false;
+}
+
 // ─── HTTP helpers ────────────────────────────────────────────────────────────
-export function cors(res, methods = 'POST, OPTIONS') {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+/**
+ * Origens autorizadas a chamar a API pelo navegador.
+ *
+ * Antes era `Access-Control-Allow-Origin: *` em TODOS os endpoints, inclusive
+ * nos administrativos. Isso não vazava o segredo (ele vai em header, não em
+ * cookie), mas transformava o proxy RPC e o relayer em recurso aberto: qualquer
+ * site conseguia consumir a cota do nó dedicado e o gas do relayer a partir do
+ * navegador dos visitantes dele.
+ *
+ * Configurável por ALLOWED_ORIGINS (lista separada por vírgula) para preview
+ * deploys da Vercel.
+ */
+const DEFAULT_ORIGINS = [
+  'https://www.stepless.lat',
+  'https://stepless.lat',
+  'https://stepless.vercel.app',
+];
+
+export function allowedOrigins() {
+  const fromEnv = (process.env.ALLOWED_ORIGINS || '')
+    .split(',').map((s) => s.trim()).filter(Boolean);
+  return fromEnv.length ? fromEnv : DEFAULT_ORIGINS;
+}
+
+export function cors(res, methods = 'POST, OPTIONS', req = null) {
+  const origins = allowedOrigins();
+  const origin = req?.headers?.origin;
+
+  if (origin && origins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    // Sem Origin (curl, app nativo, server-to-server) ou origem desconhecida:
+    // devolve a origem canônica. Requisições sem Origin não são barradas pelo
+    // navegador de qualquer forma — o CORS protege o USUÁRIO de um site
+    // terceiro, não o servidor de um script.
+    res.setHeader('Access-Control-Allow-Origin', origins[0]);
+  }
+  res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', methods);
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Secret, X-Verify-Secret, X-Rotate-Secret');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Secret, X-Verify-Secret');
 }
 
 function secretsEqual(actual, expected) {
@@ -368,8 +496,15 @@ export function translateError(err) {
     [/ContributionNotFound|LocationNotFound/i, 404,
       'Contribuição não existe no contrato atual. Se os contratos foram redeployados, '
       + 'as pendências antigas ficaram no contrato anterior e precisam ser registradas de novo.'],
-    [/RewardDistributorNotSet/i, 503, 'Oracle sem RewardDistributor configurado. Rode POST /api/setup.'],
-    [/Unauthorized/i, 403, 'Chamador não autorizado no contrato. Rode POST /api/setup.'],
+    [/RewardDistributorNotSet/i, 503, 'Oracle sem RewardDistributor configurado. Rode: node scripts/setup-contracts.mjs'],
+    [/ContributorMismatch/i, 409, 'O endereço informado não é o contribuidor registrado desta contribuição.'],
+    [/BatchTooLarge/i, 400, 'Lote grande demais (máximo 50 por transação).'],
+    [/NoFailedReward/i, 404, 'Não há recompensa falha registrada para essa contribuição.'],
+    [/OnlyOracle/i, 403, 'Essa operação só pode ser feita pelo contrato Oracle.'],
+    [/InvalidUsdc/i, 500, 'O RewardDistributor foi deployado com um endereço de USDC inválido para esta rede.'],
+    [/ReentrancyDetected/i, 409, 'Chamada reentrante bloqueada pelo contrato.'],
+    [/WithdrawalNotReady|NoPendingWithdrawal/i, 425, 'Saque ainda em período de espera (timelock de 48h).'],
+    [/Unauthorized/i, 403, 'Chamador não autorizado no contrato. Rode: node scripts/setup-contracts.mjs'],
     [/Paused/i, 503, 'Contrato pausado pelo admin.'],
   ];
   for (const [re, status, friendly] of map) if (re.test(msg)) return { status, error: friendly, detail: msg };

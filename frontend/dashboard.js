@@ -149,8 +149,14 @@ function handleArcError(err) {
   }
 
   // Wrong chain
-  if (/chain|network|5042002/i.test(msg)) {
-    return s.err_wrong_chain || 'Wrong network. Connect to Arc Testnet.';
+  // O chain id sai de window.STEPLESS_NETWORK: estava chumbado tanto no regex
+  // quanto no texto das três traduções, então em mainnet a mensagem mandaria a
+  // pessoa se conectar à rede errada.
+  const net = window.STEPLESS_NETWORK;
+  if (new RegExp(`chain|network|${net.chainId}`, 'i').test(msg)) {
+    return (s.err_wrong_chain || 'Wrong network. Connect to {network} (Chain ID: {chainId}).')
+      .replace('{network}', net.name)
+      .replace('{chainId}', String(net.chainId));
   }
 
   // User rejected
@@ -180,7 +186,7 @@ async function _completeConnection(address, provider) {
   // próximo. Só o nó oficial por ora (os proxies da doc devolvem 400).
   const ARC_RPC_URLS = (cfg.chain?.rpcUrls?.default?.http?.length
     ? cfg.chain.rpcUrls.default.http
-    : ['https://rpc.testnet.arc.network']);
+    : ['https://rpc.testnet.arc.io']);
 
   publicClient = viem.createPublicClient({
     chain: cfg.chain,
@@ -468,9 +474,13 @@ async function authorizeRelayer() {
     const provider = window.ethereum;
     if (!provider) throw new Error('Wallet não detectada');
 
+    // A chain vem de window.STEPLESS_NETWORK. Estava chumbada aqui com
+    // `decimals: 6` para o USDC NATIVO, que na Arc tem 18 — o viem usa esse
+    // número para formatar saldo e estimar gas, então o valor errado mostra
+    // saldos 1e12 vezes maiores. Os 6 decimais são da interface ERC-20.
     const walletClient = viem.createWalletClient({
       account: walletAddress,
-      chain: { id: 5042002, name: 'Arc Testnet', nativeCurrency: { name:'USDC', symbol:'USDC', decimals:6 }, rpcUrls: { default: { http: ['https://rpc.testnet.arc.network'] } } },
+      chain: window.STEPLESS_NETWORK.chain,
       transport: viem.custom(provider),
     });
 
@@ -992,21 +1002,51 @@ async function handleRegisterLocation(e) {
     const viem = window.viem;
     const photoFile = photoInput.files[0];
 
-    // ── Extrai EXIF GPS da foto ──────────────────────────────────────────
-    let exifLat = null, exifLng = null, exifTimestamp = null;
-    if (window.exifr) {
-      try {
-        const exif = await window.exifr.gps(photoFile);
-        if (exif) { exifLat = exif.latitude; exifLng = exif.longitude; }
-        const tags = await window.exifr.parse(photoFile, ['DateTimeOriginal', 'CreateDate']);
-        if (tags?.DateTimeOriginal) exifTimestamp = tags.DateTimeOriginal.toISOString();
-        else if (tags?.CreateDate) exifTimestamp = tags.CreateDate.toISOString();
-      } catch (_) { /* EXIF parse falhou silenciosamente — relay vai rejeitar sem GPS */ }
+    // ── Passo 1: envia a FOTO para o servidor ────────────────────────────
+    //
+    // MUDANÇA IMPORTANTE: o navegador não extrai mais o EXIF nem calcula o
+    // dataHash. Antes fazia as duas coisas e mandava os números junto no POST
+    // — e o servidor comparava valores que vinham do próprio cliente, o que
+    // tornava o anti-fraude decorativo para quem usasse curl. Agora a foto é
+    // enviada, o servidor lê o EXIF dos bytes reais e devolve um token.
+    //
+    // Efeito colateral bom: a foto passa a ser ARMAZENADA (IPFS), então o hash
+    // gravado on-chain finalmente corresponde a um arquivo que dá para conferir.
+    submitBtn.textContent = s.reg_uploading || 'Enviando foto...';
+
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('Não foi possível ler a foto.'));
+      reader.readAsDataURL(photoFile);
+    });
+
+    const uploadResp = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: dataUrl, userAddress: walletAddress }),
+    });
+
+    let uploadResult;
+    try {
+      uploadResult = await uploadResp.json();
+    } catch (_) {
+      throw new Error(
+        uploadResp.status === 413
+          ? 'Foto grande demais. Tire a foto em resolução menor e tente de novo.'
+          : 'O servidor não conseguiu processar a foto. Tente de novo em instantes.',
+      );
+    }
+    if (!uploadResp.ok || !uploadResult.success) {
+      throw new Error(uploadResult.error || 'Falha ao enviar a foto.');
     }
 
-    // Hash da foto
-    const photoBuffer = await photoFile.arrayBuffer();
-    const dataHash = viem.keccak256(new Uint8Array(photoBuffer));
+    // Avisa ANTES de gastar gas, em vez de rejeitar depois de tudo preenchido.
+    if (!uploadResult.exif?.hasGps) {
+      showAlert('register-alert', 'warning',
+        s.reg_photo_no_gps_warn
+        || 'Esta foto não tem GPS. Ative a localização na câmera e evite recortar a imagem — recortar apaga o GPS.');
+    }
 
     // lat/lng com offset para uint256 (contrato não aceita negativos)
     // lat: -90..+90  → offset +90  → 0..180  * 1e6
@@ -1022,21 +1062,22 @@ async function handleRegisterLocation(e) {
       )
     );
 
-    // Chama o relayer — ele valida EXIF server-side e paga o gas
+    // ── Passo 2: relay ───────────────────────────────────────────────────
+    // O dataHash e o EXIF vêm do token, medidos pelo servidor.
+    submitBtn.textContent = s.loading || 'Loading...';
     const resp = await fetch('/api/relay', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'registerLocation',
         userAddress: walletAddress,
+        photoToken: uploadResult.photoToken,
         submissionData: {
-          locationHash, latPacked, lngPacked, dataHash,
-          exifLat, exifLng, exifTimestamp,
-          // Na web a coordenada só pode vir do EXIF do arquivo escolhido — não
-          // há como o navegador atestar que a câmera tirou a foto agora. O
-          // backend usa isto para pesar o risco: EXIF real vale mais que
-          // ausência de EXIF, e ausência não é mais silenciosa.
-          gpsSource: (exifLat != null && exifLng != null) ? 'exif' : null,
+          locationHash, latPacked, lngPacked,
+          // Na web a coordenada da foto só pode vir do EXIF do arquivo — não há
+          // como o navegador atestar que a câmera tirou a foto agora. O backend
+          // usa isto para pesar o risco.
+          gpsSource: uploadResult.exif?.hasGps ? 'exif' : null,
           name: fullName, categories,
         },
       }),
@@ -1603,7 +1644,17 @@ function initEventListeners() {
   const regCatGroup = document.getElementById('reg-category-group');
   if (regCatGroup) regCatGroup.addEventListener('change', estimateRegisterGas);
 
-  // EXIF GPS feedback ao selecionar foto
+  // Aviso imediato de GPS ao escolher a foto.
+  //
+  // ⚠️ ISTO É APENAS UX. Nada daqui é enviado ao servidor nem influencia a
+  // decisão de aceitar a contribuição — a validação que vale acontece em
+  // api/upload.js, sobre os bytes reais da imagem. Serve só para avisar a
+  // pessoa antes de ela preencher o formulário inteiro e descobrir na
+  // submissão que a foto não tinha GPS.
+  //
+  // Era exatamente essa leitura no cliente que, até a v4, era ENVIADA como
+  // dado confiável — e o servidor comparava dois números que vinham do mesmo
+  // POST. Manter a checagem como aviso é útil; tratá-la como prova não era.
   const photoInput = document.getElementById('reg-photo');
   if (photoInput) {
     photoInput.addEventListener('change', async () => {

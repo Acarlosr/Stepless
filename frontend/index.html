@@ -15,6 +15,28 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%231a56c4'/%3E%3Cpath d='M30 28h12v44H30zM58 28h12v44H58z' fill='white'/%3E%3Ccircle cx='50' cy='28' r='8' fill='white'/%3E%3C/svg%3E" />
+  <!-- Config de rede: gerado por scripts/gen-network.mjs a partir de config/networks.json.
+       Precisa vir ANTES de qualquer script que use window.STEPLESS_NETWORK. -->
+  <script src="network.js"></script>
+  <script>
+    // Preenche a "Especificação técnica" com os valores da rede em uso.
+    // Antes esses endereços eram digitados à mão no HTML e ficaram desatualizados
+    // (mostravam o par v3, morto) por uma semana sem ninguém notar.
+    document.addEventListener('DOMContentLoaded', function () {
+      var N = window.STEPLESS_NETWORK;
+      if (!N) return;
+      document.querySelectorAll('[data-net]').forEach(function (el) {
+        var v = N[el.getAttribute('data-net')];
+        if (v != null) el.textContent = String(v);
+      });
+      document.querySelectorAll('[data-net-addr]').forEach(function (el) {
+        var addr = N.contracts[el.getAttribute('data-net-addr')];
+        if (!addr) { el.textContent = 'pendente'; el.removeAttribute('href'); return; }
+        el.textContent = addr;
+        el.href = N.explorerAddress(addr);
+      });
+    });
+  </script>
 </head>
 <body>
   <a href="#main" class="skip-link">Pular para o conteúdo / Skip to content / Saltar al contenido</a>
@@ -496,9 +518,19 @@
             <span class="mono">arc-testnet</span>
           </div>
 
+          <!--
+            Preenchido em runtime a partir de window.STEPLESS_NETWORK
+            (frontend/network.js ← config/networks.json).
+
+            Estava chumbado aqui, e estava ERRADO: mostrava o par v3
+            (0x53ba90e1… / 0xdf8fa455…), que o README marca como "do not use".
+            Um avaliador que clicasse no endereço via um contrato sem atividade
+            recente. Gerar a partir da mesma fonte que o backend usa é o que
+            impede isso de divergir de novo.
+          -->
           <div class="spec-row">
             <dt data-i18n="spec_network">Rede</dt>
-            <dd>Arc Testnet <span class="mono">· chain id 5042002</span></dd>
+            <dd><span data-net="name">—</span> <span class="mono">· chain id <span data-net="chainId">—</span></span></dd>
           </div>
           <div class="spec-row">
             <dt data-i18n="spec_gas">Gas e recompensas</dt>
@@ -506,15 +538,15 @@
           </div>
           <div class="spec-row">
             <dt>SteplessOracle</dt>
-            <dd><a class="addr" href="https://testnet.arcscan.app/address/0x53ba90e17bbe96e924979723c744475d55cccc16" target="_blank" rel="noopener">0x53ba90e17bbe96e924979723c744475d55cccc16</a></dd>
+            <dd><a class="addr" data-net-addr="SteplessOracle" target="_blank" rel="noopener">—</a></dd>
           </div>
           <div class="spec-row">
             <dt>RewardDistributor</dt>
-            <dd><a class="addr" href="https://testnet.arcscan.app/address/0xdf8fa455f01965866ac99ebc553ad3c2b58a0368" target="_blank" rel="noopener">0xdf8fa455f01965866ac99ebc553ad3c2b58a0368</a></dd>
+            <dd><a class="addr" data-net-addr="RewardDistributor" target="_blank" rel="noopener">—</a></dd>
           </div>
           <div class="spec-row">
             <dt>X402API</dt>
-            <dd><a class="addr" href="https://testnet.arcscan.app/address/0x0D318864C80eCe8d28800a750bdA06b6E52ffCc9" target="_blank" rel="noopener">0x0D318864C80eCe8d28800a750bdA06b6E52ffCc9</a></dd>
+            <dd><a class="addr" data-net-addr="X402API" target="_blank" rel="noopener">—</a></dd>
           </div>
           <div class="spec-row">
             <dt data-i18n="spec_contracts">Contratos</dt>
@@ -675,7 +707,7 @@
         footer_text: "Stepless — Infraestrutura de acessibilidade descentralizada na Arc Testnet. Open-source, sem tokens de governança, recompensas em USDC.",
         wallet_connected: "Conectado", wallet_disconnected: "Desconectado", wallet_connecting: "Conectando...",
         wallet_no_provider: "Nenhuma wallet detectada. Instale MetaMask ou outra wallet compatível.",
-        wallet_wrong_chain: "Rede incorreta. Conecte-se à Arc Testnet (Chain ID: 5042002).",
+        wallet_wrong_chain: "Rede incorreta. Conecte-se à rede {network} (Chain ID: {chainId}).",
         wallet_balance: "Saldo USDC",
         reward_newlocation: "Novo local", reward_newlocation_desc: "Mapear um local acessível com foto e coordenadas",
         reward_verification: "Verificação", reward_verification_desc: "Confirmar ou rejeitar a contribuição de outra pessoa",
@@ -736,7 +768,7 @@
         footer_text: "Stepless — Decentralized accessibility infrastructure on Arc Testnet. Open-source, no governance tokens, rewards in USDC.",
         wallet_connected: "Connected", wallet_disconnected: "Disconnected", wallet_connecting: "Connecting...",
         wallet_no_provider: "No wallet detected. Install MetaMask or another compatible wallet.",
-        wallet_wrong_chain: "Wrong network. Connect to Arc Testnet (Chain ID: 5042002).",
+        wallet_wrong_chain: "Wrong network. Connect to {network} (Chain ID: {chainId}).",
         wallet_balance: "USDC Balance",
         reward_newlocation: "New location", reward_newlocation_desc: "Map an accessible place with photo and coordinates",
         reward_verification: "Verification", reward_verification_desc: "Confirm or reject someone else's contribution",
@@ -797,7 +829,7 @@
         footer_text: "Stepless — Infraestructura de accesibilidad descentralizada en Arc Testnet. Open-source, sin tokens de gobernanza, recompensas en USDC.",
         wallet_connected: "Conectado", wallet_disconnected: "Desconectado", wallet_connecting: "Conectando...",
         wallet_no_provider: "No se detectó wallet. Instala MetaMask u otra wallet compatible.",
-        wallet_wrong_chain: "Red incorrecta. Conéctate a Arc Testnet (Chain ID: 5042002).",
+        wallet_wrong_chain: "Red incorrecta. Conéctate a {network} (Chain ID: {chainId}).",
         wallet_balance: "Saldo USDC",
         reward_newlocation: "Nuevo lugar", reward_newlocation_desc: "Mapear un lugar accesible con foto y coordenadas",
         reward_verification: "Verificación", reward_verification_desc: "Confirmar o rechazar la contribución de otra persona",
@@ -926,7 +958,7 @@
         const viem = await import('https://esm.sh/viem@2.21.0');
         const { createPublicClient, http, fallback, formatUnits, getContract } = viem;
         const cfg = window.SteplessConfig;
-        const _rpcs = cfg.chain?.rpcUrls?.default?.http?.length ? cfg.chain.rpcUrls.default.http : ['https://rpc.testnet.arc.network'];
+        const _rpcs = cfg.chain?.rpcUrls?.default?.http?.length ? cfg.chain.rpcUrls.default.http : ['https://rpc.testnet.arc.io'];
         const publicClient = createPublicClient({ chain: cfg.chain, transport: fallback(_rpcs.map(u => http(u, { retryCount: 3, retryDelay: 800, timeout: 20000 })), { rank: false }) });
         const usdcContract = getContract({
           address: cfg.tokens.USDC.address,

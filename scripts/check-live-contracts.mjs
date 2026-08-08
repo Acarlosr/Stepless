@@ -21,44 +21,53 @@
  */
 
 import { createPublicClient, http, fallback, formatUnits } from 'viem';
+import { chainConfig, rpcUrls, contractAddresses, deprecatedAddresses, NETWORK_NAME } from '../api/_network.js';
 
-const RPC_URLS = [
-  process.env.ARC_RPC_URL,
-  'https://rpc.testnet.arc.network',
-].filter(Boolean);
+// Chain e RPCs vêm de config/networks.json — este script tinha a própria cópia
+// chumbada, o que é exatamente o problema que ele existe para detectar.
+const arcChain = chainConfig();
+const RPC_URLS = rpcUrls();
 
-const arcTestnet = {
-  id: 5042002,
-  name: 'Arc Testnet',
-  nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
-  rpcUrls: { default: { http: RPC_URLS } },
-};
+// Candidatos: o par configurado + todos os pares marcados como mortos no JSON.
+// Assim, quando um par novo for deployado, basta mover o antigo para
+// deprecatedContracts e este script continua sabendo compará-los.
+const atual = contractAddresses();
+const mortos = deprecatedAddresses();
+const porVersao = new Map();
+for (const d of mortos) {
+  if (!porVersao.has(d.version)) porVersao.set(d.version, {});
+  porVersao.get(d.version)[d.contract] = d.address;
+}
 
 const CANDIDATOS = [
   {
-    versao: 'v4  (usado pelo MOBILE)',
-    oracle: '0x69b3f9caca6514f76dd2f0dc4b54409e6d5da5cc',
-    distributor: '0xef5d148b126d8dcdc7d344dfa367c61acbb02ea0',
-    ondeEstá: 'mobile/src/services/contracts.ts',
+    versao: `ATUAL (${NETWORK_NAME}, config/networks.json)`,
+    oracle: atual.SteplessOracle,
+    distributor: atual.RewardDistributor,
+    ondeEstá: 'config/networks.json → frontend, mobile e backend',
   },
-  {
-    versao: 'v3  (usado pela WEB e pelo README)',
-    oracle: '0x53ba90e17bbe96e924979723c744475d55cccc16',
-    distributor: '0xdf8fa455f01965866ac99ebc553ad3c2b58a0368',
-    ondeEstá: 'frontend/arc-config.js + README.md',
-  },
-];
+  ...[...porVersao.entries()].map(([versao, c]) => ({
+    versao: `${versao}  (marcado como MORTO)`,
+    oracle: c.SteplessOracle,
+    distributor: c.RewardDistributor,
+    ondeEstá: 'deprecatedContracts em config/networks.json',
+  })),
+].filter((c) => c.oracle && c.distributor);
 
 /**
  * Endereço do relayer (o EOA que o /api/relay usa para escrever).
  * Está documentado em frontend/arc-config.js. Sobrescrevível se mudar.
  *
  * ⚠️ ATENÇÃO: este sinal NÃO desempata sozinho, e é fácil se enganar com ele.
- * O `api/relay.js` se AUTO-AUTORIZA: quando ele encontra um oracle em que não
- * é autorizado, chama `setAuthorizedCaller` nele mesmo antes de escrever.
- * Resultado: todo oracle para o qual o backend já apontou alguma vez fica com o
- * relayer autorizado para sempre — inclusive os abandonados. Autorização aqui
- * é histórico, não estado atual.
+ * Até a v4, o `api/relay.js` se AUTO-AUTORIZAVA: ao encontrar um oracle em que
+ * não era autorizado, chamava `setAuthorizedCaller` nele mesmo antes de
+ * escrever. Resultado: todo oracle para o qual o backend já apontou alguma vez
+ * ficou com o relayer autorizado para sempre — inclusive os abandonados. Nos
+ * contratos antigos, autorização é histórico, não estado atual.
+ *
+ * (A auto-autorização foi removida na v5: ela só funcionava porque o relayer
+ * era admin, e esse acoplamento era o vetor de drenagem mais direto do
+ * sistema. Mas o rastro que ela deixou nos contratos antigos continua lá.)
  *
  * Serve para o caso NEGATIVO: um contrato onde o relayer NÃO está autorizado
  * nunca recebeu escrita do backend, e pode ser descartado com segurança.
@@ -83,7 +92,7 @@ const DISTRIBUTOR_ABI = [
 ];
 
 const client = createPublicClient({
-  chain: arcTestnet,
+  chain: arcChain,
   transport: fallback(RPC_URLS.map((u) => http(u, { retryCount: 2, retryDelay: 600, timeout: 15_000 }))),
 });
 

@@ -20,7 +20,7 @@ import {
 import { bumpReputation } from './_risk.js';
 
 export default async function handler(req, res) {
-  cors(res);
+  cors(res, 'POST, OPTIONS', req);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
 
@@ -38,12 +38,15 @@ export default async function handler(req, res) {
   }
 
   // ── Autorização ────────────────────────────────────────────────────────
-  // Caminho principal: o verificador assina com a própria carteira e o
-  // contrato diz se ele está autorizado. Cada aprovação fica atribuída a uma
-  // pessoa, e revogar alguém é uma transação on-chain — sem trocar segredo.
+  // Caminho principal: o verificador assina com a própria carteira e o contrato
+  // diz se ele está autorizado. Cada aprovação fica atribuída a uma pessoa, e
+  // revogar alguém é uma transação on-chain — sem segredo circulando.
   //
-  // O segredo administrativo continua valendo como saída de emergência para
-  // o dono (ex.: operar sem carteira à mão), mas não é mais o único jeito.
+  // O atalho por segredo administrativo agora é OPT-IN e vem desligado
+  // (auditoria de mainnet). Com ele ligado, quem tivesse a string aprovava
+  // qualquer contribuição e liberava o pagamento correspondente, sem deixar
+  // registro de QUEM aprovou — exatamente o que a autenticação por assinatura
+  // veio resolver. Em mainnet, deixe desligado.
   let approvedBy = null;
   if (auth) {
     const domain = req.headers?.host || 'www.stepless.lat';
@@ -52,14 +55,33 @@ export default async function handler(req, res) {
       return res.status(check.status).json({ success: false, error: check.error });
     }
     approvedBy = check.address;
-  } else {
+  } else if (process.env.ALLOW_ADMIN_SECRET_VERIFY === 'true') {
     if (!requireAdminSecret(req, res)) return;
     approvedBy = 'admin-secret';
+  } else {
+    return res.status(401).json({
+      success: false,
+      error: 'Aprovação exige assinatura da carteira do verificador.',
+      hint: 'Conecte a carteira registrada como verificador e assine a mensagem de aprovação.',
+    });
   }
 
   const pub = publicClient();
-  const verifier = verifierAccount();
-  const relayer = relayerAccount();
+
+  let verifier;
+  let relayer;
+  try {
+    verifier = verifierAccount();
+    relayer = relayerAccount();
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+      hint: 'VERIFIER_PRIVATE_KEY passou a ser obrigatória e precisa ser INDEPENDENTE da chave do relayer. '
+          + 'A derivação automática de uma a partir da outra foi removida: ela fazia a separação entre '
+          + 'quem registra e quem aprova existir só no papel.',
+    });
+  }
 
   try {
     // 1) Verificação on-chain com a chave do verificador

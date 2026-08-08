@@ -1,13 +1,30 @@
 // SPDX-License-Identifier: MIT
 // ════════════════════════════════════════════════════════════════════════════
-//  ♿ Stepless — SteplessOracle.sol
-//  On-chain accessibility oracle — registers and verifies location data.
+//  ♿ Stepless — SteplessOracle.sol  (v5 — mainnet-ready)
+//  Oracle de acessibilidade on-chain — registra e verifica dados de locais.
 //
-//  Arc-specific: Uses Memo contract for structured metadata, block.number
-//  for ordering (not block.timestamp — sub-second blocks share timestamps).
+//  Arc-specific: usa o contrato Memo para metadados estruturados e block.number
+//  para ordenação (não block.timestamp — blocos sub-segundo compartilham
+//  timestamp).
+//
+//  ── Mudanças da v4 para a v5 (auditoria de mainnet, 2026-08-06) ────────────
+//   1. Memo passou de `constant` para `immutable` recebido no construtor.
+//      O endereço 0x5294E992… é da TESTNET; a Circle ainda não publicou os de
+//      mainnet ("Mainnet addresses are not yet available", docs.arc.io).
+//      Chumbar isso significaria redeployar tudo no dia do lançamento.
+//      address(0) desliga o Memo por completo, sem quebrar nada.
+//   2. verifyContribution deixou de ser `onlyAuthorized` e passou a exigir que
+//      o chamador esteja no conjunto `verifiers` do RewardDistributor. Antes,
+//      QUALQUER authorizedCaller — inclusive o relayer — podia verificar.
+//   3. Auto-verificação bloqueada aqui também, não só no distributor.
+//   4. Admin em duas fases (ver lib/Admin2Step.sol — a v1 foi perdida assim).
+//   5. getContributor() exposto para o distributor conferir que está pagando
+//      quem realmente contribuiu.
 // ════════════════════════════════════════════════════════════════════════════
 
 pragma solidity ^0.8.24;
+
+import {Admin2Step, Unauthorized, ZeroAddress} from "./lib/Admin2Step.sol";
 
 interface IRewardDistributor {
     function recordVerification(
@@ -19,16 +36,14 @@ interface IRewardDistributor {
 }
 
 interface IMemo {
-    /// @notice Attach a memo to a transaction (Arc predeployed contract).
-    /// @dev    Address: 0x5294E9927c3306DcBaDb03fe70b92e01cCede505
-    ///         Emits Memo events with sequential index — indexable by Goldsky.
+    /// @notice Anexa um memo à transação (contrato predeployado da Arc).
+    /// @dev    Testnet: 0x5294E9927c3306DcBaDb03fe70b92e01cCede505
+    ///         Emite eventos Memo com índice sequencial — indexável pelo Goldsky.
     function attachMemo(bytes32 indexedId, bytes calldata data) external;
 }
 
-contract SteplessOracle {
+contract SteplessOracle is Admin2Step {
     // ── Errors ──────────────────────────────────────────────────────────────
-    error Unauthorized();
-    error ZeroAddress();
     error LocationAlreadyRegistered(bytes32 locationHash);
     error LocationNotFound(bytes32 locationHash);
     error ContributionAlreadyExists(bytes32 contributionId);
@@ -36,18 +51,18 @@ contract SteplessOracle {
     error AlreadyVerified(bytes32 contributionId);
     error NotAVerifier(address addr);
     error SelfVerificationForbidden();
-    error CooldownActive();
-    /// @dev verifyContribution() foi chamado antes de setRewardDistributor().
+    /// @dev verifyContribution() chamado antes de setRewardDistributor().
     ///      Sem isto, o contrato reverteria ao chamar recordVerification()
     ///      em address(0) — um revert opaco, sem razão legível.
     error RewardDistributorNotSet();
+    error RejectReasonTooLong(uint256 length, uint256 max);
 
     // ── Events ──────────────────────────────────────────────────────────────
     event LocationRegistered(
         bytes32 indexed locationHash,
         address indexed contributor,
-        uint256 latPacked,   // lat * 1e6 as int256 (for on-chain storage)
-        uint256 lngPacked,   // lng * 1e6 as int256
+        uint256 latPacked,   // (lat + 90) * 1e6 — offset off-chain evita negativos
+        uint256 lngPacked,   // (lng + 180) * 1e6
         uint256 blockNumber
     );
 
@@ -56,7 +71,7 @@ contract SteplessOracle {
         bytes32 indexed locationHash,
         address indexed contributor,
         ContributionType contributionType,
-        bytes32 dataHash,    // IPFS/Arweave hash of photos + metadata
+        bytes32 dataHash,    // hash IPFS/Arweave das fotos + metadados
         uint256 blockNumber
     );
 
@@ -74,17 +89,20 @@ contract SteplessOracle {
         uint256 blockNumber
     );
 
-    /// @dev Emitido quando a chamada ao Memo (attachMemo) falha e é engolida
-    ///      pelo try/catch. Sem isto, a perda de metadados era silenciosa —
-    ///      ninguém saberia que o registro no Goldsky ficou incompleto.
+    /// @dev Emitido quando a chamada ao Memo falha e é engolida pelo try/catch.
+    ///      Sem isto, a perda de metadados era silenciosa — ninguém saberia que
+    ///      o registro no Goldsky ficou incompleto.
     event MemoAttachFailed(bytes32 indexed id, uint256 blockNumber);
+
+    event RewardDistributorUpdated(address indexed oldDistributor, address indexed newDistributor);
+    event AuthorizedCallerUpdated(address indexed caller, bool authorized);
 
     // ── Enums ───────────────────────────────────────────────────────────────
     enum ContributionType { NewLocation, Update, Photo, Verification }
 
     // ── Structs ─────────────────────────────────────────────────────────────
     struct Location {
-        bytes32 locationHash;     // hash of lat/lng/name/category
+        bytes32 locationHash;     // hash de lat/lng/nome/categoria
         address firstContributor;
         uint256 registeredBlock;
         uint256 verificationCount;
@@ -95,7 +113,7 @@ contract SteplessOracle {
         bytes32 locationHash;
         address contributor;
         ContributionType contributionType;
-        bytes32 dataHash;         // IPFS/Arweave hash
+        bytes32 dataHash;         // hash IPFS/Arweave
         bool verified;
         address verifier;
         uint256 verifiedBlock;
@@ -103,59 +121,72 @@ contract SteplessOracle {
         string rejectReason;
     }
 
-    // ── State ───────────────────────────────────────────────────────────────
-    // Não-immutable: setado após deploy via setRewardDistributor() (two-phase pattern)
-    IRewardDistributor public rewardDistributor;
-    bool private _distributorSet;
-    IMemo public constant memo = IMemo(0x5294E9927c3306DcBaDb03fe70b92e01cCede505);
+    // ── Constantes ──────────────────────────────────────────────────────────
+    /// @notice Limite do texto de rejeição. Sem limite, um verificador podia
+    ///         gravar kilobytes de string em storage às custas do gas do relayer.
+    uint256 public constant MAX_REJECT_REASON = 200;
 
-    address public admin;
+    // ── State ───────────────────────────────────────────────────────────────
+    // Não-immutable: setado após deploy via setRewardDistributor() (two-phase deploy).
+    IRewardDistributor public rewardDistributor;
+
+    /// @notice Contrato Memo da Arc. address(0) = indexação por Memo desligada.
+    /// @dev    immutable, não constant: o endereço muda entre testnet e mainnet.
+    IMemo public immutable memo;
+
     mapping(address => bool) public authorizedCallers;
 
     mapping(bytes32 => Location) public locations;           // locationHash => Location
     mapping(bytes32 => Contribution) public contributions;   // contributionId => Contribution
-    bytes32[] public allLocationHashes;                      // enumerable locations
+    bytes32[] public allLocationHashes;                      // locais enumeráveis
 
     // ── Modifiers ───────────────────────────────────────────────────────────
-    modifier onlyAdmin() {
-        if (msg.sender != admin) revert Unauthorized();
-        _;
-    }
-
     modifier onlyAuthorized() {
         if (!authorizedCallers[msg.sender] && msg.sender != admin) revert Unauthorized();
         _;
     }
 
     // ── Constructor ─────────────────────────────────────────────────────────
-    // Aceita address(0) para _rewardDistributor no two-phase deploy.
-    // Deve ser seguido de setRewardDistributor() antes de qualquer verificação.
-    constructor(address _rewardDistributor, address _admin) {
-        if (_admin == address(0)) revert ZeroAddress();
+    /// @param _rewardDistributor  Pode ser address(0) no two-phase deploy.
+    /// @param _admin              Deve ser o multisig em produção.
+    /// @param _memo               Contrato Memo da rede; address(0) desliga.
+    constructor(address _rewardDistributor, address _admin, address _memo) Admin2Step(_admin) {
         if (_rewardDistributor != address(0)) {
             rewardDistributor = IRewardDistributor(_rewardDistributor);
-            _distributorSet = true;
+            emit RewardDistributorUpdated(address(0), _rewardDistributor);
         }
-        admin = _admin;
+        memo = IMemo(_memo);
         authorizedCallers[_admin] = true;
+        emit AuthorizedCallerUpdated(_admin, true);
     }
 
     /// @notice Seta/atualiza o RewardDistributor (somente admin).
-    /// @dev    v2: atualizável — a versão "só uma vez" travou o v1 apontando
-    ///         para um distributor inexistente, quebrando verifyContribution.
+    /// @dev    Atualizável de propósito: a versão "só uma vez" travou a v1
+    ///         apontando para um distributor inexistente, quebrando toda
+    ///         verificação sem caminho de conserto.
     function setRewardDistributor(address _distributor) external onlyAdmin {
         if (_distributor == address(0)) revert ZeroAddress();
+        emit RewardDistributorUpdated(address(rewardDistributor), _distributor);
         rewardDistributor = IRewardDistributor(_distributor);
-        _distributorSet = true;
+    }
+
+    // ── Interno: Memo ───────────────────────────────────────────────────────
+    /// @dev Falha no Memo não deve reverter o registro (é indexação auxiliar),
+    ///      mas silenciar de vez não deixa rastro de que o Goldsky ficou sem
+    ///      esses metadados — por isso o catch emite evento em vez de `{}`.
+    function _attachMemo(bytes32 id, bytes memory data) internal {
+        if (address(memo) == address(0)) return;
+        try memo.attachMemo(id, data) {}
+        catch { emit MemoAttachFailed(id, block.number); }
     }
 
     // ── Core: Register Location ─────────────────────────────────────────────
 
-    /// @notice Register a new accessible location.
-    /// @param locationHash  Hash of (lat, lng, name, category) — off-chain computed.
-    /// @param latPacked     Latitude * 1e6 as uint256 (negative handled off-chain).
-    /// @param lngPacked     Longitude * 1e6 as uint256.
-    /// @param dataHash      IPFS/Arweave hash of photos + detailed metadata.
+    /// @notice Registra um novo local acessível.
+    /// @param locationHash  Hash de (lat, lng, nome, categoria) — calculado off-chain.
+    /// @param latPacked     (Latitude + 90) * 1e6.
+    /// @param lngPacked     (Longitude + 180) * 1e6.
+    /// @param dataHash      Hash IPFS/Arweave das fotos + metadados.
     /// @param contributor   Endereço REAL do contribuidor (o relayer chama em
     ///                      nome do usuário). address(0) → usa msg.sender.
     function registerLocation(
@@ -171,33 +202,21 @@ contract SteplessOracle {
         locations[locationHash] = Location({
             locationHash: locationHash,
             firstContributor: actualContributor,
-            registeredBlock: block.number,  // block.number, NOT block.timestamp
+            registeredBlock: block.number,  // block.number, NÃO block.timestamp
             verificationCount: 0,
             exists: true
         });
         allLocationHashes.push(locationHash);
 
-        // Attach memo with structured metadata (Arc Memo contract)
-        // This emits a Memo event indexable by Goldsky without expensive storage
-        // try/catch: memo may not be available on all Arc testnet instances.
-        // Falha aqui não deve reverter o registro do local (o Memo é só
-        // indexação auxiliar), mas silenciar de vez não deixa rastro de que
-        // o Goldsky ficou sem esses metadados — por isso o catch emite um
-        // evento em vez de `{}` vazio.
-        try memo.attachMemo(locationHash, abi.encodePacked(latPacked, lngPacked, dataHash)) {}
-        catch { emit MemoAttachFailed(locationHash, block.number); }
+        _attachMemo(locationHash, abi.encodePacked(latPacked, lngPacked, dataHash));
 
         emit LocationRegistered(locationHash, actualContributor, latPacked, lngPacked, block.number);
     }
 
     // ── Core: Submit Contribution ───────────────────────────────────────────
 
-    /// @notice Submit a contribution (update, photo, verification request).
-    /// @param contributionId  Unique hash for this contribution.
-    /// @param locationHash    Hash of the location being contributed to.
-    /// @param contributionType  Type of contribution.
-    /// @param dataHash         IPFS/Arweave hash of supporting data.
-    /// @param contributor      Endereço REAL do contribuidor (address(0) → msg.sender).
+    /// @notice Submete uma contribuição (atualização, foto, pedido de verificação).
+    /// @param contributor  Endereço REAL do contribuidor (address(0) → msg.sender).
     function submitContribution(
         bytes32 contributionId,
         bytes32 locationHash,
@@ -223,9 +242,7 @@ contract SteplessOracle {
             rejectReason: ""
         });
 
-        // Memo for contribution metadata (mesma lógica: falha vira evento, não silêncio)
-        try memo.attachMemo(contributionId, abi.encodePacked(locationHash, dataHash)) {}
-        catch { emit MemoAttachFailed(contributionId, block.number); }
+        _attachMemo(contributionId, abi.encodePacked(locationHash, dataHash));
 
         emit ContributionSubmitted(
             contributionId,
@@ -239,20 +256,31 @@ contract SteplessOracle {
 
     // ── Core: Verify Contribution ───────────────────────────────────────────
 
-    /// @notice Verify a contribution. Only approved verifiers can call this.
-    /// @dev    Calls RewardDistributor.recordVerification() for Sybil checks.
+    /// @notice Verifica uma contribuição. Só verificadores aprovados podem chamar.
+    /// @dev    v5: a autoridade vem do conjunto `verifiers` do RewardDistributor,
+    ///         NÃO da lista `authorizedCallers` deste contrato.
+    ///
+    ///         Na v4 o modificador era `onlyAuthorized`, o que dava poder de
+    ///         verificação a qualquer relayer autorizado. Como o relayer também
+    ///         assina em nome dos usuários, isso fechava o ciclo
+    ///         registrar → verificar → pagar numa única chave. Separar as duas
+    ///         listas é o que faz a verificação significar alguma coisa.
     function verifyContribution(bytes32 contributionId, bool approve, string calldata reason)
         external
-        onlyAuthorized
     {
+        if (address(rewardDistributor) == address(0)) revert RewardDistributorNotSet();
+        if (!rewardDistributor.verifiers(msg.sender)) revert NotAVerifier(msg.sender);
+        if (bytes(reason).length > MAX_REJECT_REASON) {
+            revert RejectReasonTooLong(bytes(reason).length, MAX_REJECT_REASON);
+        }
+
         Contribution storage c = contributions[contributionId];
         if (c.contributor == address(0)) revert ContributionNotFound(contributionId);
         if (c.verified || c.rejected) revert AlreadyVerified(contributionId);
-        // Sem isto, um distributor não configurado (_distributorSet == false)
-        // faria a chamada abaixo mirar address(0) e reverter sem motivo legível.
-        if (!_distributorSet) revert RewardDistributorNotSet();
+        // Checado aqui além do distributor: defesa em profundidade barata.
+        if (msg.sender == c.contributor) revert SelfVerificationForbidden();
 
-        // Record verification in RewardDistributor (cooldown + self-verify check)
+        // Registra no RewardDistributor (cooldown + anti auto-verificação).
         rewardDistributor.recordVerification(contributionId, msg.sender, c.contributor);
 
         if (approve) {
@@ -264,6 +292,7 @@ contract SteplessOracle {
             emit ContributionVerified(contributionId, msg.sender, c.contributor, block.number);
         } else {
             c.rejected = true;
+            c.verifier = msg.sender;
             c.rejectReason = reason;
 
             emit ContributionRejected(contributionId, msg.sender, reason, block.number);
@@ -272,14 +301,22 @@ contract SteplessOracle {
 
     // ── View Functions ──────────────────────────────────────────────────────
 
-    /// @notice Returns contribution verification status (for RewardDistributor).
+    /// @notice Status de verificação de uma contribuição (para o RewardDistributor).
     function getContribution(bytes32 contributionId)
         external
         view
-        returns (bool verified, address verifier, uint256 timestamp)
+        returns (bool verified, address verifier, uint256 blockNumber)
     {
         Contribution storage c = contributions[contributionId];
         return (c.verified, c.verifier, c.verifiedBlock);
+    }
+
+    /// @notice Endereço de quem de fato contribuiu.
+    /// @dev    v5: usado pelo RewardDistributor para conferir que a recompensa
+    ///         vai para o contribuidor registrado, e não para um endereço
+    ///         qualquer passado pelo chamador autorizado.
+    function getContributor(bytes32 contributionId) external view returns (address) {
+        return contributions[contributionId].contributor;
     }
 
     function getLocation(bytes32 locationHash)
@@ -298,10 +335,6 @@ contract SteplessOracle {
     function setAuthorizedCaller(address caller, bool authorized) external onlyAdmin {
         if (caller == address(0)) revert ZeroAddress();
         authorizedCallers[caller] = authorized;
-    }
-
-    function transferAdmin(address newAdmin) external onlyAdmin {
-        if (newAdmin == address(0)) revert ZeroAddress();
-        admin = newAdmin;
+        emit AuthorizedCallerUpdated(caller, authorized);
     }
 }

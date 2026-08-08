@@ -1,30 +1,55 @@
 /**
- * Stepless — Arc Testnet configuration
+ * Stepless — configuração de rede do app mobile.
  *
- * Extraído para um arquivo próprio (sem depender de App.tsx) para evitar
- * import circular: App.tsx importa WalletProvider de services/wallet.tsx,
- * que antes importava esta config de volta de App.tsx. Metro/Hermes
- * inicializa os módulos em ordem e o valor chegava `undefined` no módulo
- * que era carregado primeiro, causando "Cannot read property 'chainId' of
- * undefined". Import direto e sem ciclo resolve.
+ * ⚠️ Nada é chumbado aqui. Todos os valores vêm de `network.generated.ts`, que
+ * scripts/gen-network.mjs produz a partir de config/networks.json — a mesma
+ * fonte que o backend e a web leem.
+ *
+ * POR QUE: entre 31/07 e 05/08/2026 o redeploy para o v4 atualizou o mobile e
+ * esqueceu a web, que ficou lendo o par v3. Cada plataforma tinha a sua cópia
+ * dos endereços, e a divergência só apareceu dias depois. Regenerar de uma
+ * fonte única é o que impede a repetição — o CI roda `--check` e falha se os
+ * arquivos gerados saírem de sincronia.
+ *
+ * Extraído para arquivo próprio (sem depender de App.tsx) para evitar import
+ * circular: App.tsx importa WalletProvider de services/wallet.tsx, que antes
+ * importava esta config de volta de App.tsx. Metro/Hermes inicializa os módulos
+ * em ordem e o valor chegava `undefined` no módulo carregado primeiro, causando
+ * "Cannot read property 'chainId' of undefined".
  */
 
-export const ARC_TESTNET_CONFIG = {
-  chainId: 5042002,
-  name: 'Arc Testnet',
+import { STEPLESS_NETWORK } from './network.generated';
+
+export const ARC_CONFIG = {
+  chainId: STEPLESS_NETWORK.chainId,
+  name: STEPLESS_NETWORK.name,
+
+  // O proxy de produção usa o nó dedicado sem expor a credencial no APK.
+  // Os endpoints públicos ficam como fallback de resiliência.
   rpcUrl: process.env.EXPO_PUBLIC_ARC_RPC_URL || 'https://www.stepless.lat/api/rpc',
-  // O proxy de produção usa o nó dedicado sem expor sua credencial no APK.
-  // O oficial permanece como fallback para resiliência.
   rpcUrls: [
     process.env.EXPO_PUBLIC_ARC_RPC_URL || 'https://www.stepless.lat/api/rpc',
-    'https://rpc.testnet.arc.network',
+    ...STEPLESS_NETWORK.rpcUrls,
   ],
-  blockExplorerUrl: 'https://testnet.arcscan.app',
-  // USDC on Arc is dual: native (18 dec gas) AND ERC-20 (6 dec transfers)
-  usdcNativeDecimals: 18,
-  usdcErc20Decimals: 6,
-  usdcErc20Address: '0x3600000000000000000000000000000000000000',
-  memoContractAddress: '0x5294E9927c3306DcBaDb03fe70b92e01cCede505',
-  // Gas Station sponsors gas — transparent to the app
+
+  blockExplorerUrl: STEPLESS_NETWORK.explorerUrl,
+
+  // USDC na Arc é duplo: nativo (18 dec, gas) E ERC-20 (6 dec, transferências).
+  // É o MESMO ativo. Misturar os dois faz saldos aparecerem 1e12 vezes maiores.
+  usdcNativeDecimals: STEPLESS_NETWORK.nativeCurrency.decimals,
+  usdcErc20Decimals: STEPLESS_NETWORK.usdc.erc20Decimals,
+  usdcErc20Address: STEPLESS_NETWORK.usdc.erc20Address,
+
+  memoContractAddress: STEPLESS_NETWORK.predeploys.memo,
+  multicall3Address: STEPLESS_NETWORK.predeploys.multicall3,
+
+  contracts: STEPLESS_NETWORK.contracts,
+
+  // Gas Station patrocina o gas — transparente para o app.
   gasStationEnabled: true,
-};
+} as const;
+
+/** @deprecated Use ARC_CONFIG. Mantido para não quebrar imports existentes. */
+export const ARC_TESTNET_CONFIG = ARC_CONFIG;
+
+export const isTestnet = STEPLESS_NETWORK.testnet;

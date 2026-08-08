@@ -32,13 +32,22 @@
 
 const DYNAMIC_ENV_ID = window.DYNAMIC_ENV_ID || '9b978edb-c7e1-425c-93eb-1c042b66dff1';
 
-const ARC_TESTNET = {
-  chainId: 5042002,
-  name: 'Arc Testnet',
-  nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 6 },
-  rpcUrls: ['https://rpc.testnet.arc.network'],
-  blockExplorerUrls: ['https://testnet.arcscan.app'],
+// Vem de window.STEPLESS_NETWORK (config/networks.json). Estava chumbado, e com
+// `decimals: 6` para o USDC nativo — que na Arc tem 18. É esse número que a
+// carteira usa para exibir o saldo de gas.
+const _NET = window.STEPLESS_NETWORK;
+if (!_NET) throw new Error('network.js precisa ser carregado antes de dynamic-wallet.js.');
+
+const ARC_CHAIN = {
+  chainId: _NET.chainId,
+  name: _NET.name,
+  nativeCurrency: _NET.nativeCurrency,
+  rpcUrls: _NET.rpcUrls,
+  blockExplorerUrls: _NET.explorerUrl ? [_NET.explorerUrl] : [],
 };
+
+/** @deprecated Use ARC_CHAIN. */
+const ARC_TESTNET = ARC_CHAIN;
 
 // ─── Estado do módulo ────────────────────────────────────────────────────────
 let _client = null;      // instância do Dynamic client
