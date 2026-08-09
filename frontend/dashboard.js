@@ -318,10 +318,15 @@ async function disconnect() {
 // hardcoded aqui. Evita divergência silenciosa na próxima rotação de chave.
 const RELAYER_ADDRESS = cfg.relayerAddress;
 
-function requestAdminSecret() {
-  const secret = window.prompt('Informe a credencial administrativa para confirmar esta operação:');
-  return secret?.trim() || null;
-}
+// REMOVIDO (09/08/2026): o prompt de credencial administrativa.
+//
+// Ele era o fallback de `handleVerify` quando `signVerification()` devolvia
+// null. Na prática só fazia mal: o servidor tem `ALLOW_ADMIN_SECRET_VERIFY`
+// desligado por padrão (auditoria de mainnet), então NENHUMA senha digitada
+// aqui era aceita — a resposta era sempre 401 "Aprovação exige assinatura da
+// carteira do verificador". Pior: o prompt escondia o erro real da assinatura,
+// que é o que de fato precisa ser consertado. Um fallback que nunca funciona e
+// engole o diagnóstico é pior do que não ter fallback.
 
 /* ═══════════════════════════════════════════════════════════════
  *  Assinatura do verificador
@@ -348,12 +353,35 @@ function buildVerifyMessage({ contributionId, approve, address, timestamp, domai
   ].join('\n');
 }
 
-/** Pede a assinatura à carteira conectada. Retorna null se não der. */
+/**
+ * Pede a assinatura à carteira conectada.
+ *
+ * SEMPRE lança em caso de falha — nunca devolve null silenciosamente.
+ *
+ * Antes esta função engolia todo erro que não fosse "usuário cancelou" e
+ * devolvia null; quem chamava interpretava isso como "não tem carteira" e
+ * caía num prompt de senha que o servidor nunca aceitaria. O sintoma era um
+ * 401 sem explicação, e a causa real da falha de assinatura ficava invisível.
+ * Falhar alto aqui é o que torna o problema diagnosticável.
+ */
 async function signVerification(contributionId, approve) {
-  if (!walletAddress) return null;
+  if (!walletAddress) {
+    throw new Error('Nenhuma carteira conectada. Clique em Conectar antes de aprovar.');
+  }
+
   let provider;
-  try { provider = await getProvider(); } catch (_) { return null; }
-  if (!provider?.request) return null;
+  try {
+    provider = await getProvider();
+  } catch (err) {
+    throw new Error(`Não foi possível acessar a carteira: ${err?.message || err}`);
+  }
+  if (!provider?.request) {
+    throw new Error(
+      'A carteira conectada não expõe um provedor de assinatura. '
+      + 'Se você entrou por e-mail, conecte uma extensão de carteira (MetaMask/Rabby) '
+      + `com o endereço verificador ${walletAddress}.`,
+    );
+  }
 
   const timestamp = Date.now();
   const domain = window.location.host;
@@ -368,7 +396,9 @@ async function signVerification(contributionId, approve) {
   } catch (err) {
     // 4001 = usuário recusou no popup da carteira; não é erro de sistema.
     if (err?.code === 4001) throw new Error('Assinatura cancelada.');
-    return null;
+    throw new Error(
+      `A carteira recusou assinar (${err?.code ?? 'sem código'}): ${err?.message || err}`,
+    );
   }
 }
 
@@ -393,27 +423,24 @@ async function checkRelayerSetup() {
   }
 }
 
-// Botão de autorizar relayer (chama /api/setup POST)
+// Autorizar o relayer NÃO acontece mais pelo navegador.
+//
+// O POST /api/setup foi removido na auditoria de mainnet (achado C4): ele
+// reescrevia autorizações on-chain e enviava USDC mediante uma string em env
+// var, alcançável pela internet pública. A correção equivalente agora roda no
+// terminal de quem tem a chave, via scripts/setup-contracts.mjs.
+//
+// Este botão permanece só para explicar isso a quem chegar nele — chamar o
+// endpoint daqui devolveria 405.
 window.setupRelayer = async function() {
   const btn = document.getElementById('btn-setup-relay');
   const status = document.getElementById('setup-status');
   if (btn) btn.disabled = true;
-  if (status) status.textContent = 'Autorizando...';
   try {
-    const adminSecret = requestAdminSecret();
-    if (!adminSecret) {
-      if (status) status.textContent = 'Operação cancelada.';
-      if (btn) btn.disabled = false;
-      return;
-    }
-    const resp = await fetch('/api/setup', { method: 'POST', headers: { 'X-Admin-Secret': adminSecret } });
-    const data = await resp.json();
-    if (data.success) {
-      if (status) status.textContent = '✅ Autorizado! Pode registrar locais agora.';
-      setTimeout(() => { document.getElementById('admin-setup-panel').style.display = 'none'; }, 3000);
-    } else {
-      if (status) status.textContent = `❌ ${data.error}`;
-      if (btn) btn.disabled = false;
+    if (status) {
+      status.textContent =
+        'Autorização de relayer saiu do navegador por segurança. '
+        + 'Rode no terminal: node scripts/setup-contracts.mjs';
     }
   } catch (err) {
     if (status) status.textContent = `❌ ${err.message}`;
@@ -1134,32 +1161,23 @@ async function handleVerify(approved, idFromTable) {
   }
 
   try {
-    // Caminho normal: assina com a carteira conectada. O backend confere
-    // no contrato se esse endereço é verificador autorizado.
+    // Único caminho: assina com a carteira conectada. O backend confere no
+    // contrato se esse endereço é verificador autorizado. Se a assinatura
+    // falhar, `signVerification` lança com o motivo — e o catch abaixo mostra
+    // esse motivo, em vez de pedir uma senha que o servidor recusaria.
     const auth = await signVerification(contributionId, approved);
-
-    // Sem carteira que assine (ex.: dono operando de outro dispositivo),
-    // cai no segredo administrativo como alternativa.
-    let adminSecret = null;
-    if (!auth) {
-      adminSecret = requestAdminSecret();
-      if (!adminSecret) return;
-    }
-
-    const headers = { 'Content-Type': 'application/json' };
-    if (adminSecret) headers['X-Admin-Secret'] = adminSecret;
 
     // Verificação + pagamento acontecem no backend (/api/verify):
     // a chave verificadora aprova on-chain e o relayer paga o USDC
     // direto para a wallet do contribuidor real.
     const resp = await fetch('/api/verify', {
       method: 'POST',
-      headers,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contributionId,
         approve: approved,
         reason: approved ? '' : 'Rejeitado pelo verificador',
-        ...(auth ? { auth } : {}),
+        auth,
       }),
     });
     const result = await resp.json();

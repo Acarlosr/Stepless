@@ -71,11 +71,10 @@ Se algo falhar, regrave — **não corte no meio**, corte destrói a prova.
 **Tela:** terminal com um `curl` real na API → resposta `402 Payment Required` →
 pagamento → resposta com os dados. **Mostre o 402 de verdade**, não um slide.
 
-> "E repare em quem está dos dois lados dessa transação: não tem humano em
-> nenhum. Um agente de rotas planejando uma viagem acessível consulta, recebe o
-> 402, paga em USDC e segue. Do outro lado, o relayer paga o contribuidor
-> automaticamente contra uma verificação on-chain. Agente para agente, liquidado
-> em stablecoin. É por isso que isso é uma submissão nas duas trilhas."
+> "Note que dos dois lados dessa transação não tem humano aprovando pagamento:
+> o relayer paga o contribuidor automaticamente, contra uma verificação
+> on-chain — não uma assinatura, uma condição. É isso que torna o pagamento
+> programável, não só uma transferência."
 
 ---
 

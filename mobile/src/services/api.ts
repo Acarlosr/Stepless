@@ -7,13 +7,24 @@
  * de um endereço de carteira válido para o usuário RECEBER a recompensa.
  *
  * Espelha exatamente o fluxo de frontend/dashboard.js:
- *   latPacked = round((lat + 90)  * 1e6)   ← offset p/ caber em uint256 (sem negativos)
- *   lngPacked = round((lng + 180) * 1e6)
- *   locationHash = keccak256(encodePacked(['int256','int256','string'], [latPacked, lngPacked, name]))
- *   POST /api/relay { action:'registerLocation', userAddress, submissionData:{...} }
+ *   1. POST /api/upload  { image: dataURL, userAddress } → { photoToken, ... }
+ *   2. latPacked = round((lat + 90)  * 1e6)   ← offset p/ caber em uint256 (sem negativos)
+ *      lngPacked = round((lng + 180) * 1e6)
+ *      locationHash = keccak256(encodePacked(['int256','int256','string'], [latPacked, lngPacked, name]))
+ *   3. POST /api/relay { action:'registerLocation', userAddress, photoToken, submissionData:{...} }
  *
  * IMPORTANTE: não usar packCoordinate() de contracts.ts aqui — aquele NÃO aplica
  * o offset +90/+180 e produziria coordenadas negativas que o contrato rejeita.
+ *
+ * ── CORRIGIDO EM 09/08/2026 ──────────────────────────────────────────────
+ * Até aqui este arquivo pulava o passo 1 inteiro: mandava direto pro
+ * /api/relay com exifLat/exifLng/dataHash calculados no cliente. Isso era o
+ * fluxo de ANTES da v4 (auditoria de mainnet, achado C2) — o backend mudou
+ * pra exigir `photoToken` de um upload real da foto e passou a IGNORAR
+ * qualquer EXIF/hash declarado pelo cliente, mas o app mobile nunca foi
+ * atualizado pra acompanhar. Resultado: toda tentativa de registro no APK
+ * batia em "Envie a foto em /api/upload primeiro e repasse o photoToken
+ * recebido." — o app não registrava local nenhum.
  */
 
 import { keccak256, encodePacked, type Hex } from 'viem';
@@ -37,17 +48,53 @@ export function computeLocationHash(latPacked: number, lngPacked: number, name: 
   );
 }
 
-// Hash da foto (best-effort). Em RN, ler os bytes do arquivo nem sempre está
-// disponível; se falhar, o relayer aceita a ausência e gera um dataHash próprio.
-async function hashPhoto(photoUri: string | null | undefined): Promise<Hex | null> {
-  if (!photoUri) return null;
+export interface UploadPhotoResult {
+  photoToken: string;
+  dataHash: Hex;
+  cid: string | null;
+  exif: { hasGps: boolean; timestamp: string | null; flags: string[] };
+}
+
+/**
+ * Envia a foto (data URL base64) pro /api/upload. O servidor extrai o EXIF
+ * dos bytes reais, calcula dataHash = keccak256(bytes), guarda no IPFS, e
+ * devolve um photoToken de uso único — é ISSO que o /api/relay exige agora.
+ *
+ * @param imageDataUrl  "data:image/jpeg;base64,...." — ver captureBase64() em
+ *                       MapScreen.tsx (ImagePicker com `base64: true`).
+ */
+export async function uploadPhoto(
+  imageDataUrl: string,
+  userAddress: string
+): Promise<UploadPhotoResult> {
+  let resp: Response;
   try {
-    const resp = await fetch(photoUri);
-    const buf = await resp.arrayBuffer();
-    return keccak256(new Uint8Array(buf));
-  } catch {
-    return null; // relay tem fallback: keccak256(locationHash, lat, lng)
+    resp = await fetch(`${STEPLESS_API_BASE}/api/upload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: imageDataUrl, userAddress }),
+    });
+  } catch (netErr: any) {
+    throw new Error(`Falha de rede ao enviar a foto: ${netErr?.message || netErr}`);
   }
+
+  let result: any;
+  try {
+    result = await resp.json();
+  } catch {
+    throw new Error(`Resposta inválida do servidor ao enviar a foto (HTTP ${resp.status}).`);
+  }
+
+  if (!resp.ok || !result?.success) {
+    throw new Error(result?.error || `Erro ao enviar a foto (HTTP ${resp.status}).`);
+  }
+
+  return {
+    photoToken: result.photoToken,
+    dataHash: result.dataHash,
+    cid: result.cid ?? null,
+    exif: result.exif,
+  };
 }
 
 export interface RegisterLocationInput {
@@ -56,23 +103,18 @@ export interface RegisterLocationInput {
   lng: number;
   name: string;
   categories?: string[];          // ex.: ['ramp'] — salvo fora da chain (Upstash)
-  photoUri?: string | null;       // uri local da foto tirada no app
   /**
-   * Prova de captura da foto para o anti-fraude do relayer.
-   *
-   * ⚠️ NUNCA preencher isto com `lat`/`lng` do formulário. A versão anterior
-   * fazia `exifLat: input.exifLat ?? lat`, o que entregava a coordenada
-   * declarada como prova dela mesma: a distância no relayer dava sempre 0m e
-   * qualquer submissão passava na checagem. Um `null` honesto é infinitamente
-   * mais útil que um zero falso — com null o backend sabe que não há prova e
-   * pontua o risco de acordo.
-   *
-   * Origem esperada: EXIF da imagem (forte) ou GPS lido no disparo (fraco).
+   * Foto como data URL base64: "data:image/jpeg;base64,...."
+   * Capture com `ImagePicker.launchCameraAsync({ base64: true, ... })` —
+   * ver MapScreen.tsx. Obrigatório: sem foto o /api/upload rejeita.
    */
-  exifLat?: number | null;
-  exifLng?: number | null;
-  exifTimestamp?: string | null;
-  /** De onde vieram as coordenadas acima — o backend pondera o risco por isso. */
+  photoBase64: string;
+  /**
+   * De onde veio o GPS usado como contexto pro verificador humano — o EXIF
+   * de verdade (autoridade sobre presença) é medido pelo /api/upload a
+   * partir dos BYTES da foto, não do que o app declara aqui. Ver nota em
+   * uploadPhoto().
+   */
   gpsSource?: 'exif' | 'device' | null;
   /** Precisão do GPS em metros, quando conhecida. */
   gpsAccuracyM?: number | null;
@@ -90,7 +132,7 @@ export interface RegisterLocationResult {
  * legível (já traduzida pelo relayer) em caso de falha.
  */
 export async function registerLocation(input: RegisterLocationInput): Promise<RegisterLocationResult> {
-  const { userAddress, lat, lng, name, categories = [], photoUri } = input;
+  const { userAddress, lat, lng, name, categories = [], photoBase64 } = input;
 
   if (!/^0x[0-9a-fA-F]{40}$/.test(userAddress)) {
     throw new Error('Endereço de carteira inválido.');
@@ -98,24 +140,28 @@ export async function registerLocation(input: RegisterLocationInput): Promise<Re
   if (!name?.trim()) {
     throw new Error('Informe o nome do local.');
   }
+  if (!photoBase64) {
+    throw new Error('Foto obrigatória: tire a foto do local antes de registrar.');
+  }
 
   const { latPacked, lngPacked } = packForOracle(lat, lng);
   const locationHash = computeLocationHash(latPacked, lngPacked, name);
-  const dataHash = await hashPhoto(photoUri);
 
+  // Passo 1 de 2: sobe a foto e recebe o photoToken. É o servidor quem mede
+  // o EXIF e calcula o dataHash a partir dos bytes — não o app.
+  const { photoToken } = await uploadPhoto(photoBase64, userAddress);
+
+  // Passo 2 de 2: registra o local, repassando o token de uso único.
   const body = {
     action: 'registerLocation' as const,
     userAddress,
+    photoToken,
     submissionData: {
       locationHash,
       latPacked,
       lngPacked,
-      dataHash: dataHash ?? undefined,
-      // Prova para o anti-fraude (ver nota no tipo acima). Repassada como
-      // chegou — sem fallback para lat/lng, que anulava a checagem.
-      exifLat: input.exifLat ?? null,
-      exifLng: input.exifLng ?? null,
-      exifTimestamp: input.exifTimestamp ?? null,
+      // Contexto para o verificador humano — não é mais prova (isso agora
+      // vem do EXIF que o /api/upload extraiu dos bytes da foto).
       gpsSource: input.gpsSource ?? null,
       gpsAccuracyM: input.gpsAccuracyM ?? null,
       name,

@@ -73,6 +73,13 @@ interface AddLocationForm {
   lng: number;
   photoUri: string | null;
   /**
+   * Data URL base64 da mesma foto ("data:image/jpeg;base64,...."), capturada
+   * junto com photoUri via `ImagePicker.launchCameraAsync({ base64: true })`.
+   * É isto que sobe pro /api/upload — photoUri sozinho não basta porque o
+   * backend precisa dos BYTES, não de um caminho de arquivo local.
+   */
+  photoBase64: string | null;
+  /**
    * Prova de captura da foto — medida NO MOMENTO em que a câmera dispara, e
    * independente de lat/lng do formulário.
    *
@@ -162,6 +169,7 @@ export default function MapScreen() {
     lat: 0,
     lng: 0,
     photoUri: null,
+    photoBase64: null,
     photoLat: null,
     photoLng: null,
     photoTimestamp: null,
@@ -275,6 +283,7 @@ export default function MapScreen() {
       lat: userLocation.lat,
       lng: userLocation.lng,
       photoUri: null,
+      photoBase64: null,
       photoLat: null,
       photoLng: null,
       photoTimestamp: null,
@@ -302,7 +311,11 @@ export default function MapScreen() {
         // prova de onde a foto foi tirada, o recorte fica desligado.
         allowsEditing: false,
         quality: 0.7,
-        base64: false,
+        // base64:true é o que permite subir a foto pro /api/upload sem
+        // depender de expo-file-system (não instalado neste projeto). Sem
+        // isto o app não tinha como enviar os BYTES da imagem — só o caminho
+        // local (photoUri), que o servidor não consegue ler.
+        base64: true,
         exif: true,
       });
 
@@ -360,9 +373,24 @@ export default function MapScreen() {
           }
         }
 
+        // MIME real da captura da câmera. `asset.mimeType` existe no SDK 51+;
+        // se vier ausente por algum motivo, jpeg é o formato de saída padrão
+        // da câmera em ambas as plataformas.
+        const mime = (asset as any).mimeType || 'image/jpeg';
+        const photoBase64 = asset.base64 ? `data:${mime};base64,${asset.base64}` : null;
+
+        if (!photoBase64) {
+          // Sem base64 não há como subir a foto pro /api/upload — melhor
+          // avisar aqui do que deixar o usuário preencher tudo e falhar
+          // só no envio.
+          Alert.alert(t('errors.cameraError'), t('errors.cameraErrorMessage'));
+          return;
+        }
+
         setFormData((prev) => ({
           ...prev,
           photoUri: asset.uri,
+          photoBase64,
           photoLat,
           photoLng,
           photoTimestamp: photoTimestamp ?? new Date().toISOString(),
@@ -383,7 +411,7 @@ export default function MapScreen() {
       return;
     }
 
-    if (!formData.photoUri) {
+    if (!formData.photoUri || !formData.photoBase64) {
       Alert.alert(t('errors.photoRequired'), t('errors.photoRequiredMessage'));
       return;
     }
@@ -416,13 +444,11 @@ export default function MapScreen() {
         lng: formData.lng,
         name: formData.name.trim(),
         categories,
-        photoUri: formData.photoUri,
-        // Prova de captura medida na câmera — nunca as coordenadas do
-        // formulário. Se for null, o backend enxerga "sem prova" em vez de
-        // uma confirmação circular.
-        exifLat: formData.photoLat,
-        exifLng: formData.photoLng,
-        exifTimestamp: formData.photoTimestamp,
+        // A foto sobe pro /api/upload dentro de apiRegisterLocation(); é o
+        // servidor quem extrai o EXIF real dos bytes e calcula o dataHash —
+        // não o app. photoLat/photoLng não são mais enviados por isso (eram
+        // ignorados pelo backend desde a v4; ver nota em api.ts).
+        photoBase64: formData.photoBase64,
         gpsSource: formData.photoGpsSource,
         gpsAccuracyM: formData.photoAccuracyM,
       });
