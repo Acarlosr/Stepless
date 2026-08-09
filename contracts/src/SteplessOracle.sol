@@ -35,11 +35,35 @@ interface IRewardDistributor {
     function verifiers(address) external view returns (bool);
 }
 
+/// @title IMemo — interface REAL do predeploy Memo da Arc.
+/// @dev Testnet: 0x5294E9927c3306DcBaDb03fe70b92e01cCede505 (verificado no ArcScan).
+///
+/// ⚠️ ESTA INTERFACE ESTAVA ERRADA ATÉ 09/08/2026. Declarava
+/// `attachMemo(bytes32,bytes)` → selector 0xc16b4795, uma função que não existe
+/// no Memo. Toda chamada caía no fallback e revertia — engolida pelo try/catch
+/// de `_attachMemo`, então as transações continuavam com status ok e ninguém
+/// percebeu. O par v4 em produção tem uma internal transaction revertida em
+/// CADA registerLocation e submitContribution desde 31/07/2026.
+///
+/// ⚠️ E o Memo é EOA-ONLY. Ele repassa a subchamada pelo precompile `callFrom`
+/// (0x1800…0003), que exige que o `sender` seja o próprio caller ou o
+/// tx.origin. Um CONTRATO não é nem um nem outro: mesmo com o selector certo,
+/// `SteplessOracle` chamando o Memo reverte sempre. Ou seja, `_attachMemo` é
+/// arquiteturalmente impossível — não é um bug de assinatura, é um caminho
+/// morto.
+///
+/// A anexação correta acontece do lado do relayer, que é um EOA, invertendo a
+/// direção da chamada: relayer → Memo.memo(target=oracle, data=…) → callFrom →
+/// oracle. Implementado em `api/_memo.js`. Esta interface fica aqui apenas para
+/// que o deploy futuro (v5) possa passar `_memo = address(0)` e desligar o
+/// caminho morto de vez, sem quebrar o construtor.
 interface IMemo {
-    /// @notice Anexa um memo à transação (contrato predeployado da Arc).
-    /// @dev    Testnet: 0x5294E9927c3306DcBaDb03fe70b92e01cCede505
-    ///         Emite eventos Memo com índice sequencial — indexável pelo Goldsky.
-    function attachMemo(bytes32 indexedId, bytes calldata data) external;
+    /// @notice Executa uma subchamada via callFrom e emite o metadado do memo.
+    /// @param target   Contrato a ser chamado através do precompile.
+    /// @param data     Calldata a repassar para o target.
+    /// @param memoId   Identificador do memo (indexado no evento).
+    /// @param memoData Bytes arbitrários anexados à subchamada.
+    function memo(address target, bytes calldata data, bytes32 memoId, bytes calldata memoData) external;
 }
 
 contract SteplessOracle is Admin2Step {
@@ -171,13 +195,23 @@ contract SteplessOracle is Admin2Step {
     }
 
     // ── Interno: Memo ───────────────────────────────────────────────────────
-    /// @dev Falha no Memo não deve reverter o registro (é indexação auxiliar),
-    ///      mas silenciar de vez não deixa rastro de que o Goldsky ficou sem
-    ///      esses metadados — por isso o catch emite evento em vez de `{}`.
+    /// @dev NO-OP DELIBERADO. Ver a nota grande no `interface IMemo` acima.
+    ///
+    ///      Este contrato não pode anexar memos: o predeploy é EOA-only por
+    ///      construção do precompile `callFrom`. Qualquer chamada daqui reverte
+    ///      — foi o que aconteceu em toda transação do par v4 entre 31/07 e
+    ///      09/08/2026, sem sintoma visível porque o try/catch engolia.
+    ///
+    ///      A anexação real acontece no relayer (`api/_memo.js`), que é um EOA
+    ///      e chama o Memo com o oracle como target. As chamadas a esta função
+    ///      permanecem nos pontos originais para marcar ONDE um memo é anexado
+    ///      pelo caminho de fora, e o evento continua sendo emitido quando um
+    ///      endereço de Memo está configurado — assim um deploy que ainda passe
+    ///      o predeploy no construtor deixa rastro em vez de mentir silêncio.
     function _attachMemo(bytes32 id, bytes memory data) internal {
         if (address(memo) == address(0)) return;
-        try memo.attachMemo(id, data) {}
-        catch { emit MemoAttachFailed(id, block.number); }
+        data; // silencia o aviso de parâmetro não usado sem mudar a assinatura
+        emit MemoAttachFailed(id, block.number);
     }
 
     // ── Core: Register Location ─────────────────────────────────────────────

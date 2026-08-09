@@ -22,33 +22,72 @@
 
 > **Accessibility shouldn't depend on goodwill. It should pay the people who build it.**
 
-Stepless turns accessibility mapping into on-chain, instantly-settled USDC rewards. Contributors submit photos of ramps, elevators, and accessible locations. Verifiers confirm them on-chain. USDC lands in the contributor's wallet — settled on Arc in seconds.
+Stepless is programmable-money infrastructure: a USDC treasury that only releases funds against an independent, on-chain verification, running in the accessibility-data domain. Contributors submit photos of ramps, elevators, and accessible locations. Verifiers confirm them on-chain. USDC lands in the contributor's wallet — settled on Arc in seconds. Third parties then pay per query, in USDC via x402, to read the resulting oracle.
 
 ---
 
-## Contratos
+## Contracts
 
-Os endereços de **todas** as redes vivem em [`config/networks.json`](config/networks.json)
-— fonte única lida pelo backend, pelo frontend e pelo app. Não há endereço
-chumbado em código.
+Addresses for **every** network live in [`config/networks.json`](config/networks.json)
+— the single source read by the backend, the frontend, and the mobile app. No
+address is hardcoded anywhere else.
 
 ```bash
-node scripts/check-live-contracts.mjs   # pergunta para a própria Arc qual par está vivo
+node scripts/check-live-contracts.mjs   # asks Arc itself which pair is live
 ```
 
-**Status de mainnet:** a Arc lança o mainnet público em **16/09/2026**, mas a
-Circle ainda não publicou os endereços de USDC e Memo dessa rede
+**Mainnet status:** Arc's public mainnet launches on **2026-09-16**, but Circle
+has not yet published the USDC and Memo addresses for that network
 ("Mainnet addresses are not yet available", [docs.arc.io](https://docs.arc.io/arc/references/contract-addresses)).
-Por isso a entrada `arc-mainnet` do JSON está com campos `null` de propósito, e
-o backend **falha ao subir** nela. É melhor não subir do que subir com um
-endereço chutado: na Arc, uma chamada para um endereço sem código retorna
-sucesso, e o contrato marcaria recompensas como pagas sem mover um centavo.
+That's why the `arc-mainnet` entry in the JSON carries `null` fields on
+purpose, and the backend **refuses to boot** against it. Not shipping beats
+shipping a guessed address: on Arc, a call to an address with no code returns
+success, and the contract would mark rewards as paid without moving a cent.
 
-> **Contratos antigos — não usar.** Os pares v3 (`0x53ba90e1…` / `0xdf8fa455…`)
-> e v1 continuam on-chain e ainda têm saldo. O v3 parece *mais* movimentado que
-> o par vivo (34 locais contra poucos), então contar locais leva à conclusão
-> errada sobre qual está em uso. Eles estão listados em `deprecatedContracts`
-> no JSON, e um teste do CI falha se algum reaparecer no frontend ou no app.
+> **Deprecated contracts — do not use.** The v3 pair (`0x53ba90e1…` /
+> `0xdf8fa455…`) and v1 are still on-chain and still hold balance. v3 actually
+> looks *more* active than the live pair (34 locations vs. a handful), so
+> counting locations leads to the wrong conclusion about which one is in use.
+> Both are listed under `deprecatedContracts` in the JSON, and a CI check fails
+> if either reappears in the frontend or the app.
+
+## Build on Arc Hackathon — submission notes
+
+**Track:** DeFi — programmable, conditional USDC payments triggered by on-chain
+verification.
+
+**What is live right now** (Arc Testnet, chain 5042002 — click through and check):
+
+| Contract | Address | Role |
+|---|---|---|
+| `SteplessOracle` | [`0x69b3f9ca…a5cc`](https://testnet.arcscan.app/address/0x69b3f9caca6514f76dd2f0dc4b54409e6d5da5cc) | Location + contribution registry |
+| `RewardDistributor` | [`0xef5d148b…2ea0`](https://testnet.arcscan.app/address/0xef5d148b126d8dcdc7d344dfa367c61acbb02ea0) | USDC treasury, funded and paying |
+| `X402API` | [`0x0D318864…fCc9`](https://testnet.arcscan.app/address/0x0D318864C80eCe8d28800a750bdA06b6E52ffCc9) | HTTP 402 metered access to the oracle |
+
+Live app: **[stepless.vercel.app](https://stepless.vercel.app)** · Dashboard: **[/dashboard.html](https://stepless.vercel.app/dashboard.html)**
+
+**The programmable-money flow:**
+
+1. A contributor's submission is registered on-chain, unverified.
+2. A verifier confirms it independently, on-chain — the payout is gated by
+   that verification, not by a signature from the contributor or a human
+   approving a transfer.
+3. `RewardDistributor` releases USDC from treasury automatically once the
+   condition is met. Multi-step settlement, each step on-chain.
+4. `X402API` meters third-party reads of the resulting oracle and settles them
+   in USDC per call — the demand side that keeps the treasury funded instead
+   of running down to zero.
+
+**Where the Arc stack is actually used, not just named:**
+
+- **USDC-denominated gas.** The relayer pays gas in USDC. There is no second token anywhere in the system — a contributor never has to acquire anything to get paid.
+- **Sub-second settlement.** A contributor watches the reward land while still standing in front of the ramp they photographed. This is the whole product: a 30-second feedback loop is a different thing from a 30-second promise.
+- **`Memo` predeploy.** Registrations are submitted *through* Arc's `Memo` contract, which forwards the call via the `callFrom` precompile. Structured metadata (packed lat/lng + photo hash) is attached natively to the transaction with a sequential index, instead of being reconstructed from logs off-chain.
+- **x402.** `X402API.sol` meters third-party reads of the accessibility oracle and settles them in USDC.
+
+**Known limitation, stated plainly:** Arc mainnet launches 2026-09-16 and Circle has not published mainnet USDC/Memo addresses yet, so `arc-mainnet` in `config/networks.json` has `null` fields on purpose and the backend refuses to boot against it. Guessing an address would be worse than not shipping — on Arc, a call to an address with no code returns success, and the contract would mark rewards as paid without moving a cent.
+
+---
 
 ## How It Works
 
@@ -66,18 +105,26 @@ sucesso, e o contrato marcaria recompensas como pagas sem mover um centavo.
 User (browser)
       │
       ▼
-stepless.vercel.app          ← Frontend HTML/JS puro
+stepless.vercel.app          ← Plain HTML/JS frontend
       │
       ▼
-/api/upload.js               ← Recebe a FOTO; extrai o EXIF no servidor,
-      │                        calcula dataHash = keccak256(bytes) e
-      │                        guarda a imagem no IPFS. Devolve um token.
+/api/upload.js               ← Receives the PHOTO; extracts EXIF server-side,
+      │                        computes dataHash = keccak256(bytes), and
+      │                        stores the image on IPFS. Returns a token.
       ▼
-/api/relay.js                ← Relayer serverless (paga o gas em USDC).
-      │  Valida o GPS da foto  Usa SÓ a prova do token — o cliente não
-      │  contra o local        declara coordenadas nem hash.
+/api/relay.js                ← Serverless relayer (pays gas in USDC).
+      │  Validates the photo's   Uses ONLY the token's proof — the client
+      │  GPS against the         never declares coordinates or a hash.
+      │  declared location
       ▼
-SteplessOracle.sol           ← Registro de locais na Arc
+Memo (Arc predeploy)         ← The relayer, an EOA, calls Memo with the
+      │  0x5294E9…e505          oracle as target. The `callFrom` precompile
+      │                         preserves msg.sender, so the oracle still
+      │                         sees the authorized relayer — and a
+      │                         sequential, indexable Memo event is emitted.
+      │                         See api/_memo.js.
+      ▼
+SteplessOracle.sol           ← Location registry on Arc
       │
       ▼
 RewardDistributor.sol        ← USDC treasury + reward settlement
@@ -91,7 +138,7 @@ Goldsky Subgraph             ← Event indexer for dashboard (pending deploy)
 | Feature | Benefit for Stepless |
 |---|---|
 | **USDC-native gas** | Micropayments (0.01–1 USDC) viable; no volatile token |
-| **3-second finality** | Contributors see TX confirmed in real-time |
+| **Sub-second finality** | Contributors see the TX confirmed in real time |
 | **EVM-compatible** | Full Solidity 0.8.24 + viem support |
 | **Programmable money** | x402 payment protocol for API consumers |
 
@@ -113,6 +160,7 @@ stepless/
 │   └── dynamic-wallet.js        # Wallet onboarding (Dynamic SDK)
 ├── api/
 │   ├── relay.js                 # Vercel serverless relayer (gasless UX)
+│   ├── _memo.js                 # Arc Memo predeploy integration
 │   └── setup.js                 # One-time relayer authorization endpoint
 ├── subgraph/
 │   ├── schema.graphql           # GraphQL schema
@@ -170,15 +218,19 @@ Live: [stepless.vercel.app](https://stepless.vercel.app)
 - [x] Contributor dashboard (vanilla HTML/JS)
 - [x] `registerLocation` confirmed on-chain
 
-### Phase 1.5 — Endurecimento para mainnet (2026-08-06)
-- [x] Contratos v5: USDC/Memo `immutable`, admin em duas fases, timelock de 48h
-      no saque, `failedRewards` com reenvio permissionless, guarda de reentrância
-- [x] Prova de foto server-side (a imagem passa a ser enviada e armazenada)
-- [x] Chaves separadas: admin (multisig) / relayer / verificador
-- [x] Endpoints de deploy e de rotação de admin removidos da API
-- [x] `config/networks.json` como fonte única de rede
-- [ ] Auditoria externa dos contratos — **congelar o código em 29/08**
-- [ ] Deploy dos contratos v5 e migração do estado
+### Phase 1.5 — Mainnet hardening (2026-08-06)
+- [x] v5 contracts: `immutable` USDC/Memo, two-step admin transfer, 48h
+      withdrawal timelock, permissionless retry via `failedRewards`,
+      reentrancy guard
+- [x] Server-side photo proof (the image itself is now uploaded and stored)
+- [x] Separated keys: admin (multisig) / relayer / verifier
+- [x] Deploy and admin-rotation endpoints removed from the API
+- [x] `config/networks.json` as the single source of network truth
+- [x] Arc `Memo` integration fixed to route through the relayer EOA instead of
+      the contract — the contract-side call was reverting silently since the
+      v4 deploy (2026-07-31); see `api/_memo.js`
+- [ ] External audit of the contracts — **code freeze on 2026-08-29**
+- [ ] Deploy v5 contracts and migrate state
 
 ### Phase 2 — Community (in progress)
 - [ ] Goldsky subgraph deploy (rewards history + map)

@@ -31,6 +31,7 @@
  */
 
 import { createWalletClient, createPublicClient, http, fallback, keccak256, encodePacked, getAddress } from 'viem';
+import { writeWithMemo } from './_memo.js';
 import { privateKeyToAccount } from 'viem/accounts';
 import { createHash } from 'node:crypto';
 import { store, contribKey, PENDING_LIST_KEY, clientIp, cors, ORACLE_ABI, translateError, requirePersistentStore } from './_stepless.js';
@@ -224,6 +225,10 @@ export default async function handler(req, res) {
     // auditoria pediu para quebrar.
 
     let txHash;
+    // Se a escrita saiu pelo predeploy Memo da Arc (true) ou pelo caminho
+    // direto de fallback (false). Ver api/_memo.js.
+    let viaMemo = false;
+    let memoError = null;
     let contributionId = null;
     let placePromise = null;
     let placeEvidence = null;
@@ -256,12 +261,21 @@ export default async function handler(req, res) {
         .update(`${locationHash}${userAddress}${photo.dataHash}${Date.now()}`)
         .digest('hex')}`;
 
-      txHash = await walletClient.writeContract({
+      // Via Memo nativo da Arc: o relayer (EOA) chama o predeploy, que chama o
+      // oracle preservando msg.sender via callFrom. Ver api/_memo.js para por
+      // que o `_attachMemo` de dentro do contrato nunca funcionou.
+      ({ txHash, viaMemo, memoError } = await writeWithMemo({
+        walletClient,
+        publicClient,
         address: oracleAddress,
         abi: ORACLE_ABI,
         functionName: 'submitContribution',
         args: [contributionId, locationHash, Number(contributionType), photo.dataHash, userAddress],
-      });
+        memoId: contributionId,
+        // Mesmo payload que o contrato tentava anexar:
+        // abi.encodePacked(locationHash, dataHash)
+        memoData: encodePacked(['bytes32', 'bytes32'], [locationHash, photo.dataHash]),
+      }));
     }
 
     // ── registerLocation ──────────────────────────────────────────────────
@@ -333,12 +347,21 @@ export default async function handler(req, res) {
 
       // dataHash = hash dos bytes da foto (calculado em /api/upload).
       // Antes era calculado pelo cliente e não correspondia a arquivo nenhum.
-      txHash = await walletClient.writeContract({
+      ({ txHash, viaMemo, memoError } = await writeWithMemo({
+        walletClient,
+        publicClient,
         address: oracleAddress,
         abi: ORACLE_ABI,
         functionName: 'registerLocation',
         args: [locationHash, BigInt(latPacked), BigInt(lngPacked), photo.dataHash, userAddress],
-      });
+        memoId: locationHash,
+        // Mesmo payload que o contrato tentava anexar:
+        // abi.encodePacked(latPacked, lngPacked, dataHash)
+        memoData: encodePacked(
+          ['uint256', 'uint256', 'bytes32'],
+          [BigInt(latPacked), BigInt(lngPacked), photo.dataHash],
+        ),
+      }));
     }
 
     // Espera a confirmação ANTES de qualquer marcação irreversível.
@@ -468,6 +491,9 @@ export default async function handler(req, res) {
       cid: photo.cid,
       blockNumber: receipt.blockNumber?.toString(),
       status: receipt.status,
+      // Arc-native: a transação passou pelo predeploy Memo, então existe um
+      // evento Memo com índice sequencial ligado a este registro.
+      memo: { attached: viaMemo, error: memoError },
       risk: riskAssessment ? { level: riskAssessment.level, score: riskAssessment.score } : null,
     });
 

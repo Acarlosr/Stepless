@@ -25,3 +25,11 @@ contracts/broadcast/
 
 # ── Config local de ferramentas ──────────────────────────────
 .claude/
+.cursor*/
+
+# ── Assets de marca de terceiros (não redistribuir) ───────────
+# Removido em 09/08/2026: 5.9 MB de logos/guidelines da Arc/Circle
+# tinham sido commitados por engano em Logo/_extract/. Nada no
+# código referencia esse diretório — confirmado com
+# `git grep "Logo/" -- ':!Logo'` antes de remover.
+Logo/
