@@ -1547,7 +1547,16 @@ async function estimateRegisterGas() {
     });
 
     const gasPrice = await publicClient.getGasPrice();
-    const gasCostUsdc = (gasEstimate * gasPrice) / 10n ** 6n;
+    // gasEstimate * gasPrice dá o custo em WEI do gas nativo da Arc, que tem
+    // 18 decimais (ver config/networks.json → nativeCurrency.decimals) — não
+    // 6, que é só a interface ERC-20 do USDC. formatUsdc() já divide por 1e6
+    // (ela foi escrita pra formatar valores de USDC ERC-20 de verdade, tipo
+    // recompensa paga). Dividir por 1e6 aqui TAMBÉM, antes de passar pra
+    // formatUsdc, dividia o total só por 1e12 em vez de 1e18 — resultado
+    // aparecia 1.000.000× maior que o custo real (uma tx de ~0,003 USDC virava
+    // "3.205,78 USDC" na tela). Dividindo por 1e12 aqui, formatUsdc completa
+    // os 6 que faltam pra fechar os 18 certos.
+    const gasCostUsdc = (gasEstimate * gasPrice) / 10n ** 12n;
     const s = getStrings();
     if (gasEl) gasEl.textContent = `${s.gas_estimate || 'Estimated gas: '}${formatUsdc(gasCostUsdc)} USDC`;
   } catch (err) {
