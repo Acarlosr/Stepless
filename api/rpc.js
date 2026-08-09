@@ -21,6 +21,17 @@ const ALLOWED_METHODS = new Set([
   'eth_getCode', 'eth_getLogs', 'eth_getStorageAt', 'eth_getTransactionByHash',
   'eth_getTransactionCount', 'eth_getTransactionReceipt', 'eth_maxPriorityFeePerGas',
   'net_version', 'web3_clientVersion',
+  // ── Filtros de evento ────────────────────────────────────────────────────
+  // O watchContractEvent do viem NÃO começa por eth_getLogs: ele tenta primeiro
+  // criar um filtro no nó (eth_newFilter) e depois consultá-lo em cada poll
+  // (eth_getFilterChanges), caindo pro getLogs só se o filtro falhar. Como
+  // esses três métodos estavam fora da allowlist, TODA rodada de polling dos 4
+  // watchers do dashboard batia neste proxy e voltava 400 — era essa a origem
+  // do tapete de "Failed to load resource: 400" no console, a cada 15s, sem
+  // que nenhum evento em tempo real chegasse a funcionar.
+  // São métodos só-leitura, sem custo de escrita on-chain.
+  'eth_newFilter', 'eth_getFilterChanges', 'eth_getFilterLogs', 'eth_uninstallFilter',
+  'eth_newBlockFilter',
 ]);
 
 /**
@@ -60,6 +71,13 @@ function validateMethodParams(item) {
   if (item.method === 'eth_sendRawTransaction') {
     const rawLength = hexByteLength(params[0]);
     return params.length === 1 && rawLength !== null && rawLength <= MAX_RAW_TX_BYTES;
+  }
+  // eth_newFilter recebe o mesmo objeto de filtro do getLogs, e o viem manda
+  // fromBlock/toBlock como tag ("latest") aqui com frequência. Aplica a mesma
+  // validação branda: só barra o que for claramente malformado.
+  if (item.method === 'eth_newFilter') {
+    const filter = params[0];
+    return params.length === 1 && Boolean(filter) && typeof filter === 'object';
   }
   if (item.method === 'eth_getLogs') {
     const filter = params[0];
