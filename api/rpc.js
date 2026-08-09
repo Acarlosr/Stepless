@@ -44,6 +44,8 @@ function hexByteLength(value) {
     : null;
 }
 
+const BLOCK_TAGS = new Set(['latest', 'earliest', 'pending', 'safe', 'finalized']);
+
 function parseBlockNumber(value) {
   if (typeof value !== 'string' || !/^0x[0-9a-fA-F]+$/.test(value)) return null;
   try { return BigInt(value); } catch { return null; }
@@ -63,8 +65,22 @@ function validateMethodParams(item) {
     const filter = params[0];
     if (params.length !== 1 || !filter || typeof filter !== 'object') return false;
     if (filter.blockHash) return /^0x[0-9a-fA-F]{64}$/.test(filter.blockHash);
-    const from = parseBlockNumber(filter.fromBlock);
-    const to = parseBlockNumber(filter.toBlock);
+
+    // fromBlock/toBlock chegam como tag ("latest", "earliest"...) OU como
+    // número hex — o padrão JSON-RPC aceita os dois, mas o código original só
+    // aceitava hex. viem's watchContractEvent (poll: true) manda "latest" como
+    // toBlock com frequência (ex.: no primeiro poll após reconectar, ou quando
+    // strict:false), e cada chamada real caía aqui como inválida — gerando o
+    // "tapete" de 400 no console que nunca deixava os watchers de eventos
+    // funcionarem de verdade.
+    const rawFrom = filter.fromBlock ?? 'latest';
+    const rawTo = filter.toBlock ?? 'latest';
+    const fromIsTag = BLOCK_TAGS.has(rawFrom);
+    const toIsTag = BLOCK_TAGS.has(rawTo);
+    if (fromIsTag || toIsTag) return true; // sem número dos dois lados pra medir o range — deixa passar
+
+    const from = parseBlockNumber(rawFrom);
+    const to = parseBlockNumber(rawTo);
     return from !== null && to !== null && to >= from && to - from <= MAX_LOG_BLOCK_RANGE;
   }
   return true;
