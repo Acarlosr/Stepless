@@ -418,6 +418,27 @@ export function getWalletState() {
   return { isConnected: _isConnected, address: _address, walletClient: _walletClient };
 }
 
+/**
+ * Registra uma conexão feita FORA deste módulo — usado pelo reconnect
+ * silencioso do dashboard (tryAutoConnect, ramo `window.ethereum`
+ * `eth_accounts`), que fala direto com o MetaMask sem passar por
+ * connectWallet().
+ *
+ * CORRIGIDO EM 09/08/2026: sem isto, esse reconnect silencioso atualizava só
+ * o `walletAddress` do dashboard.js — este módulo continuava com
+ * `_isConnected = false` (valor de init, nunca tocado). getProvider() então
+ * devolvia `null`, e signVerification() concluía "carteira sem provedor de
+ * assinatura, deve ter entrado por e-mail" — mesmo com o MetaMask
+ * genuinamente conectado e capaz de assinar. Sintoma: funcionava logo após
+ * clicar "Usar MetaMask", e voltava a quebrar em todo F5 seguinte.
+ */
+export function adoptExternalConnection(address, provider) {
+  _address = address;
+  _walletClient = provider;
+  _isConnected = true;
+  _notify();
+}
+
 // ─── getProvider ─────────────────────────────────────────────────────────────
 /**
  * Retorna um provider EIP-1193 compatível com viem's custom() transport.

@@ -7,7 +7,7 @@
  */
 
 import { SteplessConfig } from './arc-config.js';
-import { initDynamic, connectWallet as _dynamicConnect, disconnectWallet, onWalletChange, getProvider, tryRestoreSession as _dynamicRestore } from './dynamic-wallet.js';
+import { initDynamic, connectWallet as _dynamicConnect, disconnectWallet, onWalletChange, getProvider, tryRestoreSession as _dynamicRestore, adoptExternalConnection } from './dynamic-wallet.js';
 
 // Inicializa Dynamic em background — guardamos a promise pra poder esperar
 // ela terminar antes de checar sessão salva em tryAutoConnect().
@@ -1779,6 +1779,13 @@ async function tryAutoConnect() {
       if (accounts && accounts.length > 0) {
         const viem = await loadViem();
         const address = viem.getAddress(accounts[0]);
+
+        // Sem isto, dynamic-wallet.js nunca sabe que o MetaMask está
+        // conectado — getProvider() fica devolvendo null pra sempre depois
+        // de um F5, mesmo com o dashboard mostrando o endereço certo. Ver
+        // a nota em adoptExternalConnection().
+        adoptExternalConnection(address, window.ethereum);
+
         await _completeConnection(address, window.ethereum);
 
         // Reage a logout/troca de conta
