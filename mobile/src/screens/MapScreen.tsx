@@ -33,10 +33,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { Colors } from '../config/colors';
+import {
+  CATEGORY_FORM_ORDER,
+  metaForId,
+  metaOrDefault,
+  categoryIdsFromMeta,
+} from '../config/categories';
 import { useWallet } from '../services/wallet';
 import {
   SteplessOracle,
-  LocationCategory,
   packCoordinate,
   ArcContractError,
   fetchAllOnchainLocations,
@@ -52,7 +57,8 @@ const { width, height } = Dimensions.get('window');
 interface AccessibleLocation {
   id: bigint;
   name: string;
-  category: LocationCategory;
+  /** Ids canônicos 0-8 (config/categories.ts); vazio = sem meta legível */
+  categories: number[];
   lat: number;
   lng: number;
   verified: boolean;
@@ -61,13 +67,12 @@ interface AccessibleLocation {
   dataHash?: string;
 }
 
-// 'other' = categoria livre (não existe no enum on-chain; vai como slug + texto
-// para o Upstash via /api/relay, igual às demais — a chain só guarda o hash).
-type FormCategory = LocationCategory | 'other';
-
+// Categorias do formulário = ids numéricos da taxonomia canônica (0-8),
+// MESMOS valores que a web envia. Multi-select: um local pode ter várias
+// features (rampa + banheiro + vaga...). id 7 = "Outros" + texto livre.
 interface AddLocationForm {
   name: string;
-  category: FormCategory;
+  categories: number[];
   customCategory: string;
   lat: number;
   lng: number;
@@ -99,43 +104,16 @@ interface AddLocationForm {
 }
 
 // ─── Category Metadata ────────────────────────────────────────────────
-const CATEGORY_META: Record<
-  LocationCategory,
-  { icon: keyof typeof Ionicons.glyphMap; color: string; labelKey: string }
-> = {
-  [LocationCategory.Ramp]: { icon: 'easel', color: '#2563EB', labelKey: 'categories.ramp' },
-  [LocationCategory.Restroom]: { icon: 'water', color: '#0891B2', labelKey: 'categories.restroom' },
-  [LocationCategory.Parking]: { icon: 'car', color: '#7C3AED', labelKey: 'categories.parking' },
-  [LocationCategory.Entrance]: { icon: 'enter', color: '#15803D', labelKey: 'categories.entrance' },
-};
+// Taxonomia canônica mora em config/categories.ts (mesma da web, ids 0-8).
+// O marker usa a PRIMEIRA categoria resolvível; o callout mostra todas.
 
-// Slug estável por categoria — salvo fora da chain (Upstash) via /api/relay.
-const CATEGORY_SLUG: Record<LocationCategory, string> = {
-  [LocationCategory.Ramp]: 'ramp',
-  [LocationCategory.Restroom]: 'restroom',
-  [LocationCategory.Parking]: 'parking',
-  [LocationCategory.Entrance]: 'entrance',
-};
-
-// Metadados da opção "Outros" (categoria livre, fora do enum on-chain).
-const OTHER_META = {
-  icon: 'ellipsis-horizontal-circle' as keyof typeof Ionicons.glyphMap,
-  color: '#64748B',
-  labelKey: 'categories.other',
-};
-
-// Converte slug/índice vindo do backend para a categoria do enum (p/ ícone do marker).
-function categoryFromMeta(cats: (string | number)[] | undefined): LocationCategory {
-  const first = cats?.[0];
-  if (typeof first === 'number' && first in CATEGORY_META) return first as LocationCategory;
-  const bySlug: Record<string, LocationCategory> = {
-    ramp: LocationCategory.Ramp,
-    restroom: LocationCategory.Restroom,
-    parking: LocationCategory.Parking,
-    entrance: LocationCategory.Entrance,
-  };
-  if (typeof first === 'string' && first in bySlug) return bySlug[first];
-  return LocationCategory.Ramp;
+/** Rótulos traduzidos de TODAS as categorias, unidos por " · " (callout). */
+function categoryLabelsText(cats: number[], t: (key: string) => string): string {
+  return cats
+    .map((id) => metaForId(id)?.labelKey)
+    .filter((k): k is string => Boolean(k))
+    .map((k) => t(k))
+    .join(' · ');
 }
 
 // ─── Component ────────────────────────────────────────────────────────
@@ -164,7 +142,7 @@ export default function MapScreen() {
   // Form state
   const [formData, setFormData] = useState<AddLocationForm>({
     name: '',
-    category: LocationCategory.Ramp,
+    categories: [],
     customCategory: '',
     lat: 0,
     lng: 0,
@@ -248,7 +226,7 @@ export default function MapScreen() {
         locations.push({
           id: BigInt(i + 1),
           name: m.name || `Location #${i + 1}`,
-          category: categoryFromMeta(m.categories),
+          categories: categoryIdsFromMeta(m.categories),
           lat: m.lat,
           lng: m.lng,
           verified: l.verifications > 0,
@@ -278,7 +256,7 @@ export default function MapScreen() {
 
     setFormData({
       name: '',
-      category: LocationCategory.Ramp,
+      categories: [],
       customCategory: '',
       lat: userLocation.lat,
       lng: userLocation.lng,
@@ -411,6 +389,11 @@ export default function MapScreen() {
       return;
     }
 
+    if (formData.categories.length === 0) {
+      Alert.alert(t('map.category'), t('map.select_category'));
+      return;
+    }
+
     if (!formData.photoUri || !formData.photoBase64) {
       Alert.alert(t('errors.photoRequired'), t('errors.photoRequiredMessage'));
       return;
@@ -430,19 +413,20 @@ export default function MapScreen() {
       // contribuição pagável (0.10 USDC) atribuída ao endereço do usuário.
       setSubmissionStatus('registering');
 
-      // Categoria: slug fixo, ou 'other' + texto livre digitado pelo usuário
-      const categories =
-        formData.category === 'other'
-          ? formData.customCategory.trim()
-            ? ['other', formData.customCategory.trim()]
-            : ['other']
-          : [CATEGORY_SLUG[formData.category]];
+      // Categorias: array numérico (0-8), MESMO formato que a web envia —
+      // a web e o mobile leem os mesmos dados do Upstash. "Outros" (id 7)
+      // com texto entra no NOME ("Local — texto"), como o dashboard web faz.
+      const custom = formData.customCategory.trim();
+      const categories = [...formData.categories].sort((a, b) => a - b);
+      const finalName = categories.includes(7) && custom
+        ? `${formData.name.trim()} — ${custom}`
+        : formData.name.trim();
 
       const result = await apiRegisterLocation({
         userAddress: walletAddress,
         lat: formData.lat,
         lng: formData.lng,
-        name: formData.name.trim(),
+        name: finalName,
         categories,
         // A foto sobe pro /api/upload dentro de apiRegisterLocation(); é o
         // servidor quem extrai o EXIF real dos bytes e calcula o dataHash —
@@ -493,7 +477,7 @@ export default function MapScreen() {
 
   // ─── Render location marker ───────────────────────────────────────
   const renderMarker = (location: AccessibleLocation) => {
-    const meta = CATEGORY_META[location.category] || CATEGORY_META[LocationCategory.Ramp];
+    const meta = metaOrDefault(location.categories);
     return (
       <Marker
         key={location.id.toString()}
@@ -504,7 +488,7 @@ export default function MapScreen() {
           <View style={styles.calloutContainer}>
             <Text style={styles.calloutTitle}>{location.name}</Text>
             <Text style={styles.calloutCategory}>
-              {t(meta.labelKey)}
+              {categoryLabelsText(location.categories, t)}
             </Text>
             <View style={styles.calloutStatusRow}>
               <Ionicons
@@ -526,24 +510,20 @@ export default function MapScreen() {
   };
 
   // ─── Render category selector ─────────────────────────────────────
+  // Multi-select: um local pode ter rampa E banheiro E vaga, etc. — mesmo
+  // comportamento dos checkboxes do dashboard web.
   const renderCategorySelector = () => {
-    const categories: FormCategory[] = [
-      LocationCategory.Ramp,
-      LocationCategory.Restroom,
-      LocationCategory.Parking,
-      LocationCategory.Entrance,
-      'other',
-    ];
-
     return (
       <>
+        <Text style={styles.categoryHint}>{t('map.category_hint')}</Text>
         <View style={styles.categoryGrid}>
-          {categories.map((cat) => {
-            const meta = cat === 'other' ? OTHER_META : CATEGORY_META[cat];
-            const isSelected = formData.category === cat;
+          {CATEGORY_FORM_ORDER.map((id) => {
+            const meta = metaForId(id);
+            if (!meta) return null;
+            const isSelected = formData.categories.includes(id);
             return (
               <TouchableOpacity
-                key={String(cat)}
+                key={id}
                 style={[
                   styles.categoryButton,
                   {
@@ -551,8 +531,15 @@ export default function MapScreen() {
                     backgroundColor: isSelected ? `${meta.color}15` : Colors.light.surface,
                   },
                 ]}
-                onPress={() => setFormData((prev) => ({ ...prev, category: cat }))}
-                accessibilityRole="button"
+                onPress={() =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    categories: prev.categories.includes(id)
+                      ? prev.categories.filter((c) => c !== id)
+                      : [...prev.categories, id],
+                  }))
+                }
+                accessibilityRole="checkbox"
                 accessibilityLabel={t(meta.labelKey)}
                 accessibilityState={{ selected: isSelected }}
               >
@@ -564,7 +551,7 @@ export default function MapScreen() {
             );
           })}
         </View>
-        {formData.category === 'other' && (
+        {formData.categories.includes(7) && (
           <TextInput
             style={[styles.textInput, { marginTop: 10 }]}
             value={formData.customCategory}
@@ -686,10 +673,13 @@ export default function MapScreen() {
               {(() => {
                 const q = searchQuery.trim().toLowerCase();
                 const results = nearbyLocations.filter((l) => {
-                  const meta = CATEGORY_META[l.category] || CATEGORY_META[LocationCategory.Ramp];
+                  const meta = metaOrDefault(l.categories);
                   return (
                     l.name.toLowerCase().includes(q) ||
-                    t(meta.labelKey).toLowerCase().includes(q)
+                    t(meta.labelKey).toLowerCase().includes(q) ||
+                    l.categories.some((id) =>
+                      t(metaForId(id)?.labelKey || '').toLowerCase().includes(q)
+                    )
                   );
                 });
                 if (results.length === 0) {
@@ -698,7 +688,7 @@ export default function MapScreen() {
                   );
                 }
                 return results.slice(0, 20).map((l) => {
-                  const meta = CATEGORY_META[l.category] || CATEGORY_META[LocationCategory.Ramp];
+                  const meta = metaOrDefault(l.categories);
                   return (
                     <TouchableOpacity
                       key={l.id.toString()}
@@ -725,7 +715,7 @@ export default function MapScreen() {
                           {l.name}
                         </Text>
                         <Text style={styles.searchResultCategory}>
-                          {t(meta.labelKey)}
+                          {categoryLabelsText(l.categories, t) || t(meta.labelKey)}
                         </Text>
                       </View>
                       <Ionicons
@@ -1131,6 +1121,11 @@ const styles = StyleSheet.create({
   categoryLabel: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  categoryHint: {
+    fontSize: 12,
+    color: Colors.light.textMuted,
+    marginBottom: 8,
   },
   coordsRow: {
     flexDirection: 'row',

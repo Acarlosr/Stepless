@@ -845,6 +845,7 @@ const LOCATION_CATEGORIES = [
   { id: 5, label: { pt: "Áudio Descrição", en: "Audio Description", es: "Audiodescripción" } },
   { id: 6, label: { pt: "Braile",       en: "Braille",     es: "Braille" } },
   { id: 7, label: { pt: "Outro",        en: "Other",       es: "Otro" } },
+  { id: 8, label: { pt: "Entrada Acessível", en: "Accessible Entrance", es: "Entrada Accesible" } },
 ];
 
 /* ──────────────────────────────────────────────────────────────

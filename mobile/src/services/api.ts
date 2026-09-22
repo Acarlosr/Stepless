@@ -102,7 +102,11 @@ export interface RegisterLocationInput {
   lat: number;
   lng: number;
   name: string;
-  categories?: string[];          // ex.: ['ramp'] — salvo fora da chain (Upstash)
+  // Ids numéricos da taxonomia canônica (0-8) — MESMO formato que a web
+  // (frontend/dashboard.js) envia. Slugs legados ('ramp') eram enviados por
+  // versões antigas do app; continuam sendo LIDOS (ver config/categories.ts),
+  // mas novos envios usam números para bater com os dados da web.
+  categories?: (string | number)[];
   /**
    * Foto como data URL base64: "data:image/jpeg;base64,...."
    * Capture com `ImagePicker.launchCameraAsync({ base64: true, ... })` —

@@ -28,10 +28,14 @@ import { useTranslation } from 'react-i18next';
 import { isAddress, type Address } from 'viem';
 import { Colors } from '../config/colors';
 import { useWallet } from '../services/wallet';
+import { RewardDistributor } from '../services/contracts';
 import { fetchPending } from '../services/api';
 
 const ARCSCAN_TX_URL = 'https://testnet.arcscan.app/tx/';
 const REWARDS_GUIDE_URL = 'https://www.stepless.lat/como-sacar-recompensas.html';
+// Patrocínio acontece na web (landing #sponsor) — o app mostra de onde vêm
+// as recompensas e aponta para lá; a tesouraria é pública no contrato.
+const SPONSOR_URL = 'https://www.stepless.lat/#sponsor';
 
 interface PendingItem {
   user?: string;
@@ -58,6 +62,7 @@ export default function RewardsScreen() {
   const [items, setItems] = useState<PendingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [treasury, setTreasury] = useState<string | null>(null);
 
   // ─── Envio de USDC ───
   const [sendVisible, setSendVisible] = useState(false);
@@ -131,6 +136,13 @@ export default function RewardsScreen() {
       setItems([]);
     } finally {
       setLoading(false);
+    }
+    // Saldo da tesouraria: de onde saem as recompensas — financiado por
+    // patrocinadores, público on-chain. Falha silenciosa mostra '—'.
+    try {
+      setTreasury(await RewardDistributor.treasuryBalance());
+    } catch {
+      setTreasury(null);
     }
   }, [walletAddress]);
 
@@ -241,6 +253,25 @@ export default function RewardsScreen() {
             ))}
           </View>
         )}
+
+        {/* Tesouraria — de onde saem as recompensas, financiada por patrocinadores */}
+        <View style={[styles.card, { backgroundColor: c.surface, marginTop: 24, paddingVertical: 16 }]}>
+          <View style={styles.helpHeader}>
+            <Ionicons name="heart-circle-outline" size={20} color={c.success} />
+            <Text style={[styles.helpTitle, { color: c.text }]}>{t('rewards.treasury.title')}</Text>
+          </View>
+          <Text style={[styles.treasuryValue, { color: c.success }]}>
+            {treasury ? `${treasury} USDC` : '—'}
+          </Text>
+          <Text style={[styles.helpText, { color: c.textMuted }]}>{t('rewards.treasury.note')}</Text>
+          <TouchableOpacity
+            onPress={() => Linking.openURL(SPONSOR_URL)}
+            accessibilityRole="link"
+            accessibilityLabel={t('rewards.treasury.cta')}
+          >
+            <Text style={[styles.helpLink, { color: c.primary }]}>{t('rewards.treasury.cta')} →</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Como usar as recompensas */}
         <View style={[styles.card, { backgroundColor: c.surface, marginTop: 24, paddingVertical: 16 }]}>
@@ -379,6 +410,7 @@ const styles = StyleSheet.create({
   helpTitle: { fontSize: 15, fontWeight: '700' },
   helpText: { fontSize: 13, lineHeight: 19 },
   helpLink: { fontSize: 14, fontWeight: '700', marginTop: 10 },
+  treasuryValue: { fontSize: 26, fontWeight: '800', marginTop: 10, marginBottom: 6 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
   modalCard: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
