@@ -97,6 +97,13 @@ Live app: **[stepless.vercel.app](https://stepless.vercel.app)** · Dashboard: *
 4. **Verifier** confirms the submission on-chain via `verifyContribution()`
 5. **RewardDistributor** releases USDC from treasury to the contributor's wallet
 
+**Sponsors keep the treasury alive:** anyone can fund it publicly — approve USDC
+and call `fundTreasury()` from any wallet (the landing page's **Fund Real Ramps**
+section; the mobile app shows the live balance in Rewards). Every sponsorship
+emits `TreasuryFunded` and is auditable on ArcScan. A direct USDC transfer to the
+contract adds to the balance but is not listed on the sponsor wall — only
+`fundTreasury()` registers it.
+
 ---
 
 ## Architecture
@@ -187,7 +194,7 @@ On-chain registry for accessible locations and contributions. Uses Arc block num
 USDC treasury and payment engine.
 
 - `payReward(bytes32 contributionId, address contributor, uint8 tier)` — Release USDC to contributor
-- `fundTreasury(uint256 amount)` — Admin deposits USDC
+- `fundTreasury(uint256 amount)` — **Public**: anyone can sponsor the treasury (approve + call); every funding emits `TreasuryFunded` — the landing page's **Fund Real Ramps** flow
 - `registerVerifier(address)` / `removeVerifier(address)` — Manage verifier set
 
 ### X402API.sol
@@ -206,6 +213,21 @@ Vanilla HTML + JavaScript — no build step, no framework.
 - **Vercel serverless relayer** pays gas on behalf of users (gasless UX)
 
 Live: [stepless.vercel.app](https://stepless.vercel.app)
+
+- **Fund Real Ramps** — public sponsor flow on the landing page: live treasury
+  balance, $1/$2/$10 presets, sponsor wall with on-chain transaction links
+- **Multi-select categories** — a location can carry several accessibility
+  features at once (ramp + restroom + parking…), one shared numeric taxonomy
+  across web and mobile
+
+## Mobile
+
+React Native / Expo app in [`mobile/`](mobile/) — built for contributors: map
+locations from the phone (GPS + photo), earn rewards, track pending payouts.
+Wallet is embedded (the app never signs on-chain; the relayer does). Android
+APK via EAS — `eas build -p android --profile preview`, see
+[`mobile/BUILD.md`](mobile/BUILD.md). Category submissions use the same numeric
+taxonomy as the web (multi-select).
 
 ---
 
@@ -234,13 +256,15 @@ Live: [stepless.vercel.app](https://stepless.vercel.app)
 
 ### Phase 2 — Community (in progress)
 - [ ] Goldsky subgraph deploy (rewards history + map)
-- [ ] Fund RewardDistributor treasury
+- [x] Fund RewardDistributor treasury — funded and now **public**: anyone can
+      sponsor via `fundTreasury()` ("Fund Real Ramps")
 - [ ] Onboard initial verifiers
 - [ ] Map first 100 accessible locations
 
 ### Phase 3 — Scale
-- [ ] Mobile app (React Native / Expo)
-- [ ] IPFS photo storage (Pinata)
+- [x] Mobile app (React Native / Expo) — Android APK via EAS; multi-category
+      submissions aligned with the web taxonomy; treasury card in Rewards
+- [x] IPFS photo storage (Pinata)
 - [ ] Circle Gas Station for sponsored transactions
 
 ### Phase 4 — Protocol
