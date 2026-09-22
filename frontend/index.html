@@ -64,6 +64,7 @@
           <li><a href="#solution" data-i18n="nav_solution">Solução</a></li>
           <li><a href="#how" data-i18n="nav_how">Como Funciona</a></li>
           <li><a href="#rewards" data-i18n="nav_rewards">Recompensas</a></li>
+          <li><a href="#sponsor" data-i18n="nav_sponsor">Patrocinar</a></li>
           <li><a href="#tech" data-i18n="nav_tech">Tecnologia</a></li>
           <li><a href="#roadmap" data-i18n="nav_roadmap">Roadmap</a></li>
           <li><a href="buscar.html" data-i18n="nav_search">🔍 Buscar</a></li>
@@ -504,6 +505,72 @@
       </div>
     </section>
 
+    <!-- ── Sponsor — Financie Rampas Reais ── -->
+    <!-- A narrativa fecha o ciclo da tabela acima: quem mapeia recebe pouco,
+         então alguém paga. A resposta é a tesouraria PÚBLICA do
+         RewardDistributor: o contrato (v5) aceita patrocínio permissionless
+         via approve + fundTreasury() — a transferência nativa direta ao
+         contrato é rejeitada por design (receive() reverte, ver
+         contracts/src/RewardDistributor.sol). Cada patrocínio emite o evento
+         TreasuryFunded(funder, amount, newBalance), que alimenta o mural. -->
+    <section class="section" id="sponsor" aria-labelledby="sponsor-title">
+      <div class="container">
+        <h2 class="section-title" id="sponsor-title" data-i18n="sponsor_title">Financie Rampas Reais</h2>
+        <p class="section-subtitle" data-i18n="sponsor_subtitle">A tesouraria que paga quem mapeia é pública e verificável. Você escolhe o valor; o contrato entrega direto na carteira de quem mapeou — sem intermediários.</p>
+
+        <div class="sponsor-grid">
+          <div class="card">
+            <!-- Saldo ao vivo: leitura direta de treasuryBalance() no contrato.
+                 Atualiza também depois de um patrocínio confirmado. -->
+            <div class="sponsor-treasury">
+              <span class="sponsor-treasury__label" data-i18n="sponsor_treasury_label">Na tesouraria agora</span>
+              <span class="sponsor-treasury__value mono" id="sponsor-treasury-value">—</span>
+            </div>
+            <p class="sponsor-impact" id="sponsor-impact" aria-live="polite"></p>
+
+            <div class="sponsor-presets" role="group" aria-label="Valores de patrocínio">
+              <button type="button" class="sponsor-preset" data-amount="1">$1</button>
+              <button type="button" class="sponsor-preset" data-amount="2">$2</button>
+              <button type="button" class="sponsor-preset is-active" data-amount="10">$10</button>
+            </div>
+
+            <label class="sponsor-amount-label" for="sponsor-amount">
+              <span data-i18n="sponsor_amount_label">Ou outro valor (USDC)</span>
+              <input type="number" id="sponsor-amount" min="0.1" max="10000" step="0.1" inputmode="decimal" value="10">
+            </label>
+
+            <button type="button" id="sponsor-go" class="btn btn-primary btn-block" data-i18n="sponsor_go_connect">Conectar wallet para patrocinar</button>
+            <p class="sponsor-status" id="sponsor-status" role="status" aria-live="polite" hidden></p>
+
+            <p class="spec-note mt-2" data-i18n="sponsor_disclaimer">Fase de testnet: patrocine com USDC de teste, sem valor real — pegue no faucet.circle.com.</p>
+
+            <!-- Depósito: o contrato é o destino do USDC. Uma transferência
+                 ERC-20 direta entra no saldo da tesouraria (treasuryBalance é
+                 o balanceOf do contrato), mas não emite TreasuryFunded — só
+                 o fundTreasury() registra o patrocínio no mural. -->
+            <p class="sponsor-deposit">
+              <span data-i18n="sponsor_deposit_label">Depósito: o USDC vai para o contrato</span>
+              <a class="addr" id="sponsor-deposit-link" href="#" target="_blank" rel="noopener">—</a>
+              <span data-i18n="sponsor_deposit_hint">— transferência direta entra no saldo, mas só o botão registra no mural.</span>
+            </p>
+          </div>
+
+          <!-- Mural alimentado pelo evento TreasuryFunded — patrocínio é
+               público e auditável no ArcScan; nada fica "na sua palavra". -->
+          <div class="card">
+            <h3 class="card-title" data-i18n="sponsor_wall_title">Patrocinadores recentes</h3>
+            <ul class="sponsor-wall" id="sponsor-wall">
+              <li class="sponsor-wall__empty" data-i18n="sponsor_wall_empty">Nenhum patrocínio recente. Seja o próximo.</li>
+            </ul>
+            <p class="sponsor-wall__note">
+              <span data-i18n="sponsor_wall_note">Cada patrocínio é uma transação on-chain.</span>
+              <a class="addr" id="sponsor-wall-history" data-i18n="sponsor_wall_history" href="#" target="_blank" rel="noopener">Histórico completo no ArcScan</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ── Tech Stack ── -->
     <section class="section" id="tech" aria-labelledby="tech-title">
       <div class="container">
@@ -639,6 +706,7 @@
         <a href="https://faucet.circle.com" target="_blank" rel="noopener" data-i18n="footer_faucet">Faucet</a>
         <a href="https://github.com/Acarlosr/Stepless" target="_blank" rel="noopener" data-i18n="footer_github">GitHub</a>
         <a href="dashboard.html" data-i18n="footer_dashboard">Dashboard</a>
+        <a href="index.html#sponsor" data-i18n="footer_sponsor">Patrocinar</a>
       </div>
       <p data-i18n="footer_text">Stepless — Infraestrutura de acessibilidade descentralizada na Arc Testnet. Open-source, sem tokens de governança, recompensas em USDC.</p>
       <div class="arc-badge mt-1">
@@ -724,6 +792,35 @@
         reward_basic: "Básico — Mapear local", reward_standard: "Padrão — Verificar acesso", reward_premium: "Premium — Reportar problema", reward_critical: "Crítico — Atualização urgente",
         reward_basic_desc: "Mapear um novo local acessível com foto e coordenadas", reward_standard_desc: "Verificar e confirmar acessibilidade de um local existente",
         reward_premium_desc: "Reportar problema de acessibilidade (rampa quebrada, etc.)", reward_critical_desc: "Atualização urgente de informação crítica desatualizada",
+        nav_sponsor: "Patrocinar",
+        sponsor_title: "Financie Rampas Reais",
+        sponsor_subtitle: "A tesouraria que paga quem mapeia é pública e verificável. Você escolhe o valor; o contrato entrega direto na carteira de quem mapeou — sem intermediários.",
+        sponsor_treasury_label: "Na tesouraria agora",
+        sponsor_impact_text: "Com {amount} USDC você financia ≈ {n} locais mapeados com foto.",
+        sponsor_impact_one: "Com {amount} USDC você financia ≈ 1 local mapeado com foto.",
+        sponsor_amount_label: "Ou outro valor (USDC)",
+        sponsor_go: "Patrocinar agora",
+        sponsor_go_connect: "Conectar wallet para patrocinar",
+        sponsor_status_approving: "Passo 1 de 2: aprove o USDC na sua carteira…",
+        sponsor_status_funding: "Passo 2 de 2: enviando {amount} USDC para a tesouraria…",
+        sponsor_status_success: "Patrocínio confirmado — obrigado por financiar rampas reais!",
+        sponsor_status_rejected: "Transação cancelada na carteira.",
+        sponsor_status_email: "O login por e-mail não assina transações. Para patrocinar, conecte uma extensão de carteira (MetaMask ou Rabby).",
+        sponsor_status_no_wallet: "Nenhuma wallet detectada para assinar. Instale MetaMask ou outra extensão compatível.",
+        sponsor_status_insufficient: "Saldo USDC insuficiente ({balance} disponível).",
+        sponsor_status_invalid: "Informe um valor entre 0,10 e 10.000 USDC.",
+        sponsor_status_generic: "Não foi possível concluir: {message}",
+        sponsor_status_tx: "Ver transação",
+        sponsor_wall_title: "Patrocinadores recentes",
+        sponsor_wall_empty: "Nenhum patrocínio recente. Seja o próximo.",
+        sponsor_wall_you: "Você",
+        sponsor_wall_tx_title: "Ver transação no ArcScan",
+        sponsor_deposit_label: "Depósito: o USDC vai para o contrato",
+        sponsor_deposit_hint: "— transferência direta entra no saldo, mas só o botão registra no mural.",
+        sponsor_wall_note: "Cada patrocínio é uma transação on-chain.",
+        sponsor_wall_history: "Histórico completo no ArcScan",
+        sponsor_disclaimer: "Fase de testnet: patrocine com USDC de teste, sem valor real — pegue no faucet.circle.com.",
+        footer_sponsor: "Patrocinar",
       },
       en: {
         nav_problem: "Problem", nav_solution: "Solution", nav_how: "How It Works",
@@ -785,6 +882,35 @@
         reward_basic: "Basic — Map location", reward_standard: "Standard — Verify access", reward_premium: "Premium — Report issue", reward_critical: "Critical — Urgent update",
         reward_basic_desc: "Map a new accessible location with photo and coordinates", reward_standard_desc: "Verify and confirm accessibility of an existing location",
         reward_premium_desc: "Report accessibility issue (broken ramp, etc.)", reward_critical_desc: "Urgent update of critical outdated information",
+        nav_sponsor: "Sponsor",
+        sponsor_title: "Fund Real Ramps",
+        sponsor_subtitle: "The treasury that pays mappers is public and verifiable. You pick the amount; the contract delivers straight to the mapper's wallet — no middlemen.",
+        sponsor_treasury_label: "In the treasury now",
+        sponsor_impact_text: "With {amount} USDC you fund ≈ {n} mapped locations.",
+        sponsor_impact_one: "With {amount} USDC you fund ≈ 1 mapped location.",
+        sponsor_amount_label: "Or another amount (USDC)",
+        sponsor_go: "Sponsor now",
+        sponsor_go_connect: "Connect wallet to sponsor",
+        sponsor_status_approving: "Step 1 of 2: approve the USDC in your wallet…",
+        sponsor_status_funding: "Step 2 of 2: sending {amount} USDC to the treasury…",
+        sponsor_status_success: "Sponsorship confirmed — thank you for funding real ramps!",
+        sponsor_status_rejected: "Transaction rejected in the wallet.",
+        sponsor_status_email: "Email login can't sign transactions. To sponsor, connect a wallet extension (MetaMask or Rabby).",
+        sponsor_status_no_wallet: "No wallet detected to sign. Install MetaMask or another compatible extension.",
+        sponsor_status_insufficient: "Insufficient USDC balance ({balance} available).",
+        sponsor_status_invalid: "Enter an amount between 0.10 and 10,000 USDC.",
+        sponsor_status_generic: "Could not complete: {message}",
+        sponsor_status_tx: "View transaction",
+        sponsor_wall_title: "Recent sponsors",
+        sponsor_wall_empty: "No recent sponsorships. Be the next.",
+        sponsor_wall_you: "You",
+        sponsor_wall_tx_title: "View transaction on ArcScan",
+        sponsor_deposit_label: "Deposit: USDC goes to the contract",
+        sponsor_deposit_hint: "— a direct transfer adds to the balance, but only the button shows on the wall.",
+        sponsor_wall_note: "Every sponsorship is an on-chain transaction.",
+        sponsor_wall_history: "Full history on ArcScan",
+        sponsor_disclaimer: "Testnet phase: sponsor with test USDC, no real value — get some at faucet.circle.com.",
+        footer_sponsor: "Sponsor",
       },
       es: {
         nav_problem: "Problema", nav_solution: "Solución", nav_how: "Cómo Funciona",
@@ -846,6 +972,35 @@
         reward_basic: "Básico — Mapear lugar", reward_standard: "Estándar — Verificar acceso", reward_premium: "Premium — Reportar problema", reward_critical: "Crítico — Actualización urgente",
         reward_basic_desc: "Mapear un nuevo lugar accesible con foto y coordenadas", reward_standard_desc: "Verificar y confirmar accesibilidad de un lugar existente",
         reward_premium_desc: "Reportar problema de accesibilidad (rampa rota, etc.)", reward_critical_desc: "Actualización urgente de información crítica desactualizada",
+        nav_sponsor: "Patrocinar",
+        sponsor_title: "Financia Rampas Reales",
+        sponsor_subtitle: "La tesorería que paga a quien mapea es pública y verificable. Tú eliges el valor; el contrato entrega directo a la cartera de quien mapeó — sin intermediarios.",
+        sponsor_treasury_label: "En la tesorería ahora",
+        sponsor_impact_text: "Con {amount} USDC financias ≈ {n} lugares mapeados.",
+        sponsor_impact_one: "Con {amount} USDC financias ≈ 1 lugar mapeado.",
+        sponsor_amount_label: "O otro valor (USDC)",
+        sponsor_go: "Patrocinar ahora",
+        sponsor_go_connect: "Conectar wallet para patrocinar",
+        sponsor_status_approving: "Paso 1 de 2: aprueba el USDC en tu cartera…",
+        sponsor_status_funding: "Paso 2 de 2: enviando {amount} USDC a la tesorería…",
+        sponsor_status_success: "Patrocinio confirmado — ¡gracias por financiar rampas reales!",
+        sponsor_status_rejected: "Transacción cancelada en la cartera.",
+        sponsor_status_email: "El login por correo no firma transacciones. Para patrocinar, conecta una extensión de cartera (MetaMask o Rabby).",
+        sponsor_status_no_wallet: "No se detectó wallet para firmar. Instala MetaMask u otra extensión compatible.",
+        sponsor_status_insufficient: "Saldo USDC insuficiente ({balance} disponible).",
+        sponsor_status_invalid: "Escribe un valor entre 0,10 y 10.000 USDC.",
+        sponsor_status_generic: "No fue posible completar: {message}",
+        sponsor_status_tx: "Ver transacción",
+        sponsor_wall_title: "Patrocinadores recientes",
+        sponsor_wall_empty: "Sin patrocinios recientes. Sé el próximo.",
+        sponsor_wall_you: "Tú",
+        sponsor_wall_tx_title: "Ver transacción en ArcScan",
+        sponsor_deposit_label: "Depósito: el USDC va al contrato",
+        sponsor_deposit_hint: "— la transferencia directa entra al saldo, pero solo el botón aparece en el mural.",
+        sponsor_wall_note: "Cada patrocinio es una transacción on-chain.",
+        sponsor_wall_history: "Historial completo en ArcScan",
+        sponsor_disclaimer: "Fase de testnet: patrocina con USDC de prueba, sin valor real — consíguelo en faucet.circle.com.",
+        footer_sponsor: "Patrocinar",
       }
     };
 
@@ -880,6 +1035,8 @@
         btn.setAttribute('aria-pressed', String(active));
       });
       renderRewardTable();
+      renderSponsorImpact();
+      paintSponsorWall();
     }
 
     /* ── Reward table ──────────────────────────────────────────────────
@@ -915,6 +1072,377 @@
       `).join('');
     }
 
+    /* ── Sponsor: Financie Rampas Reais ────────────────────────────────
+       O RewardDistributor v5 aceita patrocínio público — fundTreasury() é
+       permissionless e emite TreasuryFunded(funder, amount, newBalance).
+       Envio NATIVO direto ao contrato é rejeitado por design (receive()
+       reverte, para evitar mistura de decimais 18/6), então o fluxo é
+       sempre approve + fundTreasury assinados pela carteira conectada.
+       Login por e-mail (embedded wallet) NÃO assina transações neste app
+       (stub de segurança em dynamic-wallet.js) — o UI avisa e orienta. */
+    const SPONSOR_MIN = 0.1;   // 1 contribuição T0 custa 0.10 — piso sensato
+    const SPONSOR_MAX = 10000;
+    let connectedAddress = null; // sincronizado com _showConnectedUI/_showDisconnectedUI
+    let sponsorAmount = 10;
+    let sponsorBusy = false;
+
+    function sponsorStatus(msg, tone) {
+      const el = document.getElementById('sponsor-status');
+      if (!el) return;
+      el.textContent = msg || '';
+      el.hidden = !msg;
+      el.classList.toggle('sponsor-status--ok', tone === 'ok');
+      el.classList.toggle('sponsor-status--err', tone === 'err');
+    }
+
+    // Mensagem de status + link do tx (valores controlados — hash hex e URL
+    // do explorer vêm de window.STEPLESS_NETWORK, nunca de input do usuário).
+    function sponsorStatusWithLink(msg, linkText, txHash, tone) {
+      const el = document.getElementById('sponsor-status');
+      if (!el) return;
+      el.textContent = msg ? msg + ' ' : '';
+      el.hidden = false;
+      el.classList.remove('sponsor-status--ok', 'sponsor-status--err');
+      if (tone) el.classList.add(`sponsor-status--${tone}`);
+      if (txHash) {
+        const net = window.STEPLESS_NETWORK;
+        const a = document.createElement('a');
+        a.href = net.explorerTx ? net.explorerTx(txHash) : '#';
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.textContent = linkText || `${txHash.slice(0, 10)}…`;
+        el.appendChild(a);
+      }
+    }
+
+    function sponsorFormatNumber(v) {
+      const locale = currentLang === 'pt' ? 'pt-BR' : currentLang === 'es' ? 'es-ES' : 'en-US';
+      return v.toLocaleString(locale, { maximumFractionDigits: 2 });
+    }
+
+    function renderSponsorImpact() {
+      const s = I18N[currentLang];
+      const el = document.getElementById('sponsor-impact');
+      const valido = Number.isFinite(sponsorAmount) && sponsorAmount >= SPONSOR_MIN && sponsorAmount <= SPONSOR_MAX;
+      if (el) {
+        if (!valido) {
+          el.textContent = '';
+        } else {
+          const n = Math.floor(sponsorAmount / 0.10); // T0 paga 0.10 por local
+          const template = n === 1 ? (s.sponsor_impact_one || s.sponsor_impact_text) : s.sponsor_impact_text;
+          el.textContent = template
+            .replace('{amount}', sponsorFormatNumber(sponsorAmount))
+            .replace('{n}', sponsorFormatNumber(n));
+        }
+      }
+      const go = document.getElementById('sponsor-go');
+      if (go) go.textContent = connectedAddress ? s.sponsor_go : s.sponsor_go_connect;
+    }
+
+    function setSponsorBusy(busy) {
+      sponsorBusy = busy;
+      const go = document.getElementById('sponsor-go');
+      if (go) go.disabled = busy;
+      document.querySelectorAll('.sponsor-preset').forEach(b => { b.disabled = busy; });
+    }
+
+    async function getSponsorViem() {
+      // Mesma versão do import usado em _showConnectedUI — não duplique
+      // cópias isoladas do esm.sh no mesmo documento.
+      return import('https://esm.sh/viem@2.21.0');
+    }
+
+    function sponsorPublicClient(viem) {
+      const cfg = window.SteplessConfig;
+      const rpcs = cfg.chain?.rpcUrls?.default?.http?.length
+        ? cfg.chain.rpcUrls.default.http
+        : ['https://rpc.testnet.arc.io'];
+      return viem.createPublicClient({
+        chain: cfg.chain,
+        transport: viem.fallback(
+          rpcs.map(u => viem.http(u, { retryCount: 3, retryDelay: 800, timeout: 20000 })),
+          { rank: false },
+        ),
+      });
+    }
+
+    async function refreshSponsorTreasury() {
+      const el = document.getElementById('sponsor-treasury-value');
+      if (!el) return;
+      // 2 tentativas: os RPCs públicos da Arc cortam por rajada (429) e o
+      // fallback do viem não cobre quando todas as transportas são cortadas
+      // juntas. Uma pausa curta costuma resolver.
+      for (let tentativa = 0; tentativa < 2; tentativa++) {
+        try {
+          const viem = await getSponsorViem();
+          const cfg = window.SteplessConfig;
+          const bal = await sponsorPublicClient(viem).readContract({
+            address: cfg.contracts.RewardDistributor,
+            abi: cfg.abis.RewardDistributor,
+            functionName: 'treasuryBalance',
+          });
+          el.textContent = `${viem.formatUnits(bal, 6)} USDC`;
+          return;
+        } catch (_) {
+          if (tentativa === 0) await new Promise(r => setTimeout(r, 1500));
+        }
+      }
+      el.textContent = '—';
+    }
+
+    // Mural: entradas recentes do evento TreasuryFunded.
+    // Medido nos RPCs públicos da Arc em 2026-09-22: arc.io corta getLogs
+    // perto de 5.000 blocos, dRPC aceita 10k e o Blockdaemon (100k) fica
+    // intermitente. O proxy de produção (/api/rpc) corta em 5.000. Por isso
+    // a varredura usa janelas de 4.500 blocos, de trás pra frente, até achar
+    // eventos ou esgotar o orçamento (~5h de histórico a 0,48 s/bloco —
+    // coerente com "recentes"). O histórico COMPLETO fica no ArcScan, no
+    // link da nota. Falha total só deixa o estado vazio — nunca quebra a
+    // seção nem martela o RPC.
+    const SPONSOR_WALL_WINDOWS = 8;
+    const SPONSOR_WALL_STEP = 4_500n;
+    // Cache do último scan bem-sucedido (funder, amount já formatado, hash).
+    // Permite repintar o mural ao trocar idioma/wallet sem novo RPC.
+    let sponsorWallLogs = [];
+
+    async function renderSponsorWall() {
+      const ul = document.getElementById('sponsor-wall');
+      if (!ul) return;
+      let encontrados = null;
+      let viem = null;
+      try {
+        viem = await getSponsorViem();
+        const cfg = window.SteplessConfig;
+        const client = sponsorPublicClient(viem);
+        const latest = await client.getBlockNumber();
+        const ev = viem.parseAbiItem(
+          'event TreasuryFunded(address indexed funder, uint256 amount, uint256 newBalance)',
+        );
+        for (let i = 0; i < SPONSOR_WALL_WINDOWS && !encontrados; i++) {
+          const hi = latest - BigInt(i) * SPONSOR_WALL_STEP;
+          const lo = hi - SPONSOR_WALL_STEP + 1n;
+          try {
+            const logs = await client.getLogs({
+              address: cfg.contracts.RewardDistributor,
+              event: ev,
+              fromBlock: lo,
+              toBlock: hi,
+            });
+            if (logs.length) encontrados = logs;
+          } catch (_) {
+            // Janela bloqueada (rate limit, prune) — tenta a próxima.
+          }
+        }
+      } catch (_) {
+        // RPC totalmente indisponível — mantém o último mural conhecido.
+      }
+      if (encontrados) {
+        sponsorWallLogs = encontrados.slice(-8).reverse().map(log => ({
+          funder: log.args.funder,
+          amount: viem.formatUnits(log.args.amount, 6),
+          hash: log.transactionHash,
+        }));
+      }
+      paintSponsorWall();
+    }
+
+    // Pinta o mural a partir do cache local — sincrono, sem RPC. Chamado
+    // também ao conectar/desconectar wallet (para o selo "Você") e ao
+    // trocar o idioma.
+    function paintSponsorWall() {
+      const ul = document.getElementById('sponsor-wall');
+      if (!ul) return;
+      const s = I18N[currentLang];
+      const net = window.STEPLESS_NETWORK;
+      const me = (connectedAddress || '').toLowerCase();
+      ul.innerHTML = '';
+      if (!sponsorWallLogs.length) {
+        const li = document.createElement('li');
+        li.className = 'sponsor-wall__empty';
+        li.textContent = s.sponsor_wall_empty;
+        ul.appendChild(li);
+        return;
+      }
+      sponsorWallLogs.forEach(item => {
+        const li = document.createElement('li');
+        const isMe = me && item.funder.toLowerCase() === me;
+
+        const who = document.createElement('a');
+        who.className = 'addr';
+        who.href = net.explorerAddress(item.funder);
+        who.target = '_blank';
+        who.rel = 'noopener';
+        who.textContent = `${item.funder.slice(0, 6)}…${item.funder.slice(-4)}`;
+
+        const howMuch = document.createElement('a');
+        howMuch.className = 'mono';
+        howMuch.href = net.explorerTx(item.hash);
+        howMuch.target = '_blank';
+        howMuch.rel = 'noopener';
+        howMuch.title = `${s.sponsor_wall_tx_title} · ${item.hash}`;
+        howMuch.textContent = `+${item.amount} USDC`;
+
+        li.append(who, howMuch);
+        if (isMe) {
+          li.classList.add('sponsor-wall__entry--me');
+          const badge = document.createElement('span');
+          badge.className = 'sponsor-wall__me';
+          badge.textContent = s.sponsor_wall_you;
+          li.appendChild(badge);
+        }
+        ul.appendChild(li);
+      });
+    }
+
+    async function sponsorNow() {
+      if (sponsorBusy) return;
+      const s = I18N[currentLang];
+      const cfg = window.SteplessConfig;
+
+      // 1) Valor válido?
+      if (!Number.isFinite(sponsorAmount) || sponsorAmount < SPONSOR_MIN || sponsorAmount > SPONSOR_MAX) {
+        sponsorStatus(s.sponsor_status_invalid, 'err');
+        return;
+      }
+      const amountRaw = BigInt(Math.round(sponsorAmount * 1e6)); // 6 decimais (ERC-20)
+
+      setSponsorBusy(true);
+      sponsorStatus('');
+      try {
+        // 2) Wallet conectada? Sem essa, abre o modal de conexão primeiro.
+        if (!connectedAddress) {
+          try {
+            const { address } = await _connectWallet();
+            await _showConnectedUI(address);
+          } catch (err) {
+            sponsorStatus(err?.code === 4001 ? s.sponsor_status_rejected : s.sponsor_status_generic.replace('{message}', err?.message || ''), 'err');
+            return;
+          }
+        }
+        if (!connectedAddress) return;
+
+        // 3) Provider que ASSINA. O login por e-mail devolve um stub que
+        //    recusa qualquer request — probe com eth_accounts para avisar
+        //    antes do usuário perder tempo preenchendo a transação.
+        let provider = null;
+        try { provider = getProvider(); } catch (_) { provider = null; }
+        if (!provider || typeof provider.request !== 'function') {
+          sponsorStatus(s.sponsor_status_no_wallet, 'err');
+          return;
+        }
+        try {
+          await provider.request({ method: 'eth_accounts' });
+        } catch (_) {
+          sponsorStatus(s.sponsor_status_email, 'err');
+          return;
+        }
+
+        const viem = await getSponsorViem();
+        const publicClient = sponsorPublicClient(viem);
+        const walletClient = viem.createWalletClient({
+          account: connectedAddress,
+          chain: cfg.chain,
+          transport: viem.custom(provider),
+        });
+
+        // 4) Saldo + allowance: só força o approve quando o allowance atual
+        //    não cobre o valor — economiza uma transação a cada patrocínio.
+        const usdc = viem.getContract({
+          address: cfg.tokens.USDC.address,
+          abi: cfg.abis.ERC20,
+          client: publicClient,
+        });
+        const [bal, allowance] = await Promise.all([
+          usdc.read.balanceOf([connectedAddress]),
+          usdc.read.allowance([connectedAddress, cfg.contracts.RewardDistributor]),
+        ]);
+        if (bal < amountRaw) {
+          sponsorStatus(s.sponsor_status_insufficient.replace('{balance}', viem.formatUnits(bal, 6)), 'err');
+          return;
+        }
+
+        if (allowance < amountRaw) {
+          sponsorStatus(s.sponsor_status_approving);
+          const approveHash = await walletClient.writeContract({
+            address: cfg.tokens.USDC.address,
+            abi: cfg.abis.ERC20,
+            functionName: 'approve',
+            args: [cfg.contracts.RewardDistributor, amountRaw],
+          });
+          await publicClient.waitForTransactionReceipt({ hash: approveHash });
+        }
+
+        // 5) O patrocínio de fato — permissionless no contrato.
+        sponsorStatus(s.sponsor_status_funding.replace('{amount}', sponsorFormatNumber(sponsorAmount)));
+        const fundHash = await walletClient.writeContract({
+          address: cfg.contracts.RewardDistributor,
+          abi: cfg.abis.RewardDistributor,
+          functionName: 'fundTreasury',
+          args: [amountRaw],
+        });
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: fundHash });
+        if (receipt.status !== 'success') {
+          throw new Error('fundTreasury reverted');
+        }
+
+        sponsorStatusWithLink(s.sponsor_status_success, s.sponsor_status_tx, fundHash, 'ok');
+        await Promise.all([refreshSponsorTreasury(), renderSponsorWall()]);
+      } catch (err) {
+        if (err?.code === 4001 || err?.walk?.(e => e.code === 4001)) {
+          sponsorStatus(s.sponsor_status_rejected, 'err');
+        } else {
+          sponsorStatus(s.sponsor_status_generic.replace('{message}', err?.shortMessage || err?.message || String(err)), 'err');
+        }
+      } finally {
+        setSponsorBusy(false);
+        renderSponsorImpact();
+      }
+    }
+
+    function initSponsorSection() {
+      document.querySelectorAll('.sponsor-preset').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (sponsorBusy) return;
+          sponsorAmount = Number(btn.dataset.amount);
+          document.querySelectorAll('.sponsor-preset').forEach(x => x.classList.toggle('is-active', x === btn));
+          const input = document.getElementById('sponsor-amount');
+          if (input) input.value = String(sponsorAmount);
+          renderSponsorImpact();
+        });
+      });
+      const input = document.getElementById('sponsor-amount');
+      input?.addEventListener('input', () => {
+        if (sponsorBusy) return;
+        const v = parseFloat(input.value);
+        if (Number.isFinite(v)) sponsorAmount = v;
+        document.querySelectorAll('.sponsor-preset').forEach(x => x.classList.remove('is-active'));
+        renderSponsorImpact();
+      });
+      document.getElementById('sponsor-go')?.addEventListener('click', sponsorNow);
+      // Histórico completo do mural = página do RewardDistributor no explorer.
+      const hist = document.getElementById('sponsor-wall-history');
+      if (hist) {
+        const net = window.STEPLESS_NETWORK;
+        const addr = net.contracts?.RewardDistributor;
+        if (addr && net.explorerAddress) hist.href = net.explorerAddress(addr);
+        else hist.removeAttribute('href');
+      }
+      // Endereço de depósito = contrato do RewardDistributor (clicável no ArcScan).
+      const deposit = document.getElementById('sponsor-deposit-link');
+      if (deposit) {
+        const net = window.STEPLESS_NETWORK;
+        const rd = net.contracts?.RewardDistributor;
+        if (rd && net.explorerAddress) {
+          deposit.textContent = rd;
+          deposit.href = net.explorerAddress(rd);
+        } else {
+          deposit.removeAttribute('href');
+        }
+      }
+      refreshSponsorTreasury();
+      renderSponsorWall();
+    }
+
     /* ── Theme ── */
     function initTheme() {
       const saved = localStorage.getItem('stepless-theme');
@@ -948,6 +1476,8 @@
     // Atualiza a UI de "conectado" (usado tanto no clique manual quanto na
     // reconexão automática/sessão restaurada).
     async function _showConnectedUI(address) {
+      connectedAddress = address; // usado pelo fluxo de patrocínio (#sponsor)
+      paintSponsorWall(); // selo "Você" no mural de patrocinadores
       const btn = document.getElementById('connect-wallet-btn');
       const info = document.getElementById('wallet-info');
       const addrEl = document.getElementById('wallet-address');
@@ -984,6 +1514,8 @@
     }
 
     function _showDisconnectedUI() {
+      connectedAddress = null;
+      paintSponsorWall(); // remove o selo "Você" do mural
       const btn = document.getElementById('connect-wallet-btn');
       const info = document.getElementById('wallet-info');
       const addrEl = document.getElementById('wallet-address');
@@ -1120,6 +1652,7 @@
       initNav();
       setLanguage(detectLanguage());
       initReveal();
+      initSponsorSection();
 
       document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
       document.getElementById('connect-wallet-btn').addEventListener('click', connectWallet);

@@ -32,7 +32,7 @@ async function readRequestBody(req) {
 
 async function proxyApi(req, res, requestUrl) {
   const target = requestUrl.pathname === '/api/rpc'
-    ? new URL('https://rpc.testnet.arc.network')
+    ? new URL(process.env.PREVIEW_RPC_ORIGIN || rpcProxyTarget)
     : new URL(requestUrl.pathname + requestUrl.search, apiOrigin);
   const headers = new Headers();
   for (const [name, value] of Object.entries(req.headers)) {
@@ -70,6 +70,14 @@ async function serveStatic(res, requestUrl) {
   }
 }
 
+let rpcProxyTarget = 'https://rpc.testnet.arc.network';
+try {
+  const networks = JSON.parse(await readFile(new URL('../config/networks.json', import.meta.url), 'utf8'));
+  rpcProxyTarget = networks.networks?.['arc-testnet']?.rpcUrls?.[0] || rpcProxyTarget;
+} catch {
+  console.warn('preview: config/networks.json ilegível — mantendo RPC de fallback legado.');
+}
+
 createServer(async (req, res) => {
   try {
     const requestUrl = new URL(req.url || '/', `http://${req.headers.host || '127.0.0.1'}`);
@@ -82,4 +90,5 @@ createServer(async (req, res) => {
 }).listen(port, '127.0.0.1', () => {
   console.log(`Stepless preview: http://127.0.0.1:${port}`);
   console.log(`API proxy: ${apiOrigin.origin}`);
+  console.log(`RPC proxy: ${rpcProxyTarget}`);
 });

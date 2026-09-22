@@ -753,6 +753,19 @@ const ERC20_ABI = [
     stateMutability: "nonpayable",
   },
   {
+    // Necessário para o fluxo de patrocínio: antes de fundTreasury(amount),
+    // checamos se o allowance já cobre o valor — evita forçar o usuário a
+    // aprovar de novo quando o allowance anterior ainda é suficiente.
+    type: "function",
+    name: "allowance",
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+  },
+  {
     type: "event",
     name: "Transfer",
     inputs: [

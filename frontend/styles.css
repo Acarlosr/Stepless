@@ -2381,3 +2381,196 @@ pre code {
   .seal--stamp.is-stamping { animation: none; }
   .seal--stamp.is-stamping::after { display: none; }
 }
+
+/* ───────────────────────────────────────────────────────────────
+ *  10. SPONSOR — "Financie Rampas Reais"
+ *      Patrocínio público da tesouraria: approve + fundTreasury
+ *      assinados pela carteira conectada (o contrato NÃO aceita
+ *      transferência nativa direta — receive() reverte).
+ *      Só tokens existentes: nada que quebre o contraste AA no
+ *      tema claro ou escuro.
+ * ─────────────────────────────────────────────────────────────── */
+.sponsor-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.sponsor-treasury {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  background: var(--accent-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.sponsor-treasury__label {
+  color: var(--slate);
+  font-size: 0.9rem;
+}
+
+.sponsor-treasury__value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--success);
+}
+
+.sponsor-impact {
+  color: var(--slate);
+  font-size: 0.95rem;
+  margin-bottom: 16px;
+}
+
+.sponsor-presets {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.sponsor-preset {
+  min-height: 44px;
+  padding: 8px 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.sponsor-preset:hover,
+.sponsor-preset:focus-visible {
+  border-color: var(--primary);
+  text-decoration: none;
+}
+
+.sponsor-preset.is-active {
+  border-color: var(--primary);
+  background: var(--accent-bg);
+  color: var(--primary);
+}
+
+.sponsor-amount-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.sponsor-amount-label input {
+  margin-top: 6px;
+}
+
+.sponsor-status {
+  margin-top: 12px;
+  padding: 10px 14px;
+  font-size: 0.92rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--accent-bg);
+  color: var(--text);
+  word-break: break-word;
+}
+
+.sponsor-status--ok {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.sponsor-status--err {
+  border-color: var(--signal-red);
+  color: var(--signal-red-ink);
+}
+
+.sponsor-status a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.sponsor-wall {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.sponsor-wall li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-size: 0.92rem;
+}
+
+.sponsor-wall li .mono {
+  color: var(--slate);
+}
+
+.sponsor-wall__empty {
+  color: var(--slate);
+  justify-content: center;
+  border-style: dashed;
+  text-align: center;
+}
+/* Entradas do mural: endereço e valor são links (ArcScan — endereço e
+   transação). Sublinha no hover, sem azul gritante no repouso. */
+.sponsor-wall li a {
+  color: inherit;
+  text-decoration: none;
+}
+.sponsor-wall li a:hover {
+  text-decoration: underline;
+}
+/* Entrada do próprio usuário conectado */
+.sponsor-wall__entry--me {
+  border-color: var(--accent);
+}
+.sponsor-wall__me {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-bg);
+  color: var(--primary);
+  white-space: nowrap;
+}
+.sponsor-wall__note {
+  margin-top: 12px;
+  color: var(--slate);
+  font-size: 0.85rem;
+}
+
+/* Linha do endereço de depósito (contrato do RewardDistributor) */
+.sponsor-deposit {
+  margin-top: 8px;
+  color: var(--slate);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.sponsor-deposit .addr {
+  color: var(--accent);
+  word-break: break-all;
+}
+.sponsor-deposit .addr:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 820px) {
+  .sponsor-grid {
+    grid-template-columns: 1fr;
+  }
+}
