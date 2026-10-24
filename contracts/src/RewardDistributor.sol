@@ -94,6 +94,12 @@ error NoFailedReward(bytes32 contributionId);
 /// @dev Timelock de saque: não existe pedido, ou ainda não amadureceu.
 error NoPendingWithdrawal();
 error WithdrawalNotReady(uint256 nowTs, uint256 readyAt);
+/// @dev Teto diário de pagamentos atingido (só o retryReward reverte; o payReward enfileira).
+error DailyCapReached(uint256 amount, uint256 remaining);
+/// @dev Teto diário precisa estar entre 1 e MAX_DAILY_CAP.
+error InvalidDailyCap(uint256 cap);
+/// @dev Recompensas desligadas (padrão até existir patrocínio).
+error RewardsDisabled();
 
 // ────────────────────────────────────────────────────────────────────────────
 //  Events (indexados para Goldsky / monitores)
@@ -117,6 +123,14 @@ event RewardFailed(
 event RewardRecovered(bytes32 indexed contributionId, address indexed recipient, uint256 amount);
 
 event TreasuryFunded(address indexed funder, uint256 amount, uint256 newBalance);
+/// @dev Patrocínio com marca. `brandRef` é um identificador opaco (ex.: keccak256 de um slug);
+///      nome, logo, link e e-mail ficam fora da chain e só aparecem no mural após moderação.
+event TreasurySponsored(address indexed funder, uint256 amount, bytes32 indexed brandRef, uint256 newBalance);
+/// @dev Contribuição verificada, mas SEM recompensa agora (tesouraria vazia ou teto do dia).
+///      Não gera dívida: nada é marcado nem reservado. Pode ser paga depois, se o admin quiser.
+event RewardNotFunded(bytes32 indexed contributionId, address indexed recipient, uint256 amount, bytes reason);
+event RewardsEnabledUpdated(bool enabled);
+event DailyCapUpdated(uint256 oldCap, uint256 newCap);
 event TreasuryWithdrawn(address indexed admin, address indexed to, uint256 amount, uint256 newBalance);
 
 event WithdrawalRequested(address indexed admin, address indexed to, uint256 amount, uint256 readyAt);
@@ -246,6 +260,27 @@ contract RewardDistributor is Admin2Step, ReentrancyGuard {
     PendingWithdrawal public pendingWithdrawal;
 
     // ════════════════════════════════════════════════════════════════════════
+    //  Teto diário de pagamentos (v5.1)
+    // ════════════════════════════════════════════════════════════════════════
+
+    /// @notice Limite absoluto que o admin pode configurar: $10.000/dia.
+    uint256 public constant MAX_DAILY_CAP = 10_000_000_000;
+
+    /// @notice Máximo pago por dia (dia UTC = block.timestamp / 1 days). Padrão: $10.
+    /// @dev    Limita a perda por dia mesmo com muitas carteiras sybil. O limite
+    ///         por carteira (relayer) não impede isso — este impede.
+    ///         Acima do teto, nada é pago nem fica devido (RewardNotFunded).
+    uint256 public maxPayoutPerDay = 1_000_000; // $1/dia
+
+    /// @notice Recompensas em USDC ligadas? Padrão: DESLIGADAS.
+    /// @dev    O mapa funciona sem dinheiro: registrar e verificar não dependem
+    ///         disto. O admin liga quando houver patrocínio na tesouraria.
+    bool public rewardsEnabled;
+
+    uint256 public currentDay;
+    uint256 public paidToday;
+
+    // ════════════════════════════════════════════════════════════════════════
     //  Pausable
     // ════════════════════════════════════════════════════════════════════════
 
@@ -309,6 +344,24 @@ contract RewardDistributor is Admin2Step, ReentrancyGuard {
         emit TreasuryFunded(msg.sender, amount, USDC.balanceOf(address(this)));
     }
 
+    /// @notice Igual a fundTreasury, mas associa o aporte a uma marca patrocinadora.
+    /// @dev    Emite TreasuryFunded (o mural atual continua contando) e TreasurySponsored.
+    ///         Não dá nenhum direito on-chain: exibição de marca é decisão off-chain,
+    ///         moderada, e pode ser recusada com reembolso fora do contrato.
+    function sponsorTreasury(uint256 amount, bytes32 brandRef) external notPaused nonReentrant {
+        if (amount == 0) revert InvalidRewardAmount();
+        if (brandRef == bytes32(0)) revert InvalidRewardAmount();
+
+        bool success = USDC.transferFrom(msg.sender, address(this), amount);
+        if (!success) revert RewardTransferFailed(
+            bytes32(0), msg.sender, "treasury funding transferFrom failed"
+        );
+
+        uint256 newBalance = USDC.balanceOf(address(this));
+        emit TreasuryFunded(msg.sender, amount, newBalance);
+        emit TreasurySponsored(msg.sender, amount, brandRef, newBalance);
+    }
+
     /// @notice Fase 1 do saque — registra a intenção e inicia a espera de 48h.
     /// @dev    Um pedido novo substitui o anterior e reinicia o relógio.
     function requestWithdrawal(uint256 amount, address to) external onlyAdmin {
@@ -370,6 +423,7 @@ contract RewardDistributor is Admin2Step, ReentrancyGuard {
         address contributor,
         RewardType rewardType
     ) external onlyAuthorized notPaused nonReentrant {
+        if (!rewardsEnabled) revert RewardsDisabled();
         if (contributor == address(0)) revert ZeroAddress();
         if (rewardClaimed[contributionId]) revert RewardAlreadyClaimed(contributionId);
 
@@ -387,8 +441,12 @@ contract RewardDistributor is Admin2Step, ReentrancyGuard {
         uint256 amount = _getRewardAmount(rewardType);
         if (amount == 0) revert InvalidRewardAmount();
 
-        uint256 balance = USDC.balanceOf(address(this));
-        if (balance < amount) revert InsufficientTreasury(amount, balance);
+        // v5.1: sem saldo ou acima do teto diário, NÃO paga e NÃO cria dívida —
+        // a contribuição continua sem recompensa e pode ser paga depois, se houver fundos.
+        if (!_canPay(amount)) {
+            emit RewardNotFunded(contributionId, contributor, amount, _whyNot(amount));
+            return;
+        }
 
         // Marca antes de transferir (checks-effects-interactions).
         rewardClaimed[contributionId] = true;
@@ -401,7 +459,7 @@ contract RewardDistributor is Admin2Step, ReentrancyGuard {
             contributionCount[contributor]++;
         }
 
-        if (_safeTransfer(contributor, amount, contributionId)) {
+        if (_payNow(contributor, amount, contributionId)) {
             emit RewardPaid(contributionId, contributor, amount, rewardType, block.number);
         }
     }
@@ -418,6 +476,7 @@ contract RewardDistributor is Admin2Step, ReentrancyGuard {
             revert ArrayLengthMismatch(len, contributors.length, rewardTypes.length);
         }
         if (len > MAX_BATCH_SIZE) revert BatchTooLarge(len, MAX_BATCH_SIZE);
+        if (!rewardsEnabled) revert RewardsDisabled();
 
         for (uint256 i = 0; i < len; i++) {
             bytes32 id = contributionIds[i];
@@ -440,11 +499,9 @@ contract RewardDistributor is Admin2Step, ReentrancyGuard {
                 emit RewardFailed(id, to, 0, "invalid reward amount");
                 continue;
             }
-
-            uint256 balance = USDC.balanceOf(address(this));
-            if (balance < amount) {
-                emit RewardFailed(id, to, amount, "insufficient treasury");
-                continue; // não reverte — processa o resto
+            if (!_canPay(amount)) {
+                emit RewardNotFunded(id, to, amount, _whyNot(amount));
+                continue;
             }
 
             rewardClaimed[id] = true;
@@ -457,7 +514,7 @@ contract RewardDistributor is Admin2Step, ReentrancyGuard {
                 contributionCount[to]++;
             }
 
-            if (_safeTransfer(to, amount, id)) {
+            if (_payNow(to, amount, id)) {
                 emit RewardPaid(id, to, amount, rewardTypes[i], block.number);
             }
         }
@@ -477,12 +534,15 @@ contract RewardDistributor is Admin2Step, ReentrancyGuard {
 
         uint256 balance = USDC.balanceOf(address(this));
         if (balance < f.amount) revert InsufficientTreasury(f.amount, balance);
+        uint256 remaining = dailyRemaining();
+        if (f.amount > remaining) revert DailyCapReached(f.amount, remaining);
 
         // Limpa antes de transferir; se falhar de novo, _safeTransfer regrava.
         delete failedRewards[contributionId];
         totalFailedPending -= f.amount;
 
         if (_safeTransfer(f.recipient, f.amount, contributionId)) {
+            _spend(f.amount);
             emit RewardRecovered(contributionId, f.recipient, f.amount);
             emit RewardPaid(
                 contributionId,
@@ -569,6 +629,19 @@ contract RewardDistributor is Admin2Step, ReentrancyGuard {
         emit RewardAmountUpdated(rewardType, oldAmount, newAmount);
     }
 
+    /// @notice Liga/desliga as recompensas em USDC (registrar e verificar seguem funcionando).
+    function setRewardsEnabled(bool enabled) external onlyAdmin {
+        rewardsEnabled = enabled;
+        emit RewardsEnabledUpdated(enabled);
+    }
+
+    /// @notice Ajusta o teto diário de pagamentos (1 .. MAX_DAILY_CAP).
+    function setMaxPayoutPerDay(uint256 newCap) external onlyAdmin {
+        if (newCap == 0 || newCap > MAX_DAILY_CAP) revert InvalidDailyCap(newCap);
+        emit DailyCapUpdated(maxPayoutPerDay, newCap);
+        maxPayoutPerDay = newCap;
+    }
+
     /// @notice Pausa todas as distribuições (emergência). Sem timelock, de
     ///         propósito: parar tem que ser instantâneo.
     function setPaused(bool _paused) external onlyAdmin {
@@ -601,6 +674,12 @@ contract RewardDistributor is Admin2Step, ReentrancyGuard {
             contributionCount[contributor],
             verificationCount[contributor]
         );
+    }
+
+    /// @notice Quanto ainda pode ser pago hoje (dia UTC) sem estourar o teto.
+    function dailyRemaining() public view returns (uint256) {
+        uint256 spent = currentDay == block.timestamp / 1 days ? paidToday : 0;
+        return spent >= maxPayoutPerDay ? 0 : maxPayoutPerDay - spent;
     }
 
     function isRewardClaimed(bytes32 contributionId) external view returns (bool) {
@@ -663,6 +742,32 @@ contract RewardDistributor is Admin2Step, ReentrancyGuard {
         }
 
         return true;
+    }
+
+    /// @dev Há saldo livre e folga no teto de hoje?
+    function _canPay(uint256 amount) internal view returns (bool) {
+        uint256 balance = USDC.balanceOf(address(this));
+        uint256 free = balance > totalFailedPending ? balance - totalFailedPending : 0;
+        return amount <= free && amount <= dailyRemaining();
+    }
+
+    function _whyNot(uint256 amount) internal view returns (bytes memory) {
+        return amount > dailyRemaining() ? bytes("daily cap reached") : bytes("insufficient treasury");
+    }
+
+    /// @return paid true se o USDC de fato saiu daqui.
+    function _payNow(address to, uint256 amount, bytes32 contributionId) internal returns (bool paid) {
+        paid = _safeTransfer(to, amount, contributionId);
+        if (paid) _spend(amount);
+    }
+
+    function _spend(uint256 amount) internal {
+        uint256 today = block.timestamp / 1 days;
+        if (today != currentDay) {
+            currentDay = today;
+            paidToday = 0;
+        }
+        paidToday += amount;
     }
 
     function _recordFailure(bytes32 contributionId, address to, uint256 amount, bytes memory reason) internal {

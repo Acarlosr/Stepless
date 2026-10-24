@@ -176,6 +176,16 @@ export const DISTRIBUTOR_ABI = [
   { name: 'treasuryBalance', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
   { name: 'availableBalance', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
   { name: 'totalFailedPending', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  // v5.1: recompensas liga/desliga + teto diário + patrocínio com marca
+  { name: 'rewardsEnabled', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'bool' }] },
+  { name: 'setRewardsEnabled', type: 'function', stateMutability: 'nonpayable',
+    inputs: [{ name: 'enabled', type: 'bool' }], outputs: [] },
+  { name: 'maxPayoutPerDay', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  { name: 'dailyRemaining', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  { name: 'setMaxPayoutPerDay', type: 'function', stateMutability: 'nonpayable',
+    inputs: [{ name: 'newCap', type: 'uint256' }], outputs: [] },
+  { name: 'sponsorTreasury', type: 'function', stateMutability: 'nonpayable',
+    inputs: [{ name: 'amount', type: 'uint256' }, { name: 'brandRef', type: 'bytes32' }], outputs: [] },
   { name: 'USDC', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
   { name: 'oracle', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
   { name: 'paused', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'bool' }] },
@@ -193,6 +203,9 @@ export const DISTRIBUTOR_ABI = [
   { type: 'error', name: 'NoFailedReward', inputs: [{ name: 'contributionId', type: 'bytes32' }] },
   { type: 'error', name: 'OnlyOracle', inputs: [{ name: 'caller', type: 'address' }] },
   { type: 'error', name: 'InvalidUsdc', inputs: [{ name: 'usdc', type: 'address' }] },
+  { type: 'error', name: 'DailyCapReached', inputs: [{ name: 'amount', type: 'uint256' }, { name: 'remaining', type: 'uint256' }] },
+  { type: 'error', name: 'InvalidDailyCap', inputs: [{ name: 'cap', type: 'uint256' }] },
+  { type: 'error', name: 'RewardsDisabled', inputs: [] },
 ];
 
 // RewardType enum do RewardDistributor

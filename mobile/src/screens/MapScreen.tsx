@@ -440,12 +440,8 @@ export default function MapScreen() {
       console.log('[Stepless] Local registrado. TX:', result.txHash, 'contrib:', result.contributionId);
 
       setSubmissionStatus('success');
-      // A recompensa é paga após a verificação da contribuição pendente.
-      setPendingReward(
-        result.contributionId
-          ? '$0.10 USDC — aguardando verificação'
-          : '$0.10 USDC'
-      );
+      // Nesta fase não há pagamento por cadastro: só agradecimento + status.
+      setPendingReward(t('map.thanksPending'));
 
       // Refresh nearby locations
       fetchNearbyLocations(formData.lat, formData.lng);
@@ -774,9 +770,9 @@ export default function MapScreen() {
             {/* Success — pending reward */}
             {submissionStatus === 'success' && pendingReward && (
               <View style={styles.rewardBanner}>
-                <Ionicons name="gift" size={24} color={Colors.light.success} />
+                <Ionicons name="heart" size={24} color={Colors.light.success} />
                 <Text style={styles.rewardBannerText}>
-                  {t('map.rewardPending')}: {pendingReward}
+                  {pendingReward}
                 </Text>
               </View>
             )}

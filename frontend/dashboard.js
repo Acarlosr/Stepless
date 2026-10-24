@@ -1129,7 +1129,7 @@ async function handleRegisterLocation(e) {
     }
 
     const pendingNote = result.contributionId
-      ? ` · Contribuição ${shortHash(result.contributionId)} aguardando verificação para pagar a recompensa.`
+      ? ` · Contribuição ${shortHash(result.contributionId)} ${s.success_pending_note || 'aguardando revisão. Obrigado por contribuir!'}`
       : '';
     showAlert('register-alert', 'success', `✓ ${s.success_registered || 'Local registrado!'} TX: ${shortHash(result.txHash)}${pendingNote}`);
     document.getElementById('register-form')?.reset();

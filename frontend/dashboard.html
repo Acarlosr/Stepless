@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Stepless Dashboard — Painel do contribuidor. Mapeie locais acessíveis, verifique contribuições e receba recompensas em USDC na Arc Testnet." />
+  <meta name="description" content="Stepless — mapeie locais acessíveis e ajude outras pessoas. Contribuir é gratuito e voluntário." />
   <meta name="theme-color" content="#1a56c4" />
   <title>Stepless Dashboard — Arc Testnet</title>
   <link rel="stylesheet" href="styles.css" />
@@ -12,6 +12,13 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦿</text></svg>" />
   <!-- Config de rede: gerado por scripts/gen-network.mjs a partir de config/networks.json.
        Precisa vir ANTES de qualquer script que use window.STEPLESS_NETWORK. -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.querySelectorAll('.rs-motion').forEach(function (m) { m.parentNode.setAttribute('transform', 'translate(560 134)'); m.remove(); });
+      }
+    });
+  </script>
   <script src="network.js"></script>
 </head>
 <body>
@@ -38,7 +45,6 @@
         <ul class="nav-links" id="dash-nav-links">
           <li><a href="buscar.html" data-i18n="nav_search">Busca</a></li>
           <li><a href="#register" data-i18n="nav_register">Mapear</a></li>
-          <li><a href="#rewards" data-i18n="nav_rewards">Recompensas</a></li>
           <li><a href="#verify" data-i18n="nav_verify">Verificar</a></li>
           <li><a href="index.html" data-i18n="nav_home">Início</a></li>
         </ul>
@@ -96,98 +102,41 @@
 
     <!-- ── Not Connected Overlay ── -->
     <div id="not-connected" class="card text-center" style="padding:48px 24px;">
-      <div class="mascot-scene mascot-scene-sm" role="img"
-           aria-label="Mascote do Stepless avança na cadeira de rodas, encontra uma escada e as rodas se transformam em hélices, permitindo que ele suba voando com a cadeira">
-        <svg class="mascot-svg" viewBox="0 -72 720 358" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-
-          <line class="ms-ground" x1="20" y1="266" x2="300" y2="266"/>
-
-          <g>
-            <rect class="ms-step" x="300" y="233" width="66" height="33"/>
-            <rect class="ms-step-edge" x="300" y="233" width="66" height="5"/>
-            <rect class="ms-step" x="366" y="200" width="66" height="66"/>
-            <rect class="ms-step-edge" x="366" y="200" width="66" height="5"/>
-            <rect class="ms-step" x="432" y="167" width="66" height="99"/>
-            <rect class="ms-step-edge" x="432" y="167" width="66" height="5"/>
-            <rect class="ms-step" x="498" y="134" width="200" height="132"/>
-            <rect class="ms-step-edge" x="498" y="134" width="200" height="5"/>
-          </g>
-
-          <ellipse class="ms-shadow" cx="96" cy="268" rx="46" ry="7"/>
-
-          <g class="ms-rig">
-            <g class="ms-tilt">
-
-              <g>
-                <circle class="ms-rim" cx="60" cy="228" r="34" fill="none" stroke="var(--primary)" stroke-width="6"/>
-                <g class="ms-spokes">
-                  <line x1="60" y1="200" x2="60" y2="256" stroke="var(--primary)" stroke-width="4" stroke-linecap="round"/>
-                  <line x1="36" y1="214" x2="84" y2="242" stroke="var(--primary)" stroke-width="4" stroke-linecap="round"/>
-                  <line x1="36" y1="242" x2="84" y2="214" stroke="var(--primary)" stroke-width="4" stroke-linecap="round"/>
-                </g>
-                <circle cx="60" cy="228" r="6" fill="var(--primary)"/>
-                <g class="ms-wash">
-                  <circle cx="60" cy="228" r="40" fill="var(--primary)" fill-opacity=".10"/>
-                </g>
-                <g class="ms-blade">
-                  <ellipse cx="26" cy="228" rx="22" ry="5.5" fill="var(--primary)"/>
-                  <ellipse cx="94" cy="228" rx="22" ry="5.5" fill="var(--primary)"/>
-                  <ellipse cx="60" cy="208" rx="5" ry="14" fill="var(--primary)" fill-opacity=".45"/>
-                  <ellipse cx="60" cy="248" rx="5" ry="14" fill="var(--primary)" fill-opacity=".45"/>
-                </g>
-              </g>
-
-              <g>
-                <circle class="ms-rim" cx="122" cy="246" r="15" fill="none" stroke="var(--primary)" stroke-width="5"/>
-                <g class="ms-spokes">
-                  <line x1="122" y1="234" x2="122" y2="258" stroke="var(--primary)" stroke-width="3" stroke-linecap="round"/>
-                  <line x1="111" y1="240" x2="133" y2="252" stroke="var(--primary)" stroke-width="3" stroke-linecap="round"/>
-                </g>
-                <circle cx="122" cy="246" r="4" fill="var(--primary)"/>
-                <g class="ms-wash">
-                  <circle cx="122" cy="246" r="19" fill="var(--primary)" fill-opacity=".10"/>
-                </g>
-                <g class="ms-blade">
-                  <ellipse cx="105" cy="246" rx="11" ry="3.5" fill="var(--primary)"/>
-                  <ellipse cx="139" cy="246" rx="11" ry="3.5" fill="var(--primary)"/>
-                  <ellipse cx="122" cy="236" rx="3.2" ry="7" fill="var(--primary)" fill-opacity=".45"/>
-                  <ellipse cx="122" cy="256" rx="3.2" ry="7" fill="var(--primary)" fill-opacity=".45"/>
-                </g>
-              </g>
-
-              <rect x="34" y="150" width="9" height="70" rx="4.5" fill="var(--primary)"/>
-              <rect x="34" y="212" width="80" height="9" rx="4.5" fill="var(--primary)"/>
-              <rect x="122" y="237" width="26" height="9" rx="4.5" fill="var(--primary)"/>
-
-              <rect x="86" y="197" width="44" height="16" rx="8" fill="var(--primary)"/>
-              <rect x="118" y="205" width="16" height="34" rx="8" fill="var(--primary)"/>
-
-              <rect x="46" y="148" width="62" height="54" rx="16" fill="var(--bg-card)" stroke="var(--primary)" stroke-width="2.5"/>
-              <rect x="59" y="158" width="37" height="24" rx="5" fill="var(--accent-bg)"/>
-              <text x="77.5" y="175" text-anchor="middle" font-size="9" fill="var(--primary)"
-                    font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="bold">USDC</text>
-
-              <rect x="100" y="156" width="13" height="42" rx="6.5" fill="var(--primary)"/>
-              <circle cx="106.5" cy="202" r="8" fill="var(--primary)"/>
-
-              <rect x="42" y="96" width="70" height="52" rx="18" fill="var(--primary)"/>
-              <g class="ms-eye">
-                <circle cx="61" cy="120" r="7.5" fill="#ffffff"/>
-                <circle cx="61" cy="120" r="3.8" fill="var(--bg)"/>
-              </g>
-              <g class="ms-eye ms-eye-right">
-                <circle cx="93" cy="120" r="7.5" fill="#ffffff"/>
-                <circle cx="93" cy="120" r="3.8" fill="var(--bg)"/>
-              </g>
-              <path d="M64 135 Q77 143 90 135" stroke="#ffffff" stroke-width="3" stroke-linecap="round" fill="none"/>
-
-              <line x1="77" y1="80" x2="77" y2="96" stroke="var(--primary)" stroke-width="3" stroke-linecap="round"/>
-              <circle class="ms-antenna" cx="77" cy="76" r="5.5" fill="var(--primary)"/>
-
+      <div class="ramp-scene ramp-scene-sm" role="img" aria-label="Ilustração: uma escada ganha uma rampa e uma pessoa em cadeira de rodas sobe sozinha">
+          <svg class="ramp-svg" viewBox="0 40 720 250" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <!-- chão -->
+            <line class="rs-ground" x1="20" y1="266" x2="700" y2="266"/>
+            <!-- escada -->
+            <g class="rs-stairs">
+              <rect class="rs-step" x="300" y="233" width="66" height="33"/>
+              <rect class="rs-step" x="366" y="200" width="66" height="66"/>
+              <rect class="rs-step" x="432" y="167" width="66" height="99"/>
+              <rect class="rs-step" x="498" y="134" width="200" height="132"/>
+              <path class="rs-step-edge" d="M300 233h66v-33h66v-33h66v-33h200"/>
             </g>
-          </g>
-        </svg>
-      </div>
+            <!-- rampa: desenha a linha, depois preenche -->
+            <polygon class="rs-ramp-fill" points="250,266 498,134 498,266"/>
+            <line class="rs-ramp-line" x1="250" y1="266" x2="498" y2="134"/>
+            <!-- pessoa em cadeira de rodas (pictograma) -->
+            <g class="rs-rider">
+              <circle cx="-12" cy="-24" r="22" class="rs-wheel"/>
+              <circle cx="20" cy="-6" r="5" class="rs-wheel"/>
+              <circle cx="-14" cy="-80" r="9" class="rs-body-fill"/>
+              <path d="M-14 -66 V-40 H10 L18 -14" class="rs-body"/>
+              <path d="M-14 -56 L6 -48" class="rs-body"/>
+              <!-- percurso: chão → rampa → topo; rotate="auto" inclina na subida.
+                   Removido por JS quando o usuário pede movimento reduzido. -->
+              <animateMotion class="rs-motion" dur="8s" repeatCount="indefinite" rotate="auto"
+                path="M40 266 H250 L498 134 H560" calcMode="linear"
+                keyTimes="0;0.26;0.44;0.7;0.86;1" keyPoints="0;0;0.38;0.888;1;1"/>
+            </g>
+            <!-- marcador de "local mapeado" no topo -->
+            <g class="rs-pin">
+              <path d="M620 92c-14 0-24 10-24 23 0 17 24 37 24 37s24-20 24-37c0-13-10-23-24-23z" class="rs-pin-shape"/>
+              <path d="M610 114l7 7 13-14" class="rs-pin-check"/>
+            </g>
+          </svg>
+        </div>
       <h2 class="section-title" data-i18n="not_connected_title">Entre para começar</h2>
       <p class="section-subtitle" data-i18n="not_connected_desc">Entre com seu e-mail — criamos uma carteira pra você na hora, sem precisar instalar nada. MetaMask também funciona, se preferir.</p>
       <button class="btn btn-primary btn-lg" id="connect-wallet-btn-large" data-i18n="connect_wallet">Entrar com e-mail</button>
@@ -202,7 +151,7 @@
         <p class="section-subtitle" data-i18n="stats_subtitle">Seu desempenho na rede Stepless.</p>
 
         <div class="stat-grid mb-3">
-          <div class="stat-card">
+          <div class="stat-card hidden" aria-hidden="true">
             <div class="stat-value" id="stat-total-earned">—</div>
             <div class="stat-label" data-i18n="stat_total_earned">Total Ganho (USDC)</div>
           </div>
@@ -216,13 +165,13 @@
           </div>
           <div class="stat-card">
             <div class="stat-value" id="stat-treasury">—</div>
-            <div class="stat-label" data-i18n="stat_treasury">Treasury (USDC)</div>
+            <div class="stat-label" data-i18n="stat_treasury">Tesouraria de apoios (USDC)</div>
           </div>
           <div class="stat-card">
             <div class="stat-value" id="stat-locations">—</div>
             <div class="stat-label" data-i18n="stat_locations">Locais Mapeados</div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card hidden" aria-hidden="true">
             <div class="stat-value" id="stat-usdc-balance">—</div>
             <div class="stat-label" data-i18n="stat_usdc_balance">Seu Saldo USDC</div>
           </div>
@@ -268,7 +217,7 @@
       <!-- ── Register Location ── -->
       <section id="register" aria-labelledby="register-title" class="mb-3">
         <h2 class="section-title" id="register-title" data-i18n="register_title">Mapear Novo Local</h2>
-        <p class="section-subtitle" data-i18n="register_subtitle">Registre um local acessível na Arc Testnet. Você será recompensado em USDC após verificação.</p>
+        <p class="section-subtitle" data-i18n="register_subtitle">Registre um local acessível. É gratuito: a taxa da rede é paga pelo Stepless. Nesta fase não há pagamento por cadastro.</p>
 
         <div class="card">
           <!-- Regra de local único: um mesmo lugar só pode ser registrado uma vez -->
@@ -411,7 +360,8 @@
       </section>
 
       <!-- ── Reward History ── -->
-      <section id="rewards" aria-labelledby="rewards-title" class="mb-3">
+      <!-- Recompensas desligadas nesta fase: seção oculta (o JS ainda a preenche sem erro). -->
+      <section id="rewards" aria-labelledby="rewards-title" class="mb-3 hidden" aria-hidden="true">
         <h2 class="section-title" id="rewards-title" data-i18n="rewards_title">Histórico de Recompensas</h2>
         <p class="section-subtitle" data-i18n="rewards_subtitle">Recompensas recebidas via Goldsky subgraph.</p>
 
@@ -445,7 +395,7 @@
         <a href="https://faucet.circle.com" target="_blank" rel="noopener" data-i18n="footer_faucet">Faucet</a>
         <a href="index.html" data-i18n="footer_home">Início</a>
       </div>
-      <p data-i18n="footer_text">Stepless Dashboard — Arc Testnet. Recompensas em USDC.</p>
+      <p data-i18n="footer_text">Stepless — mapa aberto de acessibilidade, feito pela comunidade.</p>
       <div class="arc-badge mt-1">
         <span data-i18n="built_on_arc">Built on</span>
         <img class="arc-logo-light" src="assets/arc/Arc_Icon_Navy.svg" alt="Arc" />
@@ -471,11 +421,11 @@
         not_connected_title:"Entre para começar", not_connected_desc:"Entre com seu e-mail — criamos uma carteira pra você na hora, sem precisar instalar nada. MetaMask também funciona, se preferir.",
         stats_title:"Estatísticas do Contribuidor", stats_subtitle:"Seu desempenho na rede Stepless.",
         stat_total_earned:"Total Ganho (USDC)", stat_contributions:"Contribuições", stat_verifications:"Verificações",
-        stat_treasury:"Treasury (USDC)", stat_locations:"Locais Mapeados", stat_usdc_balance:"Seu Saldo USDC",
+        stat_treasury:"Tesouraria de apoios (USDC)", stat_locations:"Locais Mapeados", stat_usdc_balance:"Seu Saldo USDC",
         verifier_badge:"✓ Verificador Aprovado",
         map_title:"Mapa de Locais Acessíveis", map_placeholder:"Mapa interativo em desenvolvimento", map_placeholder_sub:"Locais aparecem aqui após conexão",
         event_log_title:"Eventos em Tempo Real", event_log_desc:"Atualizações ao vivo da Arc Testnet via WebSocket.", event_log_empty:"Aguardando eventos...",
-        register_title:"Mapear Novo Local", register_subtitle:"Registre um local acessível na Arc Testnet. Você será recompensado em USDC após verificação.",
+        register_title:"Mapear Novo Local", register_subtitle:"Registre um local acessível. É gratuito: a taxa da rede é paga pelo Stepless. Nesta fase não há pagamento por cadastro.",
         reg_location:"Localização", reg_gps_btn:"📍 Usar minha localização", reg_address_placeholder:"Ou busque um endereço...", reg_search_btn:"🔍",
         reg_name:"Nome do Local", reg_category:"Categoria", reg_category_hint:"Marque todas as opções que se aplicam.", reg_photo:"Foto do Local", reg_submit:"Registrar Local",
         reg_map_hint:"Toque no mapa ou arraste o marcador para ajustar o local exato.",
@@ -505,8 +455,8 @@
         rewards_col_tx:"Transação", rewards_col_amount:"Valor (USDC)", rewards_col_tier:"Nível", rewards_col_contrib:"Contribuição", rewards_col_time:"Data/Hora",
         rewards_empty:"Carregando recompensas...",
         footer_explorer:"ArcScan", footer_faucet:"Faucet", footer_home:"Início",
-        footer_text:"Stepless Dashboard — Arc Testnet. Recompensas em USDC.", built_on_arc:"Built on",
-        cat_ramp:"Rampa", cat_elevator:"Elevador", cat_restroom:"Banheiro Acessível", cat_parking:"Vaga PCD", cat_signage:"Sinalização", cat_audio:"Áudio Descrição", cat_braille:"Braile", cat_other:"Outro", cat_entrance:"Entrada Acessível",
+        footer_text:"Stepless — mapa aberto de acessibilidade, feito pela comunidade.", built_on_arc:"Built on",
+        cat_ramp:"Rampa", cat_elevator:"Elevador", cat_restroom:"Banheiro Acessível", cat_parking:"Vaga PCD", cat_signage:"Sinalização", cat_audio:"Áudio Descrição", cat_braille:"Braile", cat_other:"Outro", cat_entrance:"Entrada Acessível", cat_room:"Quarto adaptado (hotel/pousada)",
         err_no_wallet:"Nenhuma wallet detectada. Instale MetaMask ou outra wallet compatível.",
         err_wrong_chain:"Rede incorreta. Conecte-se à rede {network} (Chain ID: {chainId}).",
         err_tx_failed:"Transação falhou",
@@ -515,8 +465,9 @@
         err_decimal:"Erro de decimais: USDC usa 6 decimais na Arc.",
         success_registered:"Local registrado com sucesso!",
         success_verified:"Contribuição verificada!",
-        gas_estimate:"Custo estimado de gas: ",
+        gas_estimate:"Grátis para você · taxa da rede paga pelo Stepless: ~",
         loading:"Carregando...",
+        success_pending_note:"aguardando revisão. Obrigado por contribuir!"
       },
       en: {
         nav_stats:"Stats", nav_map:"Map", nav_search:"Search", nav_register:"Map Location", nav_verify:"Verify", nav_rewards:"Rewards", nav_home:"Home",
@@ -524,11 +475,11 @@
         not_connected_title:"Sign in to get started", not_connected_desc:"Sign in with your email — we create a wallet for you instantly, nothing to install. MetaMask also works if you prefer it.",
         stats_title:"Contributor Statistics", stats_subtitle:"Your performance on the Stepless network.",
         stat_total_earned:"Total Earned (USDC)", stat_contributions:"Contributions", stat_verifications:"Verifications",
-        stat_treasury:"Treasury (USDC)", stat_locations:"Locations Mapped", stat_usdc_balance:"Your USDC Balance",
+        stat_treasury:"Supporters' treasury (USDC)", stat_locations:"Locations Mapped", stat_usdc_balance:"Your USDC Balance",
         verifier_badge:"✓ Approved Verifier",
         map_title:"Accessible Locations Map", map_placeholder:"Interactive map in development", map_placeholder_sub:"Locations appear here after connection",
         event_log_title:"Real-time Events", event_log_desc:"Live updates from Arc Testnet via WebSocket.", event_log_empty:"Waiting for events...",
-        register_title:"Map New Location", register_subtitle:"Register an accessible location on Arc Testnet. You'll be rewarded in USDC after verification.",
+        register_title:"Map New Location", register_subtitle:"Add an accessible place. It's free: the network fee is paid by Stepless. There is no payment for adding places at this stage.",
         reg_location:"Location", reg_gps_btn:"📍 Use my location", reg_address_placeholder:"Or search an address...", reg_search_btn:"🔍",
         reg_name:"Location Name", reg_category:"Category", reg_category_hint:"Check all that apply.", reg_photo:"Location Photo", reg_submit:"Register Location",
         reg_map_hint:"Tap the map or drag the marker to set the exact spot.",
@@ -558,8 +509,8 @@
         rewards_col_tx:"Transaction", rewards_col_amount:"Amount (USDC)", rewards_col_tier:"Tier", rewards_col_contrib:"Contribution", rewards_col_time:"Date/Time",
         rewards_empty:"Loading rewards...",
         footer_explorer:"ArcScan", footer_faucet:"Faucet", footer_home:"Home",
-        footer_text:"Stepless Dashboard — Arc Testnet. Rewards in USDC.", built_on_arc:"Built on",
-        cat_ramp:"Ramp", cat_elevator:"Elevator", cat_restroom:"Accessible Restroom", cat_parking:"Accessible Parking", cat_signage:"Signage", cat_audio:"Audio Description", cat_braille:"Braille", cat_other:"Other", cat_entrance:"Accessible Entrance",
+        footer_text:"Stepless — an open accessibility map, built by the community.", built_on_arc:"Built on",
+        cat_ramp:"Ramp", cat_elevator:"Elevator", cat_restroom:"Accessible Restroom", cat_parking:"Accessible Parking", cat_signage:"Signage", cat_audio:"Audio Description", cat_braille:"Braille", cat_other:"Other", cat_entrance:"Accessible Entrance", cat_room:"Accessible room (hotel/inn)",
         err_no_wallet:"No wallet detected. Install MetaMask or another compatible wallet.",
         err_wrong_chain:"Wrong network. Connect to {network} (Chain ID: {chainId}).",
         err_tx_failed:"Transaction failed",
@@ -568,8 +519,9 @@
         err_decimal:"Decimal error: USDC uses 6 decimals on Arc.",
         success_registered:"Location registered successfully!",
         success_verified:"Contribution verified!",
-        gas_estimate:"Estimated gas cost: ",
+        gas_estimate:"Free for you · network fee paid by Stepless: ~",
         loading:"Loading...",
+        success_pending_note:"awaiting review. Thanks for contributing!"
       },
       es: {
         nav_stats:"Estadísticas", nav_map:"Mapa", nav_search:"Buscar", nav_register:"Mapear Lugar", nav_verify:"Verificar", nav_rewards:"Recompensas", nav_home:"Inicio",
@@ -577,11 +529,11 @@
         not_connected_title:"Entra para empezar", not_connected_desc:"Entra con tu correo — creamos una billetera para ti al instante, sin instalar nada. MetaMask también funciona si lo prefieres.",
         stats_title:"Estadísticas del Contribuidor", stats_subtitle:"Tu desempeño en la red Stepless.",
         stat_total_earned:"Total Ganado (USDC)", stat_contributions:"Contribuciones", stat_verifications:"Verificaciones",
-        stat_treasury:"Treasury (USDC)", stat_locations:"Lugares Mapeados", stat_usdc_balance:"Tu Saldo USDC",
+        stat_treasury:"Tesorería de aportes (USDC)", stat_locations:"Lugares Mapeados", stat_usdc_balance:"Tu Saldo USDC",
         verifier_badge:"✓ Verificador Aprobado",
         map_title:"Mapa de Lugares Accesibles", map_placeholder:"Mapa interactivo en desarrollo", map_placeholder_sub:"Los lugares aparecen aquí después de conectar",
         event_log_title:"Eventos en Tiempo Real", event_log_desc:"Actualizaciones en vivo de Arc Testnet vía WebSocket.", event_log_empty:"Esperando eventos...",
-        register_title:"Mapear Nuevo Lugar", register_subtitle:"Registra un lugar accesible en Arc Testnet. Serás recompensado en USDC después de la verificación.",
+        register_title:"Mapear Nuevo Lugar", register_subtitle:"Registra un lugar accesible. Es gratis: la tarifa de la red la paga Stepless. En esta fase no hay pago por registro.",
         reg_lat:"Latitud", reg_lng:"Longitud", reg_name:"Nombre del Lugar", reg_category:"Categoría", reg_category_hint:"Marca todas las opciones que apliquen.", reg_photo:"Foto del Lugar", reg_submit:"Registrar Lugar",
         reg_map_hint:"Toca el mapa o arrastra el marcador para ajustar el lugar exacto.",
         reg_location:"Ubicación", reg_gps_btn:"📍 Usar mi ubicación",
@@ -606,8 +558,8 @@
         rewards_col_tx:"Transacción", rewards_col_amount:"Valor (USDC)", rewards_col_tier:"Nivel", rewards_col_contrib:"Contribución", rewards_col_time:"Fecha/Hora",
         rewards_empty:"Cargando recompensas...",
         footer_explorer:"ArcScan", footer_faucet:"Faucet", footer_home:"Inicio",
-        footer_text:"Stepless Dashboard — Arc Testnet. Recompensas en USDC.", built_on_arc:"Built on",
-        cat_ramp:"Rampa", cat_elevator:"Ascensor", cat_restroom:"Baño Accesible", cat_parking:"Estacionamiento Accesible", cat_signage:"Señalización", cat_audio:"Audiodescripción", cat_braille:"Braille", cat_other:"Otro",
+        footer_text:"Stepless — mapa abierto de accesibilidad, hecho por la comunidad.", built_on_arc:"Built on",
+        cat_ramp:"Rampa", cat_elevator:"Ascensor", cat_restroom:"Baño Accesible", cat_parking:"Estacionamiento Accesible", cat_signage:"Señalización", cat_audio:"Audiodescripción", cat_braille:"Braille", cat_other:"Otro", cat_entrance:"Entrada Accesible", cat_room:"Habitación adaptada (hotel/posada)",
         err_no_wallet:"No se detectó wallet. Instala MetaMask u otra wallet compatible.",
         err_wrong_chain:"Red incorrecta. Conéctate a {network} (Chain ID: {chainId}).",
         err_tx_failed:"Transacción falló",
@@ -616,8 +568,9 @@
         err_decimal:"Error de decimales: USDC usa 6 decimales en Arc.",
         success_registered:"¡Lugar registrado con éxito!",
         success_verified:"¡Contribución verificada!",
-        gas_estimate:"Costo estimado de gas: ",
+        gas_estimate:"Gratis para ti · tarifa de red pagada por Stepless: ~",
         loading:"Cargando...",
+        success_pending_note:"esperando revisión. ¡Gracias por contribuir!"
       }
     };
 
@@ -655,6 +608,7 @@
           {id:4, label:strings.cat_signage}, {id:5, label:strings.cat_audio},
           {id:6, label:strings.cat_braille}, {id:7, label:strings.cat_other},
           {id:8, label:strings.cat_entrance},
+          {id:9, label:strings.cat_room},
         ];
         // Preserve previously checked boxes across language switches
         const checked = new Set(

@@ -846,6 +846,8 @@ const LOCATION_CATEGORIES = [
   { id: 6, label: { pt: "Braile",       en: "Braille",     es: "Braille" } },
   { id: 7, label: { pt: "Outro",        en: "Other",       es: "Otro" } },
   { id: 8, label: { pt: "Entrada Acessível", en: "Accessible Entrance", es: "Entrada Accesible" } },
+  // 9: hotel/pousada com quarto adaptado (barras, porta larga, chuveiro sem degrau)
+  { id: 9, label: { pt: "Quarto Adaptado", en: "Accessible Room", es: "Habitación Adaptada" } },
 ];
 
 /* ──────────────────────────────────────────────────────────────

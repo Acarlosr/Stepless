@@ -328,6 +328,8 @@
       <button class="filter-chip" data-cat="4" data-i18n="cat_signage">Sinalização</button>
       <button class="filter-chip" data-cat="5" data-i18n="cat_audio">Áudio</button>
       <button class="filter-chip" data-cat="6" data-i18n="cat_braille">Braile</button>
+      <button class="filter-chip" data-cat="8" data-i18n="cat_entrance">Entrada</button>
+      <button class="filter-chip" data-cat="9" data-i18n="cat_room">Quarto adaptado</button>
       <button class="filter-chip" data-cat="7" data-i18n="cat_other">Outro</button>
 
       <div class="radius-row" style="margin-left:auto;">
@@ -470,6 +472,7 @@
         cat_audio: 'Áudio',
         cat_braille: 'Braile',
         cat_other: 'Outro',
+        cat_entrance: 'Entrada', cat_room: 'Quarto adaptado',
         loading_read_count: 'Lendo {count} local(is) da blockchain...',
         result_count_one: '1 local encontrado',
         result_count_many: '{count} locais encontrados',
@@ -542,6 +545,7 @@
         cat_audio: 'Audio',
         cat_braille: 'Braille',
         cat_other: 'Other',
+        cat_entrance: 'Entrance', cat_room: 'Accessible room',
         loading_read_count: 'Reading {count} location(s) from the blockchain...',
         result_count_one: '1 place found',
         result_count_many: '{count} places found',
@@ -614,6 +618,7 @@
         cat_audio: 'Audio',
         cat_braille: 'Braille',
         cat_other: 'Otro',
+        cat_entrance: 'Entrada', cat_room: 'Habitación adaptada',
         loading_read_count: 'Leyendo {count} lugar(es) de la blockchain...',
         result_count_one: '1 lugar encontrado',
         result_count_many: '{count} lugares encontrados',
@@ -683,7 +688,7 @@
     let currentLang  = 'pt';
 
     // Mesma ordem/ids usados no formulário de registro (dashboard.html)
-    const CATEGORY_ICONS = { 0:'♿', 1:'🛗', 2:'🚻', 3:'🅿️', 4:'🔔', 5:'🔊', 6:'✋', 7:'✨' };
+    const CATEGORY_ICONS = { 0:'♿', 1:'🛗', 2:'🚻', 3:'🅿️', 4:'🔔', 5:'🔊', 6:'✋', 7:'✨', 8:'🚪', 9:'🛏️' };
     let CATEGORY_LABELS = {};
 
     // As leituras dos locais usam Multicall3 para não gerar duas requisições RPC
@@ -726,6 +731,8 @@
         5: `${CATEGORY_ICONS[5]} ${t('cat_audio')}`,
         6: `${CATEGORY_ICONS[6]} ${t('cat_braille')}`,
         7: `${CATEGORY_ICONS[7]} ${t('cat_other')}`,
+        8: `${CATEGORY_ICONS[8]} ${t('cat_entrance')}`,
+        9: `${CATEGORY_ICONS[9]} ${t('cat_room')}`,
       };
     }
 
@@ -912,6 +919,8 @@
           // null = sem metadado salvo (registrado antes dessa feature) → não filtra por categoria
           // [] = metadado salvo mas sem categoria marcada (não deveria acontecer, mas por via das dúvidas)
           loc.categories = m ? (m.categories || []) : null;
+          // Descrição da foto gerada pela IA (texto alternativo para leitor de tela).
+          loc.alt = (m && typeof m.alt === 'string') ? m.alt : null;
           // lat/lng salvos no momento do registro (api/relay.js) são a fonte confiável —
           // sobrescreve o valor obtido por escaneamento de eventos (mais frágil/incompleto).
           if (m && typeof m.lat === 'number' && typeof m.lng === 'number') {
@@ -1037,6 +1046,7 @@
               </div>
             </div>
             ${catBadges}
+            ${loc.alt ? `<p class="location-alt" style="font-size:.85rem;margin:4px 0;color:var(--text-muted);"><span aria-hidden="true">📷 </span>${escapeHtml(loc.alt)}</p>` : ''}
             <div class="location-meta">
               ${distLabel}
               ${verBadge}
@@ -1200,6 +1210,24 @@
         else searchAll();
       });
     });
+
+    // Filtro vindo da URL (?cat=room, ?cat=9 …) — usado pelos links da página inicial.
+    (function applyInitialCat() {
+      const raw = new URLSearchParams(window.location.search).get('cat');
+      if (!raw) return;
+      const SLUG = { ramp:0, elevator:1, restroom:2, parking:3, signage:4, audio:5, tactile:6, braille:6, other:7, entrance:8, room:9, hotel:9 };
+      const id = /^\d+$/.test(raw) ? raw : SLUG[raw.toLowerCase()];
+      const chip = id !== undefined && document.querySelector(`.filter-chip[data-cat="${id}"]`);
+      if (!chip) return;
+      if (initialQuery) {
+        // a busca por endereço já está em andamento: só marca o filtro
+        document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+        chip.classList.add('active');
+        activeCat = String(id);
+      } else {
+        chip.click();
+      }
+    })();
 
     // ── Theme + nav ───────────────────────────────────────
     (function initTheme() {

@@ -44,6 +44,11 @@ export default async function handler(req, res) {
       pub.readContract({ address: usdc, abi: ERC20_ABI, functionName: 'balanceOf', args: [relayer.address] }),
       pub.readContract({ address: usdc, abi: ERC20_ABI, functionName: 'balanceOf', args: [distributor] }),
     ]);
+    // v5.1: recompensas só ligam quando há patrocínio. Contrato antigo → assume ligado.
+    const rewardsEnabled = await pub.readContract({
+      address: distributor, functionName: 'rewardsEnabled',
+      abi: [{ name: 'rewardsEnabled', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'bool' }] }],
+    }).catch(() => true);
 
     return res.status(200).json({
       network: NETWORK_NAME,
@@ -52,6 +57,7 @@ export default async function handler(req, res) {
       usdc,
       relayerUSDC: (Number(relayerBal) / 1e6).toFixed(2),
       treasuryUSDC: (Number(treasuryBal) / 1e6).toFixed(2),
+      rewardsEnabled,
       howTo: 'node scripts/fund-treasury.mjs 5   (ou approve + fundTreasury pelo multisig)',
     });
   } catch (err) {

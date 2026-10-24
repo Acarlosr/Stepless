@@ -78,6 +78,9 @@ contract RewardDistributorTest is Test {
         vm.startPrank(admin);
         distributor.setVerifier(verifier, true);
         distributor.setAuthorizedCaller(relayer, true);
+        // Os testes antigos assumem recompensas ligadas e teto folgado.
+        distributor.setRewardsEnabled(true);
+        distributor.setMaxPayoutPerDay(TREASURY);
         vm.stopPrank();
 
         oracle.setContribution(CONTRIB_1, true, verifier, contributor);
@@ -175,8 +178,35 @@ contract RewardDistributorTest is Test {
         distributor.payReward(CONTRIB_1, contributor, RewardType.NewLocation);
     }
 
-    function test_PayReward_RevertsOnInsufficientTreasury() public {
-        // Esvazia a tesouraria via saque com timelock.
+    // ════════════════════════════════════════════════════════════════════════
+    //  Recompensa só com patrocínio, sem dívida  (v5.1)
+    // ════════════════════════════════════════════════════════════════════════
+
+    function test_Defaults_RewardsOffAndOneDollarCap() public {
+        RewardDistributor fresh = new RewardDistributor(address(oracle), admin, address(usdc));
+        assertFalse(fresh.rewardsEnabled());
+        assertEq(fresh.maxPayoutPerDay(), 1_000_000);
+    }
+
+    function test_PayReward_RevertsWhenRewardsDisabled() public {
+        vm.prank(admin);
+        distributor.setRewardsEnabled(false);
+
+        vm.prank(relayer);
+        vm.expectRevert(RewardsDisabled.selector);
+        distributor.payReward(CONTRIB_1, contributor, RewardType.NewLocation);
+        assertFalse(distributor.isRewardClaimed(CONTRIB_1));
+    }
+
+    function test_SetRewardsEnabled_OnlyAdmin() public {
+        vm.prank(attacker);
+        vm.expectRevert(Unauthorized.selector);
+        distributor.setRewardsEnabled(true);
+    }
+
+    /// Tesouraria vazia: nada é pago e NADA fica devido. Depois que alguém
+    /// patrocina, a mesma contribuição pode ser paga normalmente.
+    function test_PayReward_EmptyTreasuryCreatesNoDebt() public {
         vm.prank(admin);
         distributor.requestWithdrawal(TREASURY, admin);
         vm.warp(block.timestamp + 48 hours);
@@ -184,8 +214,101 @@ contract RewardDistributorTest is Test {
         distributor.executeWithdrawal();
 
         vm.prank(relayer);
-        vm.expectRevert(abi.encodeWithSelector(InsufficientTreasury.selector, 100_000, 0));
         distributor.payReward(CONTRIB_1, contributor, RewardType.NewLocation);
+
+        assertFalse(distributor.isRewardClaimed(CONTRIB_1));
+        assertEq(distributor.totalFailedPending(), 0);
+        (, uint256 owed) = distributor.getFailedReward(CONTRIB_1);
+        assertEq(owed, 0);
+        assertEq(usdc.balanceOf(contributor), 0);
+
+        usdc.mint(address(distributor), 1_000_000);
+        vm.prank(relayer);
+        distributor.payReward(CONTRIB_1, contributor, RewardType.NewLocation);
+        assertEq(usdc.balanceOf(contributor), 100_000);
+    }
+
+    function test_DailyCap_SkipsAboveCapWithoutDebt() public {
+        address c2 = makeAddr("contributor2");
+        oracle.setContribution(CONTRIB_2, true, verifier, c2);
+
+        vm.prank(admin);
+        distributor.setMaxPayoutPerDay(100_000); // $0,10 por dia
+
+        vm.startPrank(relayer);
+        distributor.payReward(CONTRIB_1, contributor, RewardType.NewLocation); // cabe
+        distributor.payReward(CONTRIB_2, c2, RewardType.NewLocation);          // estoura -> sem pagamento
+        vm.stopPrank();
+
+        assertEq(usdc.balanceOf(contributor), 100_000);
+        assertEq(usdc.balanceOf(c2), 0);
+        assertFalse(distributor.isRewardClaimed(CONTRIB_2));
+        assertEq(distributor.totalFailedPending(), 0);
+
+        vm.warp(block.timestamp + 1 days);
+        vm.prank(relayer);
+        distributor.payReward(CONTRIB_2, c2, RewardType.NewLocation);
+        assertEq(usdc.balanceOf(c2), 100_000);
+    }
+
+    function test_DailyCap_OnlyAdminAndBounded() public {
+        vm.prank(attacker);
+        vm.expectRevert(Unauthorized.selector);
+        distributor.setMaxPayoutPerDay(1);
+
+        vm.startPrank(admin);
+        vm.expectRevert(abi.encodeWithSelector(InvalidDailyCap.selector, 0));
+        distributor.setMaxPayoutPerDay(0);
+        uint256 tooHigh = distributor.MAX_DAILY_CAP() + 1;
+        vm.expectRevert(abi.encodeWithSelector(InvalidDailyCap.selector, tooHigh));
+        distributor.setMaxPayoutPerDay(tooHigh);
+        vm.stopPrank();
+    }
+
+    /// Com muitas carteiras (sybil), o total pago num dia nunca passa do teto.
+    function testFuzz_DailyCap_NeverExceeded(uint8 count) public {
+        vm.assume(count > 0 && count <= 40);
+        vm.prank(admin);
+        distributor.setMaxPayoutPerDay(1_000_000); // $1,00 => 10 pagamentos de $0,10
+
+        for (uint256 i = 0; i < count; i++) {
+            bytes32 id = keccak256(abi.encodePacked("d", i));
+            address who = address(uint160(uint256(keccak256(abi.encodePacked("x", i)))));
+            oracle.setContribution(id, true, verifier, who);
+            vm.prank(relayer);
+            distributor.payReward(id, who, RewardType.NewLocation);
+        }
+
+        assertLe(TREASURY - usdc.balanceOf(address(distributor)), 1_000_000);
+        assertEq(distributor.totalFailedPending(), 0);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  Patrocínio com marca  (v5.1)
+    // ════════════════════════════════════════════════════════════════════════
+
+    function test_SponsorTreasury_EmitsBrandAndFunds() public {
+        address funder = makeAddr("brandFunder");
+        bytes32 brand = keccak256("marca-exemplo");
+        usdc.mint(funder, 5_000_000);
+
+        vm.startPrank(funder);
+        usdc.approve(address(distributor), 5_000_000);
+        vm.expectEmit(true, true, false, true, address(distributor));
+        emit TreasurySponsored(funder, 5_000_000, brand, TREASURY + 5_000_000);
+        distributor.sponsorTreasury(5_000_000, brand);
+        vm.stopPrank();
+
+        assertEq(distributor.treasuryBalance(), TREASURY + 5_000_000);
+    }
+
+    function test_SponsorTreasury_RejectsZeroAmountOrBrand() public {
+        vm.startPrank(attacker);
+        vm.expectRevert(InvalidRewardAmount.selector);
+        distributor.sponsorTreasury(0, keccak256("x"));
+        vm.expectRevert(InvalidRewardAmount.selector);
+        distributor.sponsorTreasury(1, bytes32(0));
+        vm.stopPrank();
     }
 
     // ════════════════════════════════════════════════════════════════════════

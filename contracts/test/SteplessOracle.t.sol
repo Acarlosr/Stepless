@@ -45,6 +45,7 @@ contract SteplessOracleTest is Test {
         oracle.setAuthorizedCaller(relayer, true);
         distributor.setVerifier(verifier, true);
         distributor.setAuthorizedCaller(relayer, true);
+        distributor.setRewardsEnabled(true); // v5.1: padrão é desligado
         vm.stopPrank();
 
         usdc.mint(address(distributor), 1_000_000_000);

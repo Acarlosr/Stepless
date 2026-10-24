@@ -3,7 +3,7 @@
  *
  * Cria/abre a carteira embarcada (ver services/wallet.ts). O usuário não
  * precisa de seed phrase nem extensão: um toque cria uma carteira local
- * segura, cujo endereço serve para receber as recompensas em USDC.
+ * segura, cujo endereço identifica as contribuições da pessoa.
  */
 
 import React from 'react';
@@ -50,9 +50,9 @@ export default function LoginScreen() {
         {/* Destaques */}
         <View style={styles.bullets}>
           {[
-            { icon: 'cash-outline' as const, text: 'USDC' },
-            { icon: 'flash-outline' as const, text: 'Arc Testnet' },
-            { icon: 'lock-closed-outline' as const, text: '100% on-chain' },
+            { icon: 'heart-outline' as const, text: 'Gratuito' },
+            { icon: 'people-outline' as const, text: 'Comunidade' },
+            { icon: 'lock-closed-outline' as const, text: 'Registro público' },
           ].map((b) => (
             <View key={b.text} style={styles.bullet}>
               <Ionicons name={b.icon} size={18} color={c.primary} />
