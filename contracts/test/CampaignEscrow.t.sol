@@ -228,11 +228,12 @@ contract CampaignEscrowTest is Test {
     function test_Pay_StopsAfterDeadline() public {
         uint256 id = _create(0);
         bytes32 c1 = _verified("c1", alice);
+        // Lido ANTES do prank: uma chamada externa entre vm.prank e o alvo
+        // consome o prank, e o pagamento sairia como se fosse de um estranho.
+        uint256 deadline = escrow.getCampaign(id).deadline;
         vm.warp(block.timestamp + 30 days);
         vm.prank(attester);
-        vm.expectRevert(abi.encodeWithSelector(
-            CampaignEscrow.CampaignEnded.selector, id, escrow.getCampaign(id).deadline
-        ));
+        vm.expectRevert(abi.encodeWithSelector(CampaignEscrow.CampaignEnded.selector, id, deadline));
         escrow.payContribution(id, c1);
     }
 
@@ -281,8 +282,9 @@ contract CampaignEscrowTest is Test {
 
     function test_Refund_OnlyAfterDeadline_AnyoneCanTrigger_GoesToSponsor() public {
         uint256 id = _create(0);
+        bytes32 c1 = _verified("c1", alice); // fora do prank (chama o oracle falso)
         vm.prank(attester);
-        escrow.payContribution(id, _verified("c1", alice));
+        escrow.payContribution(id, c1);
 
         uint256 deadline = escrow.getCampaign(id).deadline;
         vm.expectRevert(abi.encodeWithSelector(CampaignEscrow.CampaignStillRunning.selector, id, deadline));
