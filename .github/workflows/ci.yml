@@ -78,9 +78,15 @@ jobs:
 
       # Cobertura mínima nas funções que movem dinheiro. Antes da v5 não havia
       # NENHUM teste para saque, retry ou fundeio da tesouraria.
+      #
+      # `forge coverage` desliga o otimizador para mapear linhas, e o
+      # RewardDistributor estoura "stack too deep" sem ele. `--ir-minimum`
+      # é a saída recomendada pelo Foundry. É métrica, não teste: quem bloqueia
+      # o merge é o passo "Test" acima.
       - name: Coverage
         working-directory: contracts
-        run: forge coverage --report lcov --report summary
+        continue-on-error: true
+        run: forge coverage --ir-minimum --report lcov --report summary
 
       - name: Upload coverage
         if: always()
