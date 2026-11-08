@@ -65,6 +65,13 @@ jobs:
             forge build --force --deny-warnings
           fi
 
+      # Análise estática do forge-lint: só informa, não bloqueia. Revisar os
+      # avisos novos a cada mudança em contrato que guarda dinheiro.
+      - name: Lint estático (informativo)
+        working-directory: contracts
+        continue-on-error: true
+        run: forge lint || true
+
       - name: Test
         working-directory: contracts
         run: forge test -vvv
