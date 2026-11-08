@@ -52,9 +52,18 @@ jobs:
 
       # -W: warnings viram erro. Um `unused variable` num contrato que guarda
       # dinheiro costuma indicar que alguém esqueceu de usar o valor.
+      # A opção mudou de nome entre versões do Foundry: `-W`/`--deny-warnings`
+      # (antigas) → `--deny warnings` (atuais). Com a nightly, `-W` passou a ser
+      # recusado como argumento desconhecido (exit 2) — o job falhava aqui sem
+      # nunca ter olhado um aviso de verdade.
       - name: Lint (warnings as errors)
         working-directory: contracts
-        run: forge build --force -W
+        run: |
+          if forge build --help | grep -q -- '--deny <'; then
+            forge build --force --deny warnings
+          else
+            forge build --force --deny-warnings
+          fi
 
       - name: Test
         working-directory: contracts
