@@ -23,9 +23,18 @@ jobs:
         with:
           version: nightly
 
+      # forge-std está versionado em contracts/lib/forge-std. Rodar `forge install`
+      # com a pasta já presente falha ("already exists") e derrubava o job antes
+      # de compilar — por isso os testes Foundry não rodavam no CI. Só instala
+      # se a pasta não estiver no checkout.
       - name: Install Solidity dependencies
         working-directory: contracts
-        run: forge install foundry-rs/forge-std --no-git
+        run: |
+          if [ -f lib/forge-std/src/Test.sol ]; then
+            echo "forge-std já versionado em contracts/lib/forge-std"
+          else
+            forge install foundry-rs/forge-std --no-git
+          fi
 
       - name: Cache Foundry
         uses: actions/cache@v4

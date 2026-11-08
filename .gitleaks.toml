@@ -1,0 +1,20 @@
+# Configuração do gitleaks (job "Secret Scan" do CI).
+#
+# Mantém TODAS as regras padrão e só libera endereços públicos da blockchain.
+#
+# Por quê: a regra genérica "generic-api-key" dispara em linhas como
+#   "X402API": "0x0D318864C80eCe8d28800a750bdA06b6E52ffCc9"
+# porque vê a palavra "API" seguida de um texto longo. Isso é um ENDEREÇO de
+# contrato (20 bytes, 40 hex) — público por definição, visível no explorer.
+#
+# O que continua sendo pego: chave privada tem 32 bytes (64 hex). O padrão
+# abaixo exige exatamente 40 hex do início ao fim do valor, então uma chave
+# privada NUNCA casa com ele.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Endereços públicos EVM (20 bytes) não são segredos"
+regexTarget = "secret"
+regexes = ['''^0x[0-9a-fA-F]{40}$''']
