@@ -18,6 +18,7 @@ import {
   verifySignedRequest,
 } from './_stepless.js';
 import { bumpReputation } from './_risk.js';
+import { attestContribution, attesterAccount, hasEscrow } from './_campaign.js';
 
 export default async function handler(req, res) {
   cors(res, 'POST, OPTIONS', req);
@@ -150,7 +151,26 @@ export default async function handler(req, res) {
     // quem contribui de verdade encontra menos atrito com o tempo.
     await bumpReputation(recipient, 'approved');
 
-    return res.status(200).json({ success: true, approved: true, rewarded, rewardsEnabled: rewardsOn, verifyTx, payTx, paidTo: rewarded ? recipient : null, approvedBy });
+    // 3) Campanha de parceiro (CampaignEscrow). Melhor esforço: a verificação
+    //    já está gravada on-chain, então uma falha aqui NÃO desfaz a aprovação —
+    //    a contribuição pode ser atestada depois por POST /api/campaign-attest.
+    let campaign = null;
+    if (hasEscrow() && process.env.ATTESTER_PRIVATE_KEY) {
+      try {
+        campaign = await attestContribution({ pub, wallet: walletFor(attesterAccount()), contributionId });
+        if (campaign.paid) {
+          const cur = (await store.getJSON(contribKey(contributionId))) || {};
+          await store.setJSON(contribKey(contributionId), {
+            ...cur, campaignId: campaign.campaignId, campaignTx: campaign.tx, campaignAmount: campaign.amount,
+          });
+        }
+      } catch (err) {
+        console.error('[verify] campanha:', err);
+        campaign = { paid: false, reason: 'erro ao atestar campanha', error: translateError(err).error };
+      }
+    }
+
+    return res.status(200).json({ success: true, approved: true, rewarded, rewardsEnabled: rewardsOn, verifyTx, payTx, paidTo: rewarded ? recipient : null, approvedBy, campaign });
   } catch (err) {
     console.error('[verify] Error:', err);
     const t = translateError(err);

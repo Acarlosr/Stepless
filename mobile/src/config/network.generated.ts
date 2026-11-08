@@ -43,7 +43,8 @@ export const STEPLESS_NETWORK = {
     "$note": "Par v4, deploy de 31/07/2026. Substituir pelos endereços da v5 depois do redeploy.",
     "SteplessOracle": "0x69b3f9caca6514f76dd2f0dc4b54409e6d5da5cc",
     "RewardDistributor": "0xef5d148b126d8dcdc7d344dfa367c61acbb02ea0",
-    "X402API": "0x0D318864C80eCe8d28800a750bdA06b6E52ffCc9"
+    "X402API": "0x0D318864C80eCe8d28800a750bdA06b6E52ffCc9",
+    "CampaignEscrow": null
   }
 } as const;
 

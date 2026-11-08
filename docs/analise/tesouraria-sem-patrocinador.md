@@ -182,8 +182,33 @@ Decisão: levar o Stepless para a Arc Mainnet com recompensas financiadas por **
 
 **Faltando antes da mainnet**
 1. `forge test -vv` verde (CI).
-2. Serviço atestador: `api/campaign-attest.js`, que confere zona e categoria da contribuição contra o `metaRef` da campanha e chama `payContribution` com uma chave própria (`ATTESTER_PRIVATE_KEY`).
+2. ~~Serviço atestador~~ **Feito** — ver seção 11.
 3. `CampaignEscrow` em `config/networks.json` + `npm run gen:network`.
 4. Frontend: tela "Criar campanha" (aprovar USDC → criar), lista de campanhas ativas com barra de progresso, selo "💰 Campanha ativa" no `buscar.html`.
 5. Deploy: Oracle v5 → RewardDistributor v5 → CampaignEscrow, admin = multisig, atestador em chave separada.
 6. Revisão externa do contrato antes de aceitar campanhas grandes. Começar com um teto informal (por exemplo, até $200 por campanha) na fase inicial.
+
+## 11. Serviço atestador (2026-11-08)
+
+Arquivos: `api/_campaign.js` (regras e acesso ao contrato), `api/campaign-attest.js` (endpoint), `test/campaign.test.js`. O `api/verify.js` passou a tentar pagar por campanha logo depois de aprovar.
+
+**Regras auditáveis.** As regras de uma campanha (título, zona = centro + raio, categorias) têm formato canônico. O hash delas (`metaRef`) é gravado on-chain na criação. O servidor só aplica regras cujo hash bate com o on-chain, então ninguém (nem o Stepless) consegue trocar a zona depois que o parceiro depositou.
+
+**Endpoint `/api/campaign-attest`**
+- `GET`: campanhas ativas com progresso e regras conferidas (para o site e o app).
+- `POST {action:'meta-ref', meta}`: calcula o `metaRef` antes de o parceiro criar a campanha.
+- `POST {action:'publish-meta', campaignId, meta}`: grava as regras; recusa (409) se não baterem com o on-chain. Não exige login, porque o hash é a prova.
+- `POST {action:'attest', contributionId}`: paga a contribuição pela campanha compatível que vence primeiro. Não exige login: só paga contribuição verificada que cumpre as regras, e sempre ao contribuidor registrado.
+
+**Segurança**
+- `ATTESTER_PRIVATE_KEY` é obrigatória e o servidor recusa se ela for igual à do relayer ou à do verificador.
+- Simula a transação antes de enviar, para não gastar gás quando o contrato recusaria.
+- No `verify.js` é melhor esforço: se falhar, a aprovação continua valendo e dá para chamar `attest` depois.
+- Bug evitado: `Number(null)` é 0, então contribuição sem coordenadas virava um ponto em (0, 0). Agora é recusada com "contribuição sem coordenadas".
+
+**Verificação feita**: `npm test` com 64 testes passando (9 novos) e `npm run check` em sincronia. Teste de ponta a ponta numa blockchain local com o `CampaignEscrow` real: hash das regras, recusa de regras adulteradas, listagem, pagamento dentro da zona, não pagar duas vezes, fora da zona, categoria errada e limite por pessoa (11 verificações).
+
+**Limitações conhecidas**
+- Considera as 50 campanhas mais recentes (`SCAN_LIMIT`).
+- As categorias são as declaradas no cadastro e conferidas pelo verificador na foto; a campanha confia nessa verificação.
+- Cada `attest` com campanha compatível custa uma transação do atestador. O saldo dele precisa ser acompanhado, como o do relayer.
