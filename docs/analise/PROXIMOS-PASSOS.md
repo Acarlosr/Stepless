@@ -17,3 +17,8 @@ Branch: `feat/mapeamento-voluntario`. Detalhes de tudo em `docs/analise/tesourar
 3. Revisar materiais de pitch/hackathon em `docs/` (ainda falam em recompensas).
 4. Colocar `OPENROUTER_API_KEY` na Vercel e testar um cadastro real.
 5. Deploy mainnet: admin multisig, tesouraria $0, `paused`, $5 de USDC no relayer, conferir custo do 1º cadastro.
+
+## 2026-11-08 — nova fase: mainnet com parcerias
+- Tesouraria própria sai do caminho principal; recompensas passam a vir de **campanhas de parceiros** (`contracts/src/CampaignEscrow.sol`, testes em `contracts/test/CampaignEscrow.t.sol`).
+- Detalhes, garantias e pendências: `docs/analise/tesouraria-sem-patrocinador.md`, seção 10.
+- Próximo: serviço atestador (`api/campaign-attest.js`) e tela "Criar campanha".

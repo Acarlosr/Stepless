@@ -153,3 +153,37 @@ Pela meta da Arc (~$0,001 por transação) e 2–3 transações por local, **$5 
 - Nova seção **"Para quem é o Stepless"** na página inicial: cadeirantes e mobilidade reduzida, pessoas idosas, cegas ou com baixa visão, surdas, mobilidade reduzida temporária (gesso, cirurgia, gravidez, carrinho de bebê) e familiares/cuidadores. Frase do topo agora cita pessoas com deficiência, idosos e viagem.
 - Destaque **"Vai viajar?"**: conferir quarto adaptado, banheiro com barras e elevador antes de reservar hotel/pousada.
 - Nova categoria **9 — Quarto adaptado (hotel/pousada)** na web (cadastro e busca), no app e na IA. A busca passou a aceitar `?cat=room` (e `?cat=ramp`, `?cat=9`…), o que também consertou os links dos ícones da página inicial, que eram ignorados. A busca ganhou ainda o filtro "Entrada", que faltava.
+
+## 10. Nova fase (2026-11-08): parcerias no lugar da tesouraria — `CampaignEscrow.sol`
+
+Decisão: levar o Stepless para a Arc Mainnet com recompensas financiadas por **parceiros**, e não por uma tesouraria que dependa de aporte próprio. É a alternativa 3-B, agora implementada.
+
+**Como funciona**
+1. O parceiro (loja, hotel, prefeitura, associação, empresa com meta ESG) chama `createCampaign(valorPorLocal, quantidade, limitePorPessoa, prazo, marca, metaRef)` e deposita `valor × quantidade` em USDC.
+2. Uma contribuição **verificada no Oracle depois da criação da campanha** é atribuída a ela por `payContribution(campanha, contributionId)`, e o USDC vai para o contribuidor registrado no Oracle. Quem chama não escolhe o destino.
+3. Depois do prazo, `refund(campanha)` devolve o que sobrou para o parceiro. Qualquer pessoa pode disparar, e o destino é fixo.
+
+**Garantias para vender ao parceiro**
+- Não existe saque do admin. O dinheiro sai só para contribuidores verificados da campanha ou de volta para o parceiro.
+- A pausa bloqueia pagamentos, mas **nunca** o reembolso.
+- Uma contribuição é paga por no máximo uma campanha, e só se tiver sido verificada depois que a campanha começou.
+- `maxPerContributor` limita quanto uma pessoa (ou um grupo de contas falsas de uma pessoa) consegue tirar.
+- O USDC é conferido pelo saldo real na entrada e na saída (blocklist e falha silenciosa da Arc).
+- Se a carteira do parceiro for bloqueada, ele pode trocar o destino do reembolso (`setRefundRecipient`).
+
+**Papéis (chaves separadas)**
+- `admin`: multisig. Só liga e desliga atestadores e pausa pagamentos.
+- `attester`: serviço que confere se o local está na zona e na categoria da campanha (off-chain, porque o Oracle guarda só o `locationHash`). **Não pode ser a mesma chave do relayer nem de um verificador.**
+- O parceiro pode atestar a própria campanha (por exemplo, uma prefeitura conferindo a zona dela).
+
+**Relação com o `RewardDistributor`**: são independentes. O distributor continua com `rewardsEnabled = false`. Se um dia ele for ligado, uma contribuição pode receber a recompensa base e também o valor de uma campanha. Decidir se isso é desejável antes de ligar.
+
+**Verificação feita**: compila com solc 0.8.24 sem avisos. Os testes Foundry em `contracts/test/CampaignEscrow.t.sol` (21 testes + 1 fuzz) compilam, mas **não foram executados com forge** (não há Foundry no ambiente; o CI roda). O contrato foi executado numa EVM local (ganache) com o `MockUSDC` do projeto: criação, pagamento, limite por pessoa, contribuição antiga, pagamento duplicado, blocklist, falha silenciosa, pausa, reembolso por terceiro e contabilidade zerada passaram.
+
+**Faltando antes da mainnet**
+1. `forge test -vv` verde (CI).
+2. Serviço atestador: `api/campaign-attest.js`, que confere zona e categoria da contribuição contra o `metaRef` da campanha e chama `payContribution` com uma chave própria (`ATTESTER_PRIVATE_KEY`).
+3. `CampaignEscrow` em `config/networks.json` + `npm run gen:network`.
+4. Frontend: tela "Criar campanha" (aprovar USDC → criar), lista de campanhas ativas com barra de progresso, selo "💰 Campanha ativa" no `buscar.html`.
+5. Deploy: Oracle v5 → RewardDistributor v5 → CampaignEscrow, admin = multisig, atestador em chave separada.
+6. Revisão externa do contrato antes de aceitar campanhas grandes. Começar com um teto informal (por exemplo, até $200 por campanha) na fase inicial.
