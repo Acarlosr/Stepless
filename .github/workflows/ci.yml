@@ -167,7 +167,7 @@ jobs:
       # window.STEPLESS_NETWORK — senão a página quebra em runtime, não no CI.
       - name: network.js carregado nas páginas
         run: |
-          for f in frontend/index.html frontend/dashboard.html frontend/buscar.html; do
+          for f in frontend/index.html frontend/dashboard.html frontend/buscar.html frontend/campanhas.html; do
             grep -q 'src="network.js"' "$f" || { echo "❌ $f não carrega network.js"; exit 1; }
             echo "✅ $f"
           done

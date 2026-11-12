@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Stepless — Campanhas de mapeamento: parceiros financiam o mapeamento de acessibilidade de uma região e pagam só pelo que for verificado." />
+  <meta name="theme-color" content="#1a56c4" />
+  <title>Stepless — Campanhas de mapeamento</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♿</text></svg>" />
+
+  <style>
+    .camp-hero {
+      background: linear-gradient(135deg, var(--primary) 0%, #1e40af 100%);
+      color: #fff;
+      padding: 44px 0 36px;
+    }
+    .camp-hero h1 { font-size: clamp(1.6rem, 4vw, 2.3rem); margin: 0 0 10px; color: #fff; }
+    .camp-hero p  { opacity: .92; margin: 0; font-size: 1.05rem; max-width: 760px; }
+
+    .camp-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin: 24px 0 8px;
+    }
+    .camp-step {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .camp-step strong { display: block; margin-bottom: 4px; color: var(--text); }
+    .camp-step p { margin: 0; color: var(--text-muted); font-size: .93rem; }
+
+    .camp-guarantees {
+      list-style: none;
+      padding: 14px 16px;
+      margin: 14px 0 0;
+      border-radius: 12px;
+      background: var(--success-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .camp-guarantees li { margin: 4px 0; }
+
+    .camp-section-title { font-size: 1.35rem; margin: 36px 0 6px; color: var(--text); }
+    .camp-section-sub   { margin: 0 0 16px; color: var(--text-muted); }
+
+    #camp-map, #zone-map {
+      height: 320px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .camp-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+      padding: 0;
+      list-style: none;
+    }
+    .camp-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .camp-card h3 { margin: 0; font-size: 1.05rem; color: var(--text); }
+    .camp-meta { font-size: .9rem; color: var(--text-muted); margin: 0; }
+    .camp-badge {
+      align-self: flex-start;
+      font-size: .78rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: var(--bg-alt);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .camp-badge--active     { background: var(--success-bg); color: var(--success); }
+    .camp-badge--refundable { background: var(--warning-bg); color: var(--warning); }
+    .camp-progress {
+      height: 10px;
+      border-radius: 999px;
+      background: var(--bg-alt);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .camp-progress span { display: block; height: 100%; background: var(--primary); }
+
+    .camp-form {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 12px;
+    }
+    .camp-form fieldset { border: 0; padding: 0; margin: 0 0 20px; }
+    .camp-form legend { font-weight: 700; margin-bottom: 8px; color: var(--text); font-size: 1rem; }
+    .camp-hint { font-size: .85rem; color: var(--text-muted); margin: 4px 0 0; }
+    .camp-cats { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+    .camp-cats label { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; margin: 0; }
+    .camp-cats input { width: 20px; height: 20px; min-height: 0; }
+    .camp-zone-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 12px; }
+    @media (max-width: 640px) { .camp-zone-row { grid-template-columns: 1fr; } }
+    .camp-zone-tools { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    .camp-zone-tools input { flex: 1; min-width: 200px; }
+
+    .camp-summary {
+      padding: 14px 16px;
+      border-radius: 10px;
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      margin: 4px 0 16px;
+      color: var(--text);
+    }
+    .camp-summary strong { font-size: 1.15rem; }
+
+    .camp-status {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg-alt);
+      color: var(--text);
+    }
+    .camp-status--ok  { background: var(--success-bg); color: var(--success); }
+    .camp-status--err { background: var(--danger-bg);  color: var(--danger); }
+    .camp-status a { color: inherit; font-weight: 700; }
+
+    .camp-unavailable {
+      padding: 14px 16px;
+      border-radius: 10px;
+      background: var(--warning-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      margin-top: 12px;
+    }
+  </style>
+  <!-- Config de rede: gerado por scripts/gen-network.mjs a partir de config/networks.json. -->
+  <script src="network.js"></script>
+</head>
+<body>
+  <a href="#main" class="skip-link" data-i18n="skip_link">Pular para o conteúdo</a>
+
+  <!-- ════════════════════ Header ════════════════════ -->
+  <header class="header" role="banner">
+    <div class="container">
+      <a href="index.html" class="logo" aria-label="Stepless home">
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="20" cy="20" r="18" fill="var(--primary)" />
+          <path d="M12 26 L20 14 L28 26" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="20" cy="20" r="3" fill="#fff"/>
+        </svg>
+        <span>Stepless</span>
+      </a>
+      <nav class="nav" role="navigation" aria-label="Navegação principal" data-i18n-aria-label="nav_aria">
+        <button class="nav-toggle" aria-label="Abrir menu" data-i18n-aria-label="nav_toggle" aria-expanded="false" aria-controls="main-nav-links">
+          <span></span><span></span><span></span>
+        </button>
+        <ul class="nav-links" id="main-nav-links">
+          <li><a href="buscar.html" data-i18n="nav_search">Buscar</a></li>
+          <li><a href="campanhas.html" aria-current="page" data-i18n="nav_campaigns">Campanhas</a></li>
+          <li><a href="dashboard.html" data-i18n="nav_dashboard">Mapear um local</a></li>
+          <li><a href="index.html" data-i18n="nav_home">Início</a></li>
+        </ul>
+        <div class="lang-menu">
+          <button type="button" class="lang-menu-trigger" id="lang-menu-trigger"
+                  aria-haspopup="true" aria-expanded="false" aria-controls="lang-menu-list"
+                  aria-label="Selecionar idioma" title="Selecionar idioma">
+            <img class="lang-menu-flag" src="assets/flags/br.svg" alt="" aria-hidden="true">
+            <svg class="lang-menu-caret" viewBox="0 0 12 8" aria-hidden="true">
+              <path d="M1 1.5 L6 6.5 L11 1.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="lang-menu-list" id="lang-menu-list" role="group" aria-label="Idiomas" hidden>
+            <button type="button" class="lang-btn" data-lang="en" aria-pressed="false">
+              <img src="assets/flags/us.svg" alt="" aria-hidden="true"><span>English</span>
+              <svg class="lang-check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5 L6.5 12 L13 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button type="button" class="lang-btn" data-lang="pt" aria-pressed="false">
+              <img src="assets/flags/br.svg" alt="" aria-hidden="true"><span>Português</span>
+              <svg class="lang-check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5 L6.5 12 L13 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button type="button" class="lang-btn" data-lang="es" aria-pressed="false">
+              <img src="assets/flags/es.svg" alt="" aria-hidden="true"><span>Español</span>
+              <svg class="lang-check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5 L6.5 12 L13 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Alternar modo escuro" data-i18n-aria-label="theme_toggle">
+          <span id="theme-icon">🌙</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ════════════════════ Hero ════════════════════ -->
+  <section class="camp-hero">
+    <div class="container">
+      <h1 data-i18n="hero_title">Campanhas de mapeamento</h1>
+      <p data-i18n="hero_subtitle">Lojas, hotéis, prefeituras e associações financiam o mapeamento de acessibilidade de uma região. Quem mapeia recebe em USDC — e o parceiro só paga pelo que for verificado.</p>
+    </div>
+  </section>
+
+  <main id="main" class="container" style="padding-top:24px; padding-bottom:60px;">
+
+    <!-- Como funciona -->
+    <div class="camp-steps">
+      <div class="camp-step"><strong data-i18n="step1_t">1. O parceiro cria a campanha</strong><p data-i18n="step1_d">Escolhe a região, o tipo de recurso, o valor por local e o prazo. O total fica guardado no contrato.</p></div>
+      <div class="camp-step"><strong data-i18n="step2_t">2. A comunidade mapeia</strong><p data-i18n="step2_d">Quem registra um local dentro da região recebe quando um revisor confirmar a foto.</p></div>
+      <div class="camp-step"><strong data-i18n="step3_t">3. O que sobrar volta</strong><p data-i18n="step3_d">No fim do prazo, o saldo não usado volta para a carteira do parceiro.</p></div>
+    </div>
+    <ul class="camp-guarantees" aria-label="Garantias" data-i18n-aria-label="guarantees_aria">
+      <li data-i18n="g1">🔒 Nem o Stepless consegue sacar o dinheiro de uma campanha.</li>
+      <li data-i18n="g2">✅ Só é pago local verificado por outra pessoa, e o dinheiro vai direto para quem mapeou.</li>
+      <li data-i18n="g3">📜 As regras da campanha ficam gravadas na blockchain e não podem ser trocadas depois.</li>
+    </ul>
+
+    <!-- Lista -->
+    <h2 class="camp-section-title" id="list-title" data-i18n="list_title">Campanhas</h2>
+    <p class="camp-section-sub" data-i18n="list_sub">Regiões com recompensa para quem mapear. Os valores e o progresso são lidos direto do contrato.</p>
+    <div id="camp-unavailable" class="camp-unavailable" hidden data-i18n="unavailable">As campanhas ainda não estão disponíveis nesta rede. Em breve.</div>
+    <div id="camp-map" role="application" aria-label="Mapa das regiões com campanha" data-i18n-aria-label="map_aria"></div>
+    <p id="camp-list-status" class="camp-hint" aria-live="polite"></p>
+    <ul class="camp-list" id="camp-list" aria-labelledby="list-title"></ul>
+
+    <!-- Criar -->
+    <h2 class="camp-section-title" id="create-title" data-i18n="create_title">Criar uma campanha</h2>
+    <p class="camp-section-sub" data-i18n="create_sub">Para parceiros. Você precisa de uma carteira com USDC (MetaMask ou Rabby). A entrada por e-mail não assina transações.</p>
+
+    <form class="camp-form" id="camp-form" novalidate aria-labelledby="create-title">
+      <div class="form-group">
+        <label for="f-title" data-i18n="f_title">Nome da campanha</label>
+        <input type="text" id="f-title" maxlength="80" required placeholder="Ex.: Banheiros acessíveis no centro de Maceió" data-i18n-placeholder="f_title_ph" />
+      </div>
+
+      <fieldset>
+        <legend data-i18n="f_zone">Região</legend>
+        <p class="camp-hint" data-i18n="f_zone_hint">Clique no mapa para marcar o centro, ou digite as coordenadas. Só locais dentro do círculo recebem.</p>
+        <div class="camp-zone-tools">
+          <input type="text" id="f-place" placeholder="Buscar endereço ou bairro" data-i18n-placeholder="f_place_ph" aria-label="Buscar endereço" data-i18n-aria-label="f_place_ph" />
+          <button type="button" class="btn btn-secondary" id="btn-place" data-i18n="btn_place">Buscar</button>
+          <button type="button" class="btn btn-secondary" id="btn-gps" data-i18n="btn_gps">📍 Minha localização</button>
+        </div>
+        <div id="zone-map" role="application" aria-label="Mapa para marcar a região" data-i18n-aria-label="zone_map_aria"></div>
+        <div class="camp-zone-row">
+          <div><label for="f-lat" data-i18n="f_lat">Latitude</label><input type="number" id="f-lat" step="0.000001" min="-90" max="90" required /></div>
+          <div><label for="f-lng" data-i18n="f_lng">Longitude</label><input type="number" id="f-lng" step="0.000001" min="-180" max="180" required /></div>
+          <div><label for="f-radius" data-i18n="f_radius">Raio (km)</label><input type="number" id="f-radius" step="0.1" min="0.1" max="50" value="2" required /></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend data-i18n="f_cats">Tipos de recurso</legend>
+        <p class="camp-hint" data-i18n="f_cats_hint">Nenhum marcado = qualquer tipo.</p>
+        <div class="camp-cats" id="f-cats"></div>
+      </fieldset>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-reward" data-i18n="f_reward">Valor por local (USDC)</label>
+          <input type="number" id="f-reward" step="0.01" min="0.01" max="100" value="0.25" required inputmode="decimal" />
+        </div>
+        <div class="form-group">
+          <label for="f-items" data-i18n="f_items">Quantidade de locais</label>
+          <input type="number" id="f-items" step="1" min="1" max="100000" value="100" required inputmode="numeric" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-per" data-i18n="f_per">Limite por pessoa</label>
+          <input type="number" id="f-per" step="1" min="0" max="100000" value="5" inputmode="numeric" />
+          <p class="camp-hint" data-i18n="f_per_hint">0 = sem limite. Um limite dificulta que uma pessoa crie várias contas para ganhar sozinha.</p>
+        </div>
+        <div class="form-group">
+          <label for="f-days" data-i18n="f_days">Prazo (dias)</label>
+          <input type="number" id="f-days" step="1" min="1" max="366" value="30" required inputmode="numeric" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="f-brand" data-i18n="f_brand">Nome da marca ou código de apoiador</label>
+        <input type="text" id="f-brand" maxlength="80" required placeholder="Ex.: Padaria Boa Vista" data-i18n-placeholder="f_brand_ph" />
+        <p class="camp-hint" data-i18n="f_brand_hint">Se você já se cadastrou como apoiador, cole o código (0x…). A marca só aparece publicamente depois de aprovada.</p>
+      </div>
+
+      <div class="camp-summary" id="camp-summary" aria-live="polite"></div>
+
+      <button type="submit" class="btn btn-primary btn-block" id="btn-create" data-i18n="btn_create">Conectar carteira e criar campanha</button>
+      <div class="camp-status" id="camp-status" role="status" aria-live="polite" hidden></div>
+    </form>
+  </main>
+
+  <!-- ════════════════════ Footer ════════════════════ -->
+  <footer class="footer" role="contentinfo">
+    <div class="container">
+      <div class="footer-links">
+        <a href="buscar.html" data-i18n="nav_search">Buscar</a>
+        <a href="dashboard.html" data-i18n="nav_dashboard">Mapear um local</a>
+        <a href="index.html" data-i18n="nav_home">Início</a>
+      </div>
+      <p data-i18n="footer_text">Stepless — mapa aberto de acessibilidade, feito pela comunidade na rede Arc.</p>
+      <div class="arc-badge mt-1">
+        <span>Built on</span>
+        <img class="arc-logo-light" src="assets/arc/Arc_Icon_Navy.svg" alt="Arc" />
+        <img class="arc-logo-dark" src="assets/arc/Arc_Icon_White.svg" alt="Arc" />
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script type="module" src="campanhas.js"></script>
+  <script src="lang-menu.js" defer></script>
+</body>
+</html>

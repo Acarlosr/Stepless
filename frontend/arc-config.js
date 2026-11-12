@@ -85,6 +85,7 @@ const CONTRACTS = {
   RewardDistributor: NET.contracts.RewardDistributor,
   SteplessOracle:    NET.contracts.SteplessOracle,
   X402API:           NET.contracts.X402API,
+  CampaignEscrow:    NET.contracts.CampaignEscrow || null,
   Multicall3:        NET.predeploys.multicall3,
   Memo:              NET.predeploys.memo,
 };

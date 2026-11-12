@@ -26,7 +26,7 @@
 
 import { publicClient, walletFor, store, cors, clientIp, translateError, requirePersistentStore } from './_stepless.js';
 import {
-  canonicalMeta, metaRefOf, campaignMetaKey, activeCampaigns, attestContribution,
+  canonicalMeta, metaRefOf, campaignMetaKey, activeCampaigns, listCampaigns, attestContribution,
   attesterAccount, escrowAddress, hasEscrow, CAMPAIGN_ABI,
 } from './_campaign.js';
 
@@ -34,17 +34,35 @@ function safeParse(s) {
   try { return JSON.parse(s); } catch { return {}; }
 }
 
-function publicCampaign(c) {
+/**
+ * Situação legível para a página:
+ *   active    → aceitando contribuições
+ *   full      → todas as vagas pagas
+ *   refundable→ prazo acabou e sobrou saldo (qualquer um pode devolver ao parceiro)
+ *   closed    → devolvida, ou acabou sem sobra
+ */
+export function campaignStatus(c, nowSec) {
+  const left = c.deposited - c.paidOut;
+  if (c.refunded) return 'closed';
+  if (c.itemsPaid >= c.maxItems) return 'full';
+  if (BigInt(nowSec) >= c.deadline) return left > 0n ? 'refundable' : 'closed';
+  return 'active';
+}
+
+function publicCampaign(c, nowSec) {
   return {
     id: String(c.id),
     sponsor: c.sponsor,
+    refundTo: c.refundTo,
     brandRef: c.brandRef,
     rewardPerItem: String(c.rewardPerItem),
     maxItems: String(c.maxItems),
     itemsPaid: String(c.itemsPaid),
     maxPerContributor: String(c.maxPerContributor),
-    remaining: String(c.deposited - c.paidOut),
+    deposited: String(c.deposited),
+    remaining: c.refunded ? '0' : String(c.deposited - c.paidOut),
     deadline: Number(c.deadline),
+    status: campaignStatus(c, nowSec),
     rules: c.rules,
     rulesVerified: c.rulesVerified,
   };
@@ -62,8 +80,16 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     try {
-      const list = await activeCampaigns(pub);
-      return res.status(200).json({ success: true, escrow: escrowAddress(), campaigns: list.map(publicCampaign) });
+      // ?all=1 inclui as encerradas (para o botão "devolver saldo ao parceiro").
+      const all = String(req.query?.all ?? '') === '1';
+      const list = all ? await listCampaigns(pub) : await activeCampaigns(pub);
+      // Relógio da chain, não do servidor: é o que o contrato usa no prazo.
+      const block = await pub.getBlock();
+      const now = Number(block.timestamp);
+      return res.status(200).json({
+        success: true, escrow: escrowAddress(), now,
+        campaigns: list.map((c) => publicCampaign(c, now)),
+      });
     } catch (err) {
       const t = translateError(err);
       return res.status(t.status).json({ success: false, error: t.error });

@@ -194,6 +194,15 @@ export function attesterAccount() {
 
 /** Lê as campanhas ativas mais recentes, já com as regras publicadas e conferidas. */
 export async function activeCampaigns(pub) {
+  return listCampaigns(pub, { onlyActive: true });
+}
+
+/**
+ * Lê as campanhas mais recentes (até SCAN_LIMIT).
+ * @param {{ onlyActive?: boolean }} opts  false = inclui encerradas, para a
+ *        página mostrar "devolver saldo ao parceiro" quando o prazo acabou.
+ */
+export async function listCampaigns(pub, { onlyActive = false } = {}) {
   const escrow = { address: escrowAddress(), abi: CAMPAIGN_ABI };
   const count = await pub.readContract({ ...escrow, functionName: 'campaignCount' });
   const ids = [];
@@ -205,7 +214,7 @@ export async function activeCampaigns(pub) {
       pub.readContract({ ...escrow, functionName: 'getCampaign', args: [id] }),
       store.getJSON(campaignMetaKey(id)),
     ]);
-    if (!active) return null;
+    if (onlyActive && !active) return null;
     let rules = null;
     let rulesVerified = false;
     if (meta) {
@@ -214,7 +223,7 @@ export async function activeCampaigns(pub) {
         rulesVerified = metaRefOf(rules).toLowerCase() === c.metaRef.toLowerCase();
       } catch { rules = null; }
     }
-    return { id, ...c, rules: rulesVerified ? rules : null, rulesVerified };
+    return { id, ...c, active, rules: rulesVerified ? rules : null, rulesVerified };
   }));
   return rows.filter(Boolean);
 }

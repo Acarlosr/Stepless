@@ -72,6 +72,7 @@
           <li><a href="#how" data-i18n="nav_how">Como funciona</a></li>
           <li><a href="#voluntario" data-i18n="nav_volunteer">Por que mapear</a></li>
           <li><a href="#sponsor" data-i18n="nav_sponsor">Apoiar</a></li>
+          <li><a href="campanhas.html" data-i18n="nav_campaigns">Campanhas</a></li>
           <li><a href="#roadmap" data-i18n="nav_roadmap">Próximos passos</a></li>
           <li><a href="dashboard.html" data-i18n="nav_dashboard">Mapear um local</a></li>
         </ul>
@@ -464,6 +465,15 @@
         <h2 class="section-title" id="sponsor-title" data-i18n="sponsor_title">Apoie o Stepless</h2>
         <p class="section-subtitle" data-i18n="sponsor_subtitle">Pessoas e empresas podem apoiar o projeto. Os apoios ficam numa tesouraria pública: qualquer um confere o saldo e cada movimentação.</p>
 
+        <!-- Campanhas de parceiros (CampaignEscrow) — pagamento por resultado. -->
+        <div class="card" style="margin-bottom:20px; display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between;">
+          <div style="flex:1; min-width:240px;">
+            <h3 class="card-title" data-i18n="camp_cta_title">Campanhas de mapeamento</h3>
+            <p class="card-text" style="margin:0;" data-i18n="camp_cta_desc">Empresas e prefeituras podem financiar o mapeamento de uma região e pagar só pelos locais verificados. O que sobrar volta para o parceiro.</p>
+          </div>
+          <a href="campanhas.html" class="btn btn-primary" data-i18n="camp_cta_btn">Ver campanhas</a>
+        </div>
+
         <div class="sponsor-grid">
           <div class="card">
             <!-- Saldo ao vivo: leitura direta de treasuryBalance() no contrato.
@@ -761,7 +771,7 @@
         reward_basic: "Básico — Mapear local", reward_standard: "Padrão — Verificar acesso", reward_premium: "Premium — Reportar problema", reward_critical: "Crítico — Atualização urgente",
         reward_basic_desc: "Mapear um novo local acessível com foto e coordenadas", reward_standard_desc: "Verificar e confirmar acessibilidade de um local existente",
         reward_premium_desc: "Reportar problema de acessibilidade (rampa quebrada, etc.)", reward_critical_desc: "Atualização urgente de informação crítica desatualizada",
-        nav_sponsor: "Apoiar",
+        nav_sponsor: "Apoiar", nav_campaigns: "Campanhas", camp_cta_title: "Campanhas de mapeamento", camp_cta_desc: "Empresas e prefeituras podem financiar o mapeamento de uma região e pagar só pelos locais verificados. O que sobrar volta para o parceiro.", camp_cta_btn: "Ver campanhas",
         sponsor_title: "Apoie o Stepless",
         sponsor_subtitle: "Pessoas e empresas podem apoiar o projeto. Os apoios ficam numa tesouraria pública: qualquer um confere o saldo e cada movimentação.",
         sponsor_treasury_label: "Na tesouraria agora",
@@ -853,7 +863,7 @@
         reward_basic: "Basic — Map location", reward_standard: "Standard — Verify access", reward_premium: "Premium — Report issue", reward_critical: "Critical — Urgent update",
         reward_basic_desc: "Map a new accessible location with photo and coordinates", reward_standard_desc: "Verify and confirm accessibility of an existing location",
         reward_premium_desc: "Report accessibility issue (broken ramp, etc.)", reward_critical_desc: "Urgent update of critical outdated information",
-        nav_sponsor: "Support",
+        nav_sponsor: "Support", nav_campaigns: "Campaigns", camp_cta_title: "Mapping campaigns", camp_cta_desc: "Companies and cities can fund mapping in an area and pay only for verified places. Leftovers go back to the partner.", camp_cta_btn: "See campaigns",
         sponsor_title: "Support Stepless",
         sponsor_subtitle: "People and companies can support the project. Support goes to a public treasury: anyone can check the balance and every movement.",
         sponsor_treasury_label: "In the treasury now",
@@ -945,7 +955,7 @@
         reward_basic: "Básico — Mapear lugar", reward_standard: "Estándar — Verificar acceso", reward_premium: "Premium — Reportar problema", reward_critical: "Crítico — Actualización urgente",
         reward_basic_desc: "Mapear un nuevo lugar accesible con foto y coordenadas", reward_standard_desc: "Verificar y confirmar accesibilidad de un lugar existente",
         reward_premium_desc: "Reportar problema de accesibilidad (rampa rota, etc.)", reward_critical_desc: "Actualización urgente de información crítica desactualizada",
-        nav_sponsor: "Apoyar",
+        nav_sponsor: "Apoyar", nav_campaigns: "Campañas", camp_cta_title: "Campañas de mapeo", camp_cta_desc: "Empresas y municipios pueden financiar el mapeo de una zona y pagar solo por los lugares verificados. Lo que sobre vuelve al socio.", camp_cta_btn: "Ver campañas",
         sponsor_title: "Apoya Stepless",
         sponsor_subtitle: "Personas y empresas pueden apoyar el proyecto. Los aportes van a una tesorería pública: cualquiera puede ver el saldo y cada movimiento.",
         sponsor_treasury_label: "En la tesorería ahora",
