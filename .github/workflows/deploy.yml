@@ -1,0 +1,81 @@
+name: Deploy contratos
+
+# Deploy MANUAL do conjunto Stepless v5 (Oracle, RewardDistributor, X402API,
+# CampaignEscrow) — roda só quando alguém aperta "Run workflow" na aba Actions.
+#
+# Antes de rodar, cadastre em Settings → Secrets and variables → Actions:
+#   DEPLOYER_PRIVATE_KEY_TESTNET   chave descartável com um pouco de USDC de teste (gás)
+#   DEPLOYER_PRIVATE_KEY_MAINNET   idem, com USDC real (só quando for para a mainnet)
+#
+# A chave de deploy NÃO fica admin de nada: no fim, o admin é transferido para
+# ADMIN_ADDRESS em duas fases (essa carteira precisa chamar acceptAdmin depois).
+
+on:
+  workflow_dispatch:
+    inputs:
+      network:
+        description: "Rede"
+        required: true
+        type: choice
+        options: [arc-testnet, arc-mainnet]
+        default: arc-testnet
+      admin_address:
+        description: "Admin (na mainnet: o multisig)"
+        required: true
+      relayer_address:
+        description: "Relayer (endereço da RELAYER_PRIVATE_KEY da Vercel)"
+        required: true
+      verifier_address:
+        description: "Verificador inicial (endereço da VERIFIER_PRIVATE_KEY) — opcional"
+        required: false
+      attester_address:
+        description: "Atestador das campanhas (endereço da ATTESTER_PRIVATE_KEY) — opcional"
+        required: false
+      confirm_mainnet:
+        description: "Para mainnet, digite: sim"
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.network }}
+    runs-on: ubuntu-latest
+    # Só uma execução por rede por vez.
+    concurrency: deploy-${{ inputs.network }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # solc é instalado só aqui, sem entrar no package.json: o site na Vercel
+      # não precisa dele.
+      - name: Dependências
+        run: |
+          npm ci
+          npm install --no-save solc@0.8.24
+
+      - name: Testes dos contratos antes do deploy
+        run: npm run check
+
+      - name: Deploy
+        env:
+          NETWORK: ${{ inputs.network }}
+          DEPLOYER_PRIVATE_KEY: ${{ inputs.network == 'arc-mainnet' && secrets.DEPLOYER_PRIVATE_KEY_MAINNET || secrets.DEPLOYER_PRIVATE_KEY_TESTNET }}
+          ADMIN_ADDRESS: ${{ inputs.admin_address }}
+          RELAYER_ADDRESS: ${{ inputs.relayer_address }}
+          VERIFIER_ADDRESS: ${{ inputs.verifier_address }}
+          ATTESTER_ADDRESS: ${{ inputs.attester_address }}
+          CONFIRM_MAINNET: ${{ inputs.confirm_mainnet }}
+        run: node scripts/deploy-contracts.mjs
+
+      - name: Guardar endereços
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-${{ inputs.network }}
+          path: deployments/${{ inputs.network }}.json

@@ -345,6 +345,13 @@
       </div>
     </div>
 
+    <!-- Campanha de parceiro perto da busca (preenchido por updateCampaignNotice) -->
+    <div id="campaign-notice" class="hidden" role="status" aria-live="polite"
+         style="margin:0 0 16px; padding:12px 16px; border-radius:10px; background:var(--success-bg); color:var(--text); border:1px solid var(--border); display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; justify-content:space-between;">
+      <span id="campaign-notice-text"></span>
+      <a href="campanhas.html" class="btn btn-primary btn-sm" data-i18n="campaign_notice_cta">Ver campanha</a>
+    </div>
+
     <!-- Estado inicial -->
     <div id="state-initial" class="state-box">
       <div class="state-icon">🗺️</div>
@@ -429,7 +436,7 @@
         skip_link: 'Pular para o conteúdo',
         nav_aria: 'Navegação principal',
         nav_toggle: 'Abrir menu',
-        nav_search: 'Busca', nav_campaigns: 'Campanhas',
+        nav_search: 'Busca', nav_campaigns: 'Campanhas', campaign_notice_one: '💰 Campanha ativa perto daqui: "{title}" paga {reward} USDC por local verificado. Mapeie e receba direto na carteira.', campaign_notice_many: '💰 {count} campanhas ativas perto daqui pagam até {reward} USDC por local verificado. Mapeie e receba direto na carteira.', campaign_notice_cta: 'Ver campanha', campaign_map_tip: 'Campanha: {title}',
         nav_dashboard: 'Dashboard',
         nav_home: 'Início',
         language_select: 'Selecionar idioma',
@@ -502,7 +509,7 @@
         skip_link: 'Skip to content',
         nav_aria: 'Main navigation',
         nav_toggle: 'Open menu',
-        nav_search: 'Search', nav_campaigns: 'Campaigns',
+        nav_search: 'Search', nav_campaigns: 'Campaigns', campaign_notice_one: '💰 Active campaign nearby: "{title}" pays {reward} USDC per verified place. Map it and get paid straight to your wallet.', campaign_notice_many: '💰 {count} active campaigns nearby pay up to {reward} USDC per verified place. Map it and get paid straight to your wallet.', campaign_notice_cta: 'See campaign', campaign_map_tip: 'Campaign: {title}',
         nav_dashboard: 'Dashboard',
         nav_home: 'Home',
         language_select: 'Select language',
@@ -575,7 +582,7 @@
         skip_link: 'Saltar al contenido',
         nav_aria: 'Navegación principal',
         nav_toggle: 'Abrir menú',
-        nav_search: 'Buscar', nav_campaigns: 'Campañas',
+        nav_search: 'Buscar', nav_campaigns: 'Campañas', campaign_notice_one: '💰 Campaña activa cerca: "{title}" paga {reward} USDC por lugar verificado. Mapea y cobra directo en tu cartera.', campaign_notice_many: '💰 {count} campañas activas cerca pagan hasta {reward} USDC por lugar verificado. Mapea y cobra directo en tu cartera.', campaign_notice_cta: 'Ver campaña', campaign_map_tip: 'Campaña: {title}',
         nav_dashboard: 'Dashboard',
         nav_home: 'Inicio',
         language_select: 'Seleccionar idioma',
@@ -972,10 +979,55 @@
     }
 
     // ── Renderizar resultados ─────────────────────────────
+    // ── Campanhas de parceiros (CampaignEscrow) ──────────
+    // Só leitura: lista as campanhas ATIVAS com regras conferidas pelo servidor.
+    // Falha (503 = sem contrato nesta rede, rede fora) só deixa o aviso oculto.
+    let activeCampaignsList = [];
+    async function loadActiveCampaigns() {
+      try {
+        const r = await fetch('/api/campaign-attest');
+        if (!r.ok) return;
+        const data = await r.json();
+        activeCampaignsList = (data.campaigns || []).filter(c => c.status === 'active' && c.rules);
+        if (searchDone) renderResults();
+      } catch (_) { /* sem campanhas: nada a mostrar */ }
+    }
+
+    /** Campanhas cuja zona encosta na área buscada (centro da busca + raio escolhido). */
+    function campaignsNearSearch() {
+      if (userLat === null || !activeCampaignsList.length) return [];
+      const radiusKm = Number(document.getElementById('radius-select').value);
+      const reach = radiusKm < 9999 ? radiusKm : 0;
+      return activeCampaignsList.filter(c =>
+        haversineKm(userLat, userLng, c.rules.zone.lat, c.rules.zone.lng) <= c.rules.zone.radiusKm + reach);
+    }
+
+    function formatUsdcRaw(raw) {
+      const n = Number(raw) / 1e6;
+      return n.toLocaleString(currentLang === 'pt' ? 'pt-BR' : currentLang, { minimumFractionDigits: 2, maximumFractionDigits: 6 });
+    }
+
+    function updateCampaignNotice() {
+      const box = document.getElementById('campaign-notice');
+      const text = document.getElementById('campaign-notice-text');
+      if (!box || !text) return;
+      const near = campaignsNearSearch();
+      if (!near.length) { box.classList.add('hidden'); return; }
+      const best = near.reduce((a, b) => (BigInt(b.rewardPerItem) > BigInt(a.rewardPerItem) ? b : a));
+      text.textContent = near.length === 1
+        ? t('campaign_notice_one', { title: best.rules.title, reward: formatUsdcRaw(best.rewardPerItem) })
+        : t('campaign_notice_many', { count: near.length, reward: formatUsdcRaw(best.rewardPerItem) });
+      box.classList.remove('hidden');
+    }
+
     function renderResults() {
       const radiusKm = Number(document.getElementById('radius-select').value);
       const grid     = document.getElementById('results-grid');
       const countEl  = document.getElementById('results-count');
+
+      // Antes do "nenhum local encontrado": área vazia COM campanha é justamente
+      // o melhor convite para mapear.
+      updateCampaignNotice();
 
       let filtered = allLocations.filter(loc => {
         if (activeCat !== 'all') {
@@ -1079,6 +1131,13 @@
         resultsMarkers = window.L.layerGroup().addTo(resultsMap);
       }
       resultsMarkers.clearLayers();
+
+      // Zonas de campanha ativa perto da busca, em verde, por baixo dos pins.
+      campaignsNearSearch().forEach(c => {
+        window.L.circle([c.rules.zone.lat, c.rules.zone.lng], {
+          radius: c.rules.zone.radiusKm * 1000, color: '#15803d', weight: 2, fillOpacity: 0.08,
+        }).bindTooltip(t('campaign_map_tip', { title: c.rules.title })).addTo(resultsMarkers);
+      });
 
       const pts = [];
       locs.forEach(loc => {
@@ -1198,7 +1257,7 @@
     });
 
     document.querySelectorAll('.lang-btn').forEach(btn => {
-      btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
+      btn.addEventListener('click', () => { setLanguage(btn.dataset.lang); updateCampaignNotice(); });
     });
 
     // Filtros de categoria
@@ -1257,6 +1316,7 @@
     }
 
     setLanguage(detectLanguage());
+    loadActiveCampaigns();
   </script>
   <script src="lang-menu.js" defer></script>
 </body>
