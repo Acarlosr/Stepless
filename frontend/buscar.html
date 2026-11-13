@@ -61,6 +61,23 @@
       border-bottom: 1px solid var(--border);
       margin-bottom: 24px;
     }
+    /* ── Filtro "O que você precisa?" (por tipo de deficiência) ── */
+    .need-bar { margin: 4px 0 8px; }
+    .need-bar h2 { font-size: 1rem; margin: 0 0 10px; color: var(--text); }
+    .need-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .need-btn {
+      display: flex; align-items: center; gap: 10px;
+      min-height: 56px; padding: 10px 14px;
+      border-radius: 12px; border: 2px solid var(--border);
+      background: var(--bg-card); color: var(--text);
+      font-size: 1rem; font-weight: 600; text-align: left; cursor: pointer;
+    }
+    .need-btn .need-ico { font-size: 1.6rem; line-height: 1; }
+    .need-btn:hover { border-color: var(--primary); }
+    .need-btn[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .need-btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .need-hint { font-size: .85rem; color: var(--text-muted); margin: 8px 0 0; min-height: 1.2em; }
+
     .filter-chip {
       display: inline-flex;
       align-items: center;
@@ -319,6 +336,19 @@
   <main id="main" class="container" style="padding-top:28px; padding-bottom:60px;">
 
     <!-- Filtros + raio -->
+    <!-- Filtro por necessidade: a pessoa pensa "sou cadeirante", não "quero rampa".
+         Ideia vinda do portal Turismo Acessível (MTur). -->
+    <section class="need-bar" aria-labelledby="need-title">
+      <h2 id="need-title" data-i18n="need_title">O que você precisa?</h2>
+      <div class="need-grid" role="group" aria-labelledby="need-title">
+        <button type="button" class="need-btn" data-need="motora" aria-pressed="false"><span class="need-ico" aria-hidden="true">♿</span><span data-i18n="need_motora">Física ou motora</span></button>
+        <button type="button" class="need-btn" data-need="mobilidade" aria-pressed="false"><span class="need-ico" aria-hidden="true">🚶</span><span data-i18n="need_mobilidade">Mobilidade reduzida</span></button>
+        <button type="button" class="need-btn" data-need="visual" aria-pressed="false"><span class="need-ico" aria-hidden="true">🦯</span><span data-i18n="need_visual">Visual</span></button>
+        <button type="button" class="need-btn" data-need="auditiva" aria-pressed="false"><span class="need-ico" aria-hidden="true">🦻</span><span data-i18n="need_auditiva">Auditiva</span></button>
+      </div>
+      <p class="need-hint" id="need-hint" aria-live="polite"></p>
+    </section>
+
     <div class="filters" id="filter-bar" role="group" aria-label="Filtrar por categoria" data-i18n-aria-label="filter_aria">
       <span style="font-size:.85rem; font-weight:600; color:var(--text-muted);" data-i18n="filter_label">Filtrar:</span>
       <button class="filter-chip active" data-cat="all" data-i18n="filter_all">Todos</button>
@@ -436,7 +466,7 @@
         skip_link: 'Pular para o conteúdo',
         nav_aria: 'Navegação principal',
         nav_toggle: 'Abrir menu',
-        nav_search: 'Busca', nav_campaigns: 'Campanhas', campaign_notice_one: '💰 Campanha ativa perto daqui: "{title}" paga {reward} USDC por local verificado. Mapeie e receba direto na carteira.', campaign_notice_many: '💰 {count} campanhas ativas perto daqui pagam até {reward} USDC por local verificado. Mapeie e receba direto na carteira.', campaign_notice_cta: 'Ver campanha', campaign_map_tip: 'Campanha: {title}',
+        nav_search: 'Busca', nav_campaigns: 'Campanhas', need_title: 'O que você precisa?', need_motora: 'Física ou motora', need_mobilidade: 'Mobilidade reduzida', need_visual: 'Visual', need_auditiva: 'Auditiva', need_hint: 'Mostrando locais com: {cats}. Toque de novo para limpar.', campaign_notice_one: '💰 Campanha ativa perto daqui: "{title}" paga {reward} USDC por local verificado. Mapeie e receba direto na carteira.', campaign_notice_many: '💰 {count} campanhas ativas perto daqui pagam até {reward} USDC por local verificado. Mapeie e receba direto na carteira.', campaign_notice_cta: 'Ver campanha', campaign_map_tip: 'Campanha: {title}',
         nav_dashboard: 'Dashboard',
         nav_home: 'Início',
         language_select: 'Selecionar idioma',
@@ -509,7 +539,7 @@
         skip_link: 'Skip to content',
         nav_aria: 'Main navigation',
         nav_toggle: 'Open menu',
-        nav_search: 'Search', nav_campaigns: 'Campaigns', campaign_notice_one: '💰 Active campaign nearby: "{title}" pays {reward} USDC per verified place. Map it and get paid straight to your wallet.', campaign_notice_many: '💰 {count} active campaigns nearby pay up to {reward} USDC per verified place. Map it and get paid straight to your wallet.', campaign_notice_cta: 'See campaign', campaign_map_tip: 'Campaign: {title}',
+        nav_search: 'Search', nav_campaigns: 'Campaigns', need_title: 'What do you need?', need_motora: 'Physical or motor', need_mobilidade: 'Reduced mobility', need_visual: 'Visual', need_auditiva: 'Hearing', need_hint: 'Showing places with: {cats}. Tap again to clear.', campaign_notice_one: '💰 Active campaign nearby: "{title}" pays {reward} USDC per verified place. Map it and get paid straight to your wallet.', campaign_notice_many: '💰 {count} active campaigns nearby pay up to {reward} USDC per verified place. Map it and get paid straight to your wallet.', campaign_notice_cta: 'See campaign', campaign_map_tip: 'Campaign: {title}',
         nav_dashboard: 'Dashboard',
         nav_home: 'Home',
         language_select: 'Select language',
@@ -582,7 +612,7 @@
         skip_link: 'Saltar al contenido',
         nav_aria: 'Navegación principal',
         nav_toggle: 'Abrir menú',
-        nav_search: 'Buscar', nav_campaigns: 'Campañas', campaign_notice_one: '💰 Campaña activa cerca: "{title}" paga {reward} USDC por lugar verificado. Mapea y cobra directo en tu cartera.', campaign_notice_many: '💰 {count} campañas activas cerca pagan hasta {reward} USDC por lugar verificado. Mapea y cobra directo en tu cartera.', campaign_notice_cta: 'Ver campaña', campaign_map_tip: 'Campaña: {title}',
+        nav_search: 'Buscar', nav_campaigns: 'Campañas', need_title: '¿Qué necesitas?', need_motora: 'Física o motora', need_mobilidade: 'Movilidad reducida', need_visual: 'Visual', need_auditiva: 'Auditiva', need_hint: 'Mostrando lugares con: {cats}. Toca de nuevo para limpiar.', campaign_notice_one: '💰 Campaña activa cerca: "{title}" paga {reward} USDC por lugar verificado. Mapea y cobra directo en tu cartera.', campaign_notice_many: '💰 {count} campañas activas cerca pagan hasta {reward} USDC por lugar verificado. Mapea y cobra directo en tu cartera.', campaign_notice_cta: 'Ver campaña', campaign_map_tip: 'Campaña: {title}',
         nav_dashboard: 'Dashboard',
         nav_home: 'Inicio',
         language_select: 'Seleccionar idioma',
@@ -693,6 +723,23 @@
     let userLng      = null;
     let searchDone   = false;
     let activeCat    = 'all';
+    // Necessidade → categorias que atendem (ids da taxonomia em arc-config.js).
+    //   0 rampa · 1 elevador · 2 banheiro · 3 vaga · 4 sinalização · 5 áudio
+    //   6 braile/piso tátil · 7 outro · 8 entrada · 9 quarto adaptado
+    const NEEDS = {
+      motora:     [0, 1, 2, 8, 9],
+      mobilidade: [0, 1, 2, 3, 8],
+      visual:     [5, 6],
+      auditiva:   [4],
+    };
+    let activeNeed   = null;
+
+    /** O local passa nos filtros de categoria e de necessidade? */
+    function matchesFilters(loc) {
+      if (activeCat !== 'all' && (!loc.categories || !loc.categories.includes(Number(activeCat)))) return false;
+      if (activeNeed && (!loc.categories || !loc.categories.some(c => NEEDS[activeNeed].includes(Number(c))))) return false;
+      return true;
+    }
     let currentLang  = 'pt';
 
     // Mesma ordem/ids usados no formulário de registro (dashboard.html)
@@ -954,7 +1001,7 @@
 
       const candidates = allLocations.filter(loc => {
         if (loc.lat === null || loc.lng === null) return false;
-        if (activeCat !== 'all' && (!loc.categories || !loc.categories.includes(Number(activeCat)))) return false;
+        if (!matchesFilters(loc)) return false;
         return true;
       });
       if (candidates.length === 0) return;
@@ -1030,11 +1077,9 @@
       updateCampaignNotice();
 
       let filtered = allLocations.filter(loc => {
-        if (activeCat !== 'all') {
-          // categories === null → local sem metadado salvo (registrado antes dessa feature).
-          // Não dá pra confirmar a categoria, então some do filtro específico (mas aparece em "Todos").
-          if (!loc.categories || !loc.categories.includes(Number(activeCat))) return false;
-        }
+        // categories === null → local sem metadado salvo (registrado antes dessa feature).
+        // Não dá pra confirmar a categoria, então some dos filtros (mas aparece em "Todos").
+        if (!matchesFilters(loc)) return false;
         if (userLat !== null && radiusKm < 9999) {
           // Busca por endereço/GPS ativa: local SEM coordenada confiável não pode
           // ser incluído "por padrão" — antes isso deixava passar locais de
@@ -1257,7 +1302,7 @@
     });
 
     document.querySelectorAll('.lang-btn').forEach(btn => {
-      btn.addEventListener('click', () => { setLanguage(btn.dataset.lang); updateCampaignNotice(); });
+      btn.addEventListener('click', () => { setLanguage(btn.dataset.lang); updateCampaignNotice(); paintNeedHint(); });
     });
 
     // Filtros de categoria
@@ -1266,10 +1311,46 @@
         document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         activeCat = btn.dataset.cat;
+        if (activeCat !== 'all') setNeed(null);
         if (searchDone) renderResults();
         else searchAll();
       });
     });
+
+    // ── Filtro por necessidade ────────────────────────────
+    function paintNeedHint() {
+      const hint = document.getElementById('need-hint');
+      if (!hint) return;
+      hint.textContent = activeNeed
+        ? t('need_hint', { cats: NEEDS[activeNeed].map(c => CATEGORY_LABELS[c] || c).join(', ') })
+        : '';
+    }
+    function setNeed(need) {
+      activeNeed = need && NEEDS[need] ? need : null;
+      document.querySelectorAll('.need-btn').forEach(b =>
+        b.setAttribute('aria-pressed', String(b.dataset.need === activeNeed)));
+      paintNeedHint();
+    }
+    document.querySelectorAll('.need-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setNeed(activeNeed === btn.dataset.need ? null : btn.dataset.need);
+        // Necessidade e categoria específica não se somam: volta o chip para "Todos".
+        if (activeNeed) {
+          document.querySelectorAll('.filter-chip').forEach(b => b.classList.toggle('active', b.dataset.cat === 'all'));
+          activeCat = 'all';
+        }
+        if (searchDone) renderResults();
+        else searchAll();
+      });
+    });
+
+    // ?need=visual (links dos cards "Para quem é" da página inicial)
+    (function applyInitialNeed() {
+      const raw = (new URLSearchParams(window.location.search).get('need') || '').toLowerCase();
+      if (!NEEDS[raw]) return;
+      setNeed(raw);
+      if (!new URLSearchParams(window.location.search).get('q')) searchAll();
+    })();
 
     // Filtro vindo da URL (?cat=room, ?cat=9 …) — usado pelos links da página inicial.
     (function applyInitialCat() {
@@ -1316,8 +1397,12 @@
     }
 
     setLanguage(detectLanguage());
+    paintNeedHint();
     loadActiveCampaigns();
   </script>
   <script src="lang-menu.js" defer></script>
+  <!-- VLibras (governo federal): traduz o conteúdo da página para Libras.
+       v7 se inicializa sozinho; carregado com defer para não atrasar a página. -->
+  <script src="https://vlibras.gov.br/app/vlibras-plugin.js" defer></script>
 </body>
 </html>

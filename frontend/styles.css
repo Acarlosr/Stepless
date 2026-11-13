@@ -2482,3 +2482,9 @@ pre code {
 .travel-callout__icon { font-size: 2.4rem; line-height: 1; }
 .travel-callout__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
 @media (max-width: 560px) { .travel-callout { flex-direction: column; gap: 8px; } }
+
+/* VLibras: foco do botão flutuante no mesmo padrão do site (WCAG 2.4.7). */
+:root {
+  --vlibras-btn-focus-visible-outline: 3px solid var(--accent);
+  --vlibras-btn-focus-visible-shadow: 0 0 0 6px rgba(0, 0, 0, .25);
+}
