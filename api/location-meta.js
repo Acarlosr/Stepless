@@ -70,6 +70,8 @@ export default async function handler(req, res) {
           categories: Array.isArray(parsed.categories) ? parsed.categories : [],
           lat: typeof parsed.lat === 'number' ? parsed.lat : null,
           lng: typeof parsed.lng === 'number' ? parsed.lng : null,
+          // Descrição da foto gerada pela IA (api/_ai.js) — texto alternativo.
+          alt: typeof parsed.alt === 'string' ? parsed.alt : null,
         };
       } catch {
         // Valor legado (string simples, só nome) — trata como nome sem categorias/coords.

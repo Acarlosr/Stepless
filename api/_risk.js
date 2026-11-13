@@ -101,7 +101,7 @@ function level(score) {
  * @param {number|null} p.gpsAccuracyM
  * @param {string|null} p.photoTs   ISO da captura
  */
-export function scoreSubmission({ exif, place, reputation, gpsSource, gpsAccuracyM, photoTs }) {
+export function scoreSubmission({ exif, place, reputation, gpsSource, gpsAccuracyM, photoTs, ai }) {
   let score = 0;
   const reasons = [];
   const add = (points, text) => { score += points; reasons.push({ points, text }); };
@@ -158,6 +158,13 @@ export function scoreSubmission({ exif, place, reputation, gpsSource, gpsAccurac
     else reasons.push({ points: 0, text: place.reason });
   } else if (place) {
     reasons.push({ points: 0, text: place.reason });
+  }
+
+  // ── Segunda opinião da IA sobre a foto (api/_ai.js) ─────────────────
+  // Só soma risco quando a IA está confiante; "unknown"/"unclear" nunca pesam.
+  if (ai && ai.verdict && ai.verdict !== 'unknown') {
+    if (ai.risk > 0) add(ai.risk, ai.reason);
+    else reasons.push({ points: 0, text: ai.reason });
   }
 
   // ── Histórico da carteira ───────────────────────────────────────────

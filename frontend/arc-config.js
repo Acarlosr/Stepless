@@ -85,6 +85,7 @@ const CONTRACTS = {
   RewardDistributor: NET.contracts.RewardDistributor,
   SteplessOracle:    NET.contracts.SteplessOracle,
   X402API:           NET.contracts.X402API,
+  CampaignEscrow:    NET.contracts.CampaignEscrow || null,
   Multicall3:        NET.predeploys.multicall3,
   Memo:              NET.predeploys.memo,
 };
@@ -846,6 +847,8 @@ const LOCATION_CATEGORIES = [
   { id: 6, label: { pt: "Braile",       en: "Braille",     es: "Braille" } },
   { id: 7, label: { pt: "Outro",        en: "Other",       es: "Otro" } },
   { id: 8, label: { pt: "Entrada Acessível", en: "Accessible Entrance", es: "Entrada Accesible" } },
+  // 9: hotel/pousada com quarto adaptado (barras, porta larga, chuveiro sem degrau)
+  { id: 9, label: { pt: "Quarto Adaptado", en: "Accessible Room", es: "Habitación Adaptada" } },
 ];
 
 /* ──────────────────────────────────────────────────────────────

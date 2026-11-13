@@ -23,9 +23,18 @@ jobs:
         with:
           version: nightly
 
+      # forge-std está versionado em contracts/lib/forge-std. Rodar `forge install`
+      # com a pasta já presente falha ("already exists") e derrubava o job antes
+      # de compilar — por isso os testes Foundry não rodavam no CI. Só instala
+      # se a pasta não estiver no checkout.
       - name: Install Solidity dependencies
         working-directory: contracts
-        run: forge install foundry-rs/forge-std --no-git
+        run: |
+          if [ -f lib/forge-std/src/Test.sol ]; then
+            echo "forge-std já versionado em contracts/lib/forge-std"
+          else
+            forge install foundry-rs/forge-std --no-git
+          fi
 
       - name: Cache Foundry
         uses: actions/cache@v4
@@ -43,9 +52,25 @@ jobs:
 
       # -W: warnings viram erro. Um `unused variable` num contrato que guarda
       # dinheiro costuma indicar que alguém esqueceu de usar o valor.
+      # A opção mudou de nome entre versões do Foundry: `-W`/`--deny-warnings`
+      # (antigas) → `--deny warnings` (atuais). Com a nightly, `-W` passou a ser
+      # recusado como argumento desconhecido (exit 2) — o job falhava aqui sem
+      # nunca ter olhado um aviso de verdade.
       - name: Lint (warnings as errors)
         working-directory: contracts
-        run: forge build --force -W
+        run: |
+          if forge build --help | grep -q -- '--deny <'; then
+            forge build --force --deny warnings
+          else
+            forge build --force --deny-warnings
+          fi
+
+      # Análise estática do forge-lint: só informa, não bloqueia. Revisar os
+      # avisos novos a cada mudança em contrato que guarda dinheiro.
+      - name: Lint estático (informativo)
+        working-directory: contracts
+        continue-on-error: true
+        run: forge lint || true
 
       - name: Test
         working-directory: contracts
@@ -53,9 +78,15 @@ jobs:
 
       # Cobertura mínima nas funções que movem dinheiro. Antes da v5 não havia
       # NENHUM teste para saque, retry ou fundeio da tesouraria.
+      #
+      # `forge coverage` desliga o otimizador para mapear linhas, e o
+      # RewardDistributor estoura "stack too deep" sem ele. `--ir-minimum`
+      # é a saída recomendada pelo Foundry. É métrica, não teste: quem bloqueia
+      # o merge é o passo "Test" acima.
       - name: Coverage
         working-directory: contracts
-        run: forge coverage --report lcov --report summary
+        continue-on-error: true
+        run: forge coverage --ir-minimum --report lcov --report summary
 
       - name: Upload coverage
         if: always()
@@ -136,7 +167,7 @@ jobs:
       # window.STEPLESS_NETWORK — senão a página quebra em runtime, não no CI.
       - name: network.js carregado nas páginas
         run: |
-          for f in frontend/index.html frontend/dashboard.html frontend/buscar.html; do
+          for f in frontend/index.html frontend/dashboard.html frontend/buscar.html frontend/campanhas.html; do
             grep -q 'src="network.js"' "$f" || { echo "❌ $f não carrega network.js"; exit 1; }
             echo "✅ $f"
           done

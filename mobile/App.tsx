@@ -6,7 +6,7 @@
  * Chain ID: 5042002
  * RPC: https://rpc.testnet.arc.network
  *
- * Navigation: Login → Home (Map) → Rewards → Profile
+ * Navigation: Login → Home (Map) → Profile  (Rewards oculto: recompensas pausadas)
  * Carteira embarcada (viem + expo-secure-store) — recebe USDC; relayer paga o gas
  * WCAG AA color scheme, i18n (pt-BR, en, es)
  */
@@ -40,7 +40,7 @@ import { arcTestnet } from './src/services/contracts';
 
 // Screens
 import MapScreen from './src/screens/MapScreen';
-import RewardsScreen from './src/screens/RewardsScreen';
+// import RewardsScreen from './src/screens/RewardsScreen'; // recompensas pausadas
 import ProfileScreen from './src/screens/ProfileScreen';
 import LoginScreen from './src/screens/LoginScreen';
 
@@ -111,11 +111,8 @@ function MainTabs() {
         component={MapScreen}
         options={{ tabBarLabel: t('tabs.map') }}
       />
-      <Tab.Screen
-        name="Rewards"
-        component={RewardsScreen}
-        options={{ tabBarLabel: t('tabs.rewards') }}
-      />
+      {/* Aba "Recompensas" oculta: nesta fase o mapeamento é voluntário.
+          Volta quando houver patrocínio e as recompensas forem ligadas. */}
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}

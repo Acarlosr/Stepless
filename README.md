@@ -5,7 +5,7 @@
 
   **Decentralized accessibility infrastructure on Arc Testnet**
 
-  People with disabilities map ramps & accessible locations and earn micro-USDC.  
+  People map ramps & accessible places — free and voluntary at this stage.  
   The data becomes a global oracle consumed via x402 by travel apps, municipalities & mobility platforms.
 
   [![Arc](https://img.shields.io/badge/Network-Arc%20Testnet-6C5CE7?style=flat-square)](https://arc.network)
@@ -20,7 +20,7 @@
 
 ---
 
-> **Accessibility shouldn't depend on goodwill. It should pay the people who build it.**
+> **An open accessibility map, built by the people who use it.** Mapping is voluntary for now; rewards only switch on if the project gets sponsorship.
 
 Stepless is programmable-money infrastructure: a USDC treasury that only releases funds against an independent, on-chain verification, running in the accessibility-data domain. Contributors submit photos of ramps, elevators, and accessible locations. Verifiers confirm them on-chain. USDC lands in the contributor's wallet — settled on Arc in seconds. Third parties then pay per query, in USDC via x402, to read the resulting oracle.
 
@@ -36,13 +36,22 @@ address is hardcoded anywhere else.
 node scripts/check-live-contracts.mjs   # asks Arc itself which pair is live
 ```
 
-**Mainnet status:** Arc's public mainnet launches on **2026-09-16**, but Circle
-has not yet published the USDC and Memo addresses for that network
-("Mainnet addresses are not yet available", [docs.arc.io](https://docs.arc.io/arc/references/contract-addresses)).
-That's why the `arc-mainnet` entry in the JSON carries `null` fields on
-purpose, and the backend **refuses to boot** against it. Not shipping beats
-shipping a guessed address: on Arc, a call to an address with no code returns
-success, and the contract would mark rewards as paid without moving a cent.
+**Mainnet status:** Arc mainnet is live (chain ID 5042, launched 2026-09-16) and its
+USDC / Memo / Multicall addresses are now published on
+[docs.arc.io](https://docs.arc.io/arc/references/contract-addresses) and filled in
+`config/networks.json`. The Stepless contracts are **not deployed to mainnet yet**, so
+their entries stay `null` and the backend still refuses to boot against `arc-mainnet`
+until they are. Before deploying, confirm the USDC address has code on mainnet
+(`cast code 0x3600000000000000000000000000000000000000 --rpc-url https://rpc.mainnet.arc.io`);
+on Arc a call to an address with no code returns success.
+
+**Launch model (no money required):** rewards are **off by default**
+(`rewardsEnabled = false`). Contributions are still registered and verified on-chain;
+nothing is paid and nothing is owed. When sponsors fund the treasury, the admin calls
+`setRewardsEnabled(true)`. Even then, payouts stop at the daily cap (`maxPayoutPerDay`,
+default $1) or when the treasury runs out — the reward is simply not paid (`RewardNotFunded`),
+never turned into debt. Brands can fund via `sponsorTreasury(amount, brandRef)` and appear on
+the supporters wall after manual approval (`/api/sponsor`).
 
 > **Deprecated contracts — do not use.** The v3 pair (`0x53ba90e1…` /
 > `0xdf8fa455…`) and v1 are still on-chain and still hold balance. v3 actually

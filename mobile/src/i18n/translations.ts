@@ -43,7 +43,7 @@ const resources = {
       login: {
         title: 'Stepless',
         subtitle: 'Mapeamento de Acessibilidade Descentralizado',
-        description: 'Ajude a mapear locais acessíveis e ganhe recompensas em USDC',
+        description: 'Ajude a mapear locais acessíveis. É gratuito e voluntário.',
         signInWithGoogle: 'Entrar com Google',
         signInWithApple: 'Entrar com Apple',
         signInWithEmail: 'Entrar com Email',
@@ -72,6 +72,7 @@ const resources = {
         registeringOnchain: 'Registrando na blockchain...',
         locationRegistered: 'Local registrado com sucesso!',
         rewardPending: 'Recompensa pendente',
+        thanksPending: 'Obrigado! Seu local está aguardando revisão.',
         locationsNearby: 'locais próximos',
         refresh: 'Atualizar',
         search: 'Buscar locais',
@@ -83,7 +84,7 @@ const resources = {
         verified: 'Verificado',
         pending: 'Pendente',
         mapViewLabel: 'Mapa de locais acessíveis',
-        gasStationNote: 'ℹ️ O Gas Station da Arc patrocina as taxas de transação. Você não paga gas.',
+        gasStationNote: 'ℹ️ Registrar é gratuito: a taxa da rede é paga pelo Stepless.',
         nearbyLocations: 'Locais Próximos',
         noNearbyLocations: 'Nenhum local mapeado próximo. Seja o primeiro!',
         yourLocation: 'Sua Localização',
@@ -99,6 +100,7 @@ const resources = {
         audio: 'Áudio Descrição',
         braille: 'Braile',
         entrance: 'Entrada Acessível',
+        room: 'Quarto Adaptado (hotel/pousada)',
         other: 'Outros',
       },
 
@@ -177,7 +179,7 @@ const resources = {
         screenReader: 'Otimizar para Leitor de Tela',
         reduceMotion: 'Reduzir Animações',
         about: 'Sobre o Stepless',
-        aboutText: 'Stepless é uma infraestrutura descentralizada de acessibilidade na Arc Testnet. Mapeie locais acessíveis, verifique contribuições de outros usuários e ganhe micro-recompensas em USDC.',
+        aboutText: 'Stepless é um mapa aberto de acessibilidade feito pela comunidade na rede Arc. Mapear é gratuito e voluntário; nesta fase não há pagamento por cadastro.',
         version: 'Versão',
         walletPortability: 'Levar sua carteira para outro lugar',
         walletPortabilityDesc: 'Sua carteira foi criada com seu e-mail e vive dentro do Stepless. Se quiser usá-la em outro app, como o MetaMask, você pode exportar a chave privada e importá-la lá. Seu endereço e seu saldo continuam os mesmos.',
@@ -237,9 +239,9 @@ const resources = {
 
       // ─── Success Messages ───
       success: {
-        locationRegistered: 'Local registrado com sucesso! Recompensa de $0.10 USDC a caminho.',
+        locationRegistered: 'Local registrado com sucesso! Obrigado por contribuir.',
         contributionSubmitted: 'Contribuição enviada! Aguardando verificação.',
-        contributionVerified: 'Contribuição verificada! Recompensa de $0.05 USDC creditada.',
+        contributionVerified: 'Contribuição verificada! Obrigado.',
         rewardReceived: 'Recompensa recebida!',
         walletConnected: 'Carteira conectada com sucesso!',
         withdrawn: 'Saque realizado com sucesso!',
@@ -294,7 +296,7 @@ const resources = {
       login: {
         title: 'Stepless',
         subtitle: 'Decentralized Accessibility Mapping',
-        description: 'Help map accessible locations and earn USDC rewards',
+        description: 'Help map accessible places. It is free and voluntary.',
         signInWithGoogle: 'Sign in with Google',
         signInWithApple: 'Sign in with Apple',
         signInWithEmail: 'Sign in with Email',
@@ -323,6 +325,7 @@ const resources = {
         registeringOnchain: 'Registering on blockchain...',
         locationRegistered: 'Location registered successfully!',
         rewardPending: 'Pending reward',
+        thanksPending: 'Thank you! Your place is awaiting review.',
         locationsNearby: 'locations nearby',
         refresh: 'Refresh',
         search: 'Search locations',
@@ -334,7 +337,7 @@ const resources = {
         verified: 'Verified',
         pending: 'Pending',
         mapViewLabel: 'Map of accessible locations',
-        gasStationNote: 'ℹ️ Arc Gas Station sponsors transaction fees. You do not pay gas.',
+        gasStationNote: 'ℹ️ Adding a place is free: Stepless pays the network fee.',
         nearbyLocations: 'Nearby Locations',
         noNearbyLocations: 'No locations mapped nearby. Be the first!',
         yourLocation: 'Your Location',
@@ -350,6 +353,7 @@ const resources = {
         audio: 'Audio Description',
         braille: 'Braille',
         entrance: 'Accessible Entrance',
+        room: 'Accessible Room (hotel/inn)',
         other: 'Other',
       },
 
@@ -428,7 +432,7 @@ const resources = {
         screenReader: 'Optimize for Screen Reader',
         reduceMotion: 'Reduce Motion',
         about: 'About Stepless',
-        aboutText: 'Stepless is a decentralized accessibility infrastructure on Arc Testnet. Map accessible locations, verify other users\' contributions, and earn micro-rewards in USDC.',
+        aboutText: 'Stepless is an open accessibility map built by the community on the Arc network. Mapping is free and voluntary; there is no payment for adding places at this stage.',
         version: 'Version',
         walletPortability: 'Take your wallet elsewhere',
         walletPortabilityDesc: 'Your wallet was created with your email and lives inside Stepless. If you want to use it in another app, like MetaMask, you can export the private key and import it there. Your address and balance stay the same.',
@@ -488,9 +492,9 @@ const resources = {
 
       // ─── Success Messages ───
       success: {
-        locationRegistered: 'Location registered successfully! $0.10 USDC reward on the way.',
+        locationRegistered: 'Location registered successfully! Thanks for contributing.',
         contributionSubmitted: 'Contribution submitted! Awaiting verification.',
-        contributionVerified: 'Contribution verified! $0.05 USDC reward credited.',
+        contributionVerified: 'Contribution verified! Thank you.',
         rewardReceived: 'Reward received!',
         walletConnected: 'Wallet connected successfully!',
         withdrawn: 'Withdrawal completed successfully!',
@@ -545,7 +549,7 @@ const resources = {
       login: {
         title: 'Stepless',
         subtitle: 'Mapeo de Accesibilidad Descentralizado',
-        description: 'Ayuda a mapear lugares accesibles y gana recompensas en USDC',
+        description: 'Ayuda a mapear lugares accesibles. Es gratis y voluntario.',
         signInWithGoogle: 'Iniciar con Google',
         signInWithApple: 'Iniciar con Apple',
         signInWithEmail: 'Iniciar con Email',
@@ -574,6 +578,7 @@ const resources = {
         registeringOnchain: 'Registrando en blockchain...',
         locationRegistered: '¡Lugar registrado con éxito!',
         rewardPending: 'Recompensa pendiente',
+        thanksPending: '¡Gracias! Tu lugar está esperando revisión.',
         locationsNearby: 'lugares cercanos',
         refresh: 'Actualizar',
         search: 'Buscar lugares',
@@ -585,7 +590,7 @@ const resources = {
         verified: 'Verificado',
         pending: 'Pendiente',
         mapViewLabel: 'Mapa de lugares accesibles',
-        gasStationNote: 'ℹ️ Arc Gas Station patrocina las tarifas de transacción. No pagas gas.',
+        gasStationNote: 'ℹ️ Registrar es gratis: Stepless paga la tarifa de la red.',
         nearbyLocations: 'Lugares Cercanos',
         noNearbyLocations: 'No hay lugares mapeados cerca. ¡Sé el primero!',
         yourLocation: 'Tu Ubicación',
@@ -601,6 +606,7 @@ const resources = {
         audio: 'Audiodescripción',
         braille: 'Braille',
         entrance: 'Entrada Accesible',
+        room: 'Habitación Adaptada (hotel/posada)',
         other: 'Otros',
       },
 
@@ -679,7 +685,7 @@ const resources = {
         screenReader: 'Optimizar para Lector de Pantalla',
         reduceMotion: 'Reducir Animaciones',
         about: 'Acerca de Stepless',
-        aboutText: 'Stepless es una infraestructura descentralizada de accesibilidad en Arc Testnet. Mapea lugares accesibles, verifica contribuciones de otros usuarios y gana micro-recompensas en USDC.',
+        aboutText: 'Stepless es un mapa abierto de accesibilidad hecho por la comunidad en la red Arc. Mapear es gratis y voluntario; en esta fase no hay pago por registro.',
         version: 'Versión',
         walletPortability: 'Llevar tu billetera a otro lugar',
         walletPortabilityDesc: 'Tu billetera se creó con tu correo y vive dentro de Stepless. Si quieres usarla en otra app, como MetaMask, puedes exportar la clave privada e importarla ahí. Tu dirección y tu saldo siguen siendo los mismos.',
@@ -739,9 +745,9 @@ const resources = {
 
       // ─── Success Messages ───
       success: {
-        locationRegistered: '¡Lugar registrado con éxito! Recompensa de $0.10 USDC en camino.',
+        locationRegistered: '¡Lugar registrado con éxito! Gracias por contribuir.',
         contributionSubmitted: '¡Contribución enviada! Esperando verificación.',
-        contributionVerified: '¡Contribución verificada! Recompensa de $0.05 USDC acreditada.',
+        contributionVerified: '¡Contribución verificada! Gracias.',
         rewardReceived: '¡Recompensa recibida!',
         walletConnected: '¡Billetera conectada con éxito!',
         withdrawn: '¡Retiro completado con éxito!',

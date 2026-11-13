@@ -101,6 +101,8 @@ export function contractAddresses() {
     SteplessOracle: process.env.ORACLE_ADDRESS || raw.contracts.SteplessOracle,
     RewardDistributor: process.env.DISTRIBUTOR_ADDRESS || raw.contracts.RewardDistributor,
     X402API: process.env.X402_ADDRESS || raw.contracts.X402API,
+    // Campanhas de parceiros. null = campanhas desligadas nesta rede.
+    CampaignEscrow: process.env.CAMPAIGN_ESCROW_ADDRESS || raw.contracts.CampaignEscrow || null,
   };
 }
 

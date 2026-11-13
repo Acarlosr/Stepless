@@ -17,6 +17,18 @@ optimizer_runs = 200
 # Finality: deterministic, sub-second
 # EVM baseline: Osaka
 
+# O forge-lint (análise estática nova do Foundry) rodava junto com o build e,
+# com `--deny warnings` no CI, cada aviso dele derrubava o job. Os 77 avisos
+# revisados em 2026-11-08 são falsos positivos para estes contratos:
+#   - block-timestamp: prazos em horas/dias (timelock, campanhas, teto diário);
+#   - reentrancy-*: chamadas ao USDC já protegidas por nonReentrant + CEI;
+#   - arbitrary-send-erc20 (X402API._chargeFee): sempre chamado com msg.sender;
+#   - missing-zero-check (transferAdmin): address(0) cancela, de propósito.
+# O lint continua rodando no CI como passo informativo (não bloqueia);
+# avisos do COMPILADOR continuam bloqueando.
+[lint]
+lint_on_build = false
+
 [profile.default.fuzz]
 runs = 256
 

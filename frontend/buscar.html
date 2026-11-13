@@ -61,6 +61,23 @@
       border-bottom: 1px solid var(--border);
       margin-bottom: 24px;
     }
+    /* ── Filtro "O que você precisa?" (por tipo de deficiência) ── */
+    .need-bar { margin: 4px 0 8px; }
+    .need-bar h2 { font-size: 1rem; margin: 0 0 10px; color: var(--text); }
+    .need-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .need-btn {
+      display: flex; align-items: center; gap: 10px;
+      min-height: 56px; padding: 10px 14px;
+      border-radius: 12px; border: 2px solid var(--border);
+      background: var(--bg-card); color: var(--text);
+      font-size: 1rem; font-weight: 600; text-align: left; cursor: pointer;
+    }
+    .need-btn .need-ico { font-size: 1.6rem; line-height: 1; }
+    .need-btn:hover { border-color: var(--primary); }
+    .need-btn[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .need-btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .need-hint { font-size: .85rem; color: var(--text-muted); margin: 8px 0 0; min-height: 1.2em; }
+
     .filter-chip {
       display: inline-flex;
       align-items: center;
@@ -250,6 +267,7 @@
         </button>
         <ul class="nav-links" id="main-nav-links">
           <li><a href="buscar.html" aria-current="page" data-i18n="nav_search">Busca</a></li>
+          <li><a href="campanhas.html" data-i18n="nav_campaigns">Campanhas</a></li>
           <li><a href="dashboard.html" data-i18n="nav_dashboard">Dashboard</a></li>
           <li><a href="index.html" data-i18n="nav_home">Início</a></li>
         </ul>
@@ -318,6 +336,19 @@
   <main id="main" class="container" style="padding-top:28px; padding-bottom:60px;">
 
     <!-- Filtros + raio -->
+    <!-- Filtro por necessidade: a pessoa pensa "sou cadeirante", não "quero rampa".
+         Ideia vinda do portal Turismo Acessível (MTur). -->
+    <section class="need-bar" aria-labelledby="need-title">
+      <h2 id="need-title" data-i18n="need_title">O que você precisa?</h2>
+      <div class="need-grid" role="group" aria-labelledby="need-title">
+        <button type="button" class="need-btn" data-need="motora" aria-pressed="false"><span class="need-ico" aria-hidden="true">♿</span><span data-i18n="need_motora">Física ou motora</span></button>
+        <button type="button" class="need-btn" data-need="mobilidade" aria-pressed="false"><span class="need-ico" aria-hidden="true">🚶</span><span data-i18n="need_mobilidade">Mobilidade reduzida</span></button>
+        <button type="button" class="need-btn" data-need="visual" aria-pressed="false"><span class="need-ico" aria-hidden="true">🦯</span><span data-i18n="need_visual">Visual</span></button>
+        <button type="button" class="need-btn" data-need="auditiva" aria-pressed="false"><span class="need-ico" aria-hidden="true">🦻</span><span data-i18n="need_auditiva">Auditiva</span></button>
+      </div>
+      <p class="need-hint" id="need-hint" aria-live="polite"></p>
+    </section>
+
     <div class="filters" id="filter-bar" role="group" aria-label="Filtrar por categoria" data-i18n-aria-label="filter_aria">
       <span style="font-size:.85rem; font-weight:600; color:var(--text-muted);" data-i18n="filter_label">Filtrar:</span>
       <button class="filter-chip active" data-cat="all" data-i18n="filter_all">Todos</button>
@@ -328,6 +359,8 @@
       <button class="filter-chip" data-cat="4" data-i18n="cat_signage">Sinalização</button>
       <button class="filter-chip" data-cat="5" data-i18n="cat_audio">Áudio</button>
       <button class="filter-chip" data-cat="6" data-i18n="cat_braille">Braile</button>
+      <button class="filter-chip" data-cat="8" data-i18n="cat_entrance">Entrada</button>
+      <button class="filter-chip" data-cat="9" data-i18n="cat_room">Quarto adaptado</button>
       <button class="filter-chip" data-cat="7" data-i18n="cat_other">Outro</button>
 
       <div class="radius-row" style="margin-left:auto;">
@@ -340,6 +373,13 @@
           <option value="9999" data-i18n="radius_all">Todos</option>
         </select>
       </div>
+    </div>
+
+    <!-- Campanha de parceiro perto da busca (preenchido por updateCampaignNotice) -->
+    <div id="campaign-notice" class="hidden" role="status" aria-live="polite"
+         style="margin:0 0 16px; padding:12px 16px; border-radius:10px; background:var(--success-bg); color:var(--text); border:1px solid var(--border); display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; justify-content:space-between;">
+      <span id="campaign-notice-text"></span>
+      <a href="campanhas.html" class="btn btn-primary btn-sm" data-i18n="campaign_notice_cta">Ver campanha</a>
     </div>
 
     <!-- Estado inicial -->
@@ -426,7 +466,7 @@
         skip_link: 'Pular para o conteúdo',
         nav_aria: 'Navegação principal',
         nav_toggle: 'Abrir menu',
-        nav_search: 'Busca',
+        nav_search: 'Busca', nav_campaigns: 'Campanhas', need_title: 'O que você precisa?', need_motora: 'Física ou motora', need_mobilidade: 'Mobilidade reduzida', need_visual: 'Visual', need_auditiva: 'Auditiva', need_hint: 'Mostrando locais com: {cats}. Toque de novo para limpar.', campaign_notice_one: '💰 Campanha ativa perto daqui: "{title}" paga {reward} USDC por local verificado. Mapeie e receba direto na carteira.', campaign_notice_many: '💰 {count} campanhas ativas perto daqui pagam até {reward} USDC por local verificado. Mapeie e receba direto na carteira.', campaign_notice_cta: 'Ver campanha', campaign_map_tip: 'Campanha: {title}',
         nav_dashboard: 'Dashboard',
         nav_home: 'Início',
         language_select: 'Selecionar idioma',
@@ -470,6 +510,7 @@
         cat_audio: 'Áudio',
         cat_braille: 'Braile',
         cat_other: 'Outro',
+        cat_entrance: 'Entrada', cat_room: 'Quarto adaptado',
         loading_read_count: 'Lendo {count} local(is) da blockchain...',
         result_count_one: '1 local encontrado',
         result_count_many: '{count} locais encontrados',
@@ -498,7 +539,7 @@
         skip_link: 'Skip to content',
         nav_aria: 'Main navigation',
         nav_toggle: 'Open menu',
-        nav_search: 'Search',
+        nav_search: 'Search', nav_campaigns: 'Campaigns', need_title: 'What do you need?', need_motora: 'Physical or motor', need_mobilidade: 'Reduced mobility', need_visual: 'Visual', need_auditiva: 'Hearing', need_hint: 'Showing places with: {cats}. Tap again to clear.', campaign_notice_one: '💰 Active campaign nearby: "{title}" pays {reward} USDC per verified place. Map it and get paid straight to your wallet.', campaign_notice_many: '💰 {count} active campaigns nearby pay up to {reward} USDC per verified place. Map it and get paid straight to your wallet.', campaign_notice_cta: 'See campaign', campaign_map_tip: 'Campaign: {title}',
         nav_dashboard: 'Dashboard',
         nav_home: 'Home',
         language_select: 'Select language',
@@ -542,6 +583,7 @@
         cat_audio: 'Audio',
         cat_braille: 'Braille',
         cat_other: 'Other',
+        cat_entrance: 'Entrance', cat_room: 'Accessible room',
         loading_read_count: 'Reading {count} location(s) from the blockchain...',
         result_count_one: '1 place found',
         result_count_many: '{count} places found',
@@ -570,7 +612,7 @@
         skip_link: 'Saltar al contenido',
         nav_aria: 'Navegación principal',
         nav_toggle: 'Abrir menú',
-        nav_search: 'Buscar',
+        nav_search: 'Buscar', nav_campaigns: 'Campañas', need_title: '¿Qué necesitas?', need_motora: 'Física o motora', need_mobilidade: 'Movilidad reducida', need_visual: 'Visual', need_auditiva: 'Auditiva', need_hint: 'Mostrando lugares con: {cats}. Toca de nuevo para limpiar.', campaign_notice_one: '💰 Campaña activa cerca: "{title}" paga {reward} USDC por lugar verificado. Mapea y cobra directo en tu cartera.', campaign_notice_many: '💰 {count} campañas activas cerca pagan hasta {reward} USDC por lugar verificado. Mapea y cobra directo en tu cartera.', campaign_notice_cta: 'Ver campaña', campaign_map_tip: 'Campaña: {title}',
         nav_dashboard: 'Dashboard',
         nav_home: 'Inicio',
         language_select: 'Seleccionar idioma',
@@ -614,6 +656,7 @@
         cat_audio: 'Audio',
         cat_braille: 'Braille',
         cat_other: 'Otro',
+        cat_entrance: 'Entrada', cat_room: 'Habitación adaptada',
         loading_read_count: 'Leyendo {count} lugar(es) de la blockchain...',
         result_count_one: '1 lugar encontrado',
         result_count_many: '{count} lugares encontrados',
@@ -680,10 +723,27 @@
     let userLng      = null;
     let searchDone   = false;
     let activeCat    = 'all';
+    // Necessidade → categorias que atendem (ids da taxonomia em arc-config.js).
+    //   0 rampa · 1 elevador · 2 banheiro · 3 vaga · 4 sinalização · 5 áudio
+    //   6 braile/piso tátil · 7 outro · 8 entrada · 9 quarto adaptado
+    const NEEDS = {
+      motora:     [0, 1, 2, 8, 9],
+      mobilidade: [0, 1, 2, 3, 8],
+      visual:     [5, 6],
+      auditiva:   [4],
+    };
+    let activeNeed   = null;
+
+    /** O local passa nos filtros de categoria e de necessidade? */
+    function matchesFilters(loc) {
+      if (activeCat !== 'all' && (!loc.categories || !loc.categories.includes(Number(activeCat)))) return false;
+      if (activeNeed && (!loc.categories || !loc.categories.some(c => NEEDS[activeNeed].includes(Number(c))))) return false;
+      return true;
+    }
     let currentLang  = 'pt';
 
     // Mesma ordem/ids usados no formulário de registro (dashboard.html)
-    const CATEGORY_ICONS = { 0:'♿', 1:'🛗', 2:'🚻', 3:'🅿️', 4:'🔔', 5:'🔊', 6:'✋', 7:'✨' };
+    const CATEGORY_ICONS = { 0:'♿', 1:'🛗', 2:'🚻', 3:'🅿️', 4:'🔔', 5:'🔊', 6:'✋', 7:'✨', 8:'🚪', 9:'🛏️' };
     let CATEGORY_LABELS = {};
 
     // As leituras dos locais usam Multicall3 para não gerar duas requisições RPC
@@ -726,6 +786,8 @@
         5: `${CATEGORY_ICONS[5]} ${t('cat_audio')}`,
         6: `${CATEGORY_ICONS[6]} ${t('cat_braille')}`,
         7: `${CATEGORY_ICONS[7]} ${t('cat_other')}`,
+        8: `${CATEGORY_ICONS[8]} ${t('cat_entrance')}`,
+        9: `${CATEGORY_ICONS[9]} ${t('cat_room')}`,
       };
     }
 
@@ -912,6 +974,8 @@
           // null = sem metadado salvo (registrado antes dessa feature) → não filtra por categoria
           // [] = metadado salvo mas sem categoria marcada (não deveria acontecer, mas por via das dúvidas)
           loc.categories = m ? (m.categories || []) : null;
+          // Descrição da foto gerada pela IA (texto alternativo para leitor de tela).
+          loc.alt = (m && typeof m.alt === 'string') ? m.alt : null;
           // lat/lng salvos no momento do registro (api/relay.js) são a fonte confiável —
           // sobrescreve o valor obtido por escaneamento de eventos (mais frágil/incompleto).
           if (m && typeof m.lat === 'number' && typeof m.lng === 'number') {
@@ -937,7 +1001,7 @@
 
       const candidates = allLocations.filter(loc => {
         if (loc.lat === null || loc.lng === null) return false;
-        if (activeCat !== 'all' && (!loc.categories || !loc.categories.includes(Number(activeCat)))) return false;
+        if (!matchesFilters(loc)) return false;
         return true;
       });
       if (candidates.length === 0) return;
@@ -962,17 +1026,60 @@
     }
 
     // ── Renderizar resultados ─────────────────────────────
+    // ── Campanhas de parceiros (CampaignEscrow) ──────────
+    // Só leitura: lista as campanhas ATIVAS com regras conferidas pelo servidor.
+    // Falha (503 = sem contrato nesta rede, rede fora) só deixa o aviso oculto.
+    let activeCampaignsList = [];
+    async function loadActiveCampaigns() {
+      try {
+        const r = await fetch('/api/campaign-attest');
+        if (!r.ok) return;
+        const data = await r.json();
+        activeCampaignsList = (data.campaigns || []).filter(c => c.status === 'active' && c.rules);
+        if (searchDone) renderResults();
+      } catch (_) { /* sem campanhas: nada a mostrar */ }
+    }
+
+    /** Campanhas cuja zona encosta na área buscada (centro da busca + raio escolhido). */
+    function campaignsNearSearch() {
+      if (userLat === null || !activeCampaignsList.length) return [];
+      const radiusKm = Number(document.getElementById('radius-select').value);
+      const reach = radiusKm < 9999 ? radiusKm : 0;
+      return activeCampaignsList.filter(c =>
+        haversineKm(userLat, userLng, c.rules.zone.lat, c.rules.zone.lng) <= c.rules.zone.radiusKm + reach);
+    }
+
+    function formatUsdcRaw(raw) {
+      const n = Number(raw) / 1e6;
+      return n.toLocaleString(currentLang === 'pt' ? 'pt-BR' : currentLang, { minimumFractionDigits: 2, maximumFractionDigits: 6 });
+    }
+
+    function updateCampaignNotice() {
+      const box = document.getElementById('campaign-notice');
+      const text = document.getElementById('campaign-notice-text');
+      if (!box || !text) return;
+      const near = campaignsNearSearch();
+      if (!near.length) { box.classList.add('hidden'); return; }
+      const best = near.reduce((a, b) => (BigInt(b.rewardPerItem) > BigInt(a.rewardPerItem) ? b : a));
+      text.textContent = near.length === 1
+        ? t('campaign_notice_one', { title: best.rules.title, reward: formatUsdcRaw(best.rewardPerItem) })
+        : t('campaign_notice_many', { count: near.length, reward: formatUsdcRaw(best.rewardPerItem) });
+      box.classList.remove('hidden');
+    }
+
     function renderResults() {
       const radiusKm = Number(document.getElementById('radius-select').value);
       const grid     = document.getElementById('results-grid');
       const countEl  = document.getElementById('results-count');
 
+      // Antes do "nenhum local encontrado": área vazia COM campanha é justamente
+      // o melhor convite para mapear.
+      updateCampaignNotice();
+
       let filtered = allLocations.filter(loc => {
-        if (activeCat !== 'all') {
-          // categories === null → local sem metadado salvo (registrado antes dessa feature).
-          // Não dá pra confirmar a categoria, então some do filtro específico (mas aparece em "Todos").
-          if (!loc.categories || !loc.categories.includes(Number(activeCat))) return false;
-        }
+        // categories === null → local sem metadado salvo (registrado antes dessa feature).
+        // Não dá pra confirmar a categoria, então some dos filtros (mas aparece em "Todos").
+        if (!matchesFilters(loc)) return false;
         if (userLat !== null && radiusKm < 9999) {
           // Busca por endereço/GPS ativa: local SEM coordenada confiável não pode
           // ser incluído "por padrão" — antes isso deixava passar locais de
@@ -1037,6 +1144,7 @@
               </div>
             </div>
             ${catBadges}
+            ${loc.alt ? `<p class="location-alt" style="font-size:.85rem;margin:4px 0;color:var(--text-muted);"><span aria-hidden="true">📷 </span>${escapeHtml(loc.alt)}</p>` : ''}
             <div class="location-meta">
               ${distLabel}
               ${verBadge}
@@ -1068,6 +1176,13 @@
         resultsMarkers = window.L.layerGroup().addTo(resultsMap);
       }
       resultsMarkers.clearLayers();
+
+      // Zonas de campanha ativa perto da busca, em verde, por baixo dos pins.
+      campaignsNearSearch().forEach(c => {
+        window.L.circle([c.rules.zone.lat, c.rules.zone.lng], {
+          radius: c.rules.zone.radiusKm * 1000, color: '#15803d', weight: 2, fillOpacity: 0.08,
+        }).bindTooltip(t('campaign_map_tip', { title: c.rules.title })).addTo(resultsMarkers);
+      });
 
       const pts = [];
       locs.forEach(loc => {
@@ -1187,7 +1302,7 @@
     });
 
     document.querySelectorAll('.lang-btn').forEach(btn => {
-      btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
+      btn.addEventListener('click', () => { setLanguage(btn.dataset.lang); updateCampaignNotice(); paintNeedHint(); });
     });
 
     // Filtros de categoria
@@ -1196,10 +1311,64 @@
         document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         activeCat = btn.dataset.cat;
+        if (activeCat !== 'all') setNeed(null);
         if (searchDone) renderResults();
         else searchAll();
       });
     });
+
+    // ── Filtro por necessidade ────────────────────────────
+    function paintNeedHint() {
+      const hint = document.getElementById('need-hint');
+      if (!hint) return;
+      hint.textContent = activeNeed
+        ? t('need_hint', { cats: NEEDS[activeNeed].map(c => CATEGORY_LABELS[c] || c).join(', ') })
+        : '';
+    }
+    function setNeed(need) {
+      activeNeed = need && NEEDS[need] ? need : null;
+      document.querySelectorAll('.need-btn').forEach(b =>
+        b.setAttribute('aria-pressed', String(b.dataset.need === activeNeed)));
+      paintNeedHint();
+    }
+    document.querySelectorAll('.need-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setNeed(activeNeed === btn.dataset.need ? null : btn.dataset.need);
+        // Necessidade e categoria específica não se somam: volta o chip para "Todos".
+        if (activeNeed) {
+          document.querySelectorAll('.filter-chip').forEach(b => b.classList.toggle('active', b.dataset.cat === 'all'));
+          activeCat = 'all';
+        }
+        if (searchDone) renderResults();
+        else searchAll();
+      });
+    });
+
+    // ?need=visual (links dos cards "Para quem é" da página inicial)
+    (function applyInitialNeed() {
+      const raw = (new URLSearchParams(window.location.search).get('need') || '').toLowerCase();
+      if (!NEEDS[raw]) return;
+      setNeed(raw);
+      if (!new URLSearchParams(window.location.search).get('q')) searchAll();
+    })();
+
+    // Filtro vindo da URL (?cat=room, ?cat=9 …) — usado pelos links da página inicial.
+    (function applyInitialCat() {
+      const raw = new URLSearchParams(window.location.search).get('cat');
+      if (!raw) return;
+      const SLUG = { ramp:0, elevator:1, restroom:2, parking:3, signage:4, audio:5, tactile:6, braille:6, other:7, entrance:8, room:9, hotel:9 };
+      const id = /^\d+$/.test(raw) ? raw : SLUG[raw.toLowerCase()];
+      const chip = id !== undefined && document.querySelector(`.filter-chip[data-cat="${id}"]`);
+      if (!chip) return;
+      if (initialQuery) {
+        // a busca por endereço já está em andamento: só marca o filtro
+        document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+        chip.classList.add('active');
+        activeCat = String(id);
+      } else {
+        chip.click();
+      }
+    })();
 
     // ── Theme + nav ───────────────────────────────────────
     (function initTheme() {
@@ -1228,7 +1397,12 @@
     }
 
     setLanguage(detectLanguage());
+    paintNeedHint();
+    loadActiveCampaigns();
   </script>
   <script src="lang-menu.js" defer></script>
+  <!-- VLibras (governo federal): traduz o conteúdo da página para Libras.
+       v7 se inicializa sozinho; carregado com defer para não atrasar a página. -->
+  <script src="https://vlibras.gov.br/app/vlibras-plugin.js" defer></script>
 </body>
 </html>

@@ -28,10 +28,11 @@ export const LOCATION_CATEGORIES: LocationCategoryMeta[] = [
   { id: 6, labelKey: 'categories.braille',  icon: 'grid',                       color: '#0D9488' },
   { id: 7, labelKey: 'categories.other',    icon: 'ellipsis-horizontal-circle', color: '#64748B' },
   { id: 8, labelKey: 'categories.entrance', icon: 'enter',                      color: '#15803D' },
+  { id: 9, labelKey: 'categories.room',     icon: 'bed',                        color: '#9333EA' },
 ];
 
 // Ordem no formulário: acesso físico primeiro, sensorial depois, outro no fim.
-export const CATEGORY_FORM_ORDER = [0, 2, 3, 8, 1, 4, 5, 6, 7];
+export const CATEGORY_FORM_ORDER = [0, 2, 3, 8, 9, 1, 4, 5, 6, 7];
 
 // Slugs enviados por versões antigas do app — mapeados para o id da web.
 // 'entrance' vira 8 (Entrada Acessível); texto livre cai fora (o nome o carrega).
@@ -55,7 +56,7 @@ export function metaOrDefault(cats: number[]): LocationCategoryMeta {
 
 /**
  * Converte o array vindo do Upstash (números da web, slugs legados do app)
- * em ids canônicos 0-8, preservando a ordem de chegada.
+ * em ids canônicos 0-9, preservando a ordem de chegada.
  */
 export function categoryIdsFromMeta(cats: (string | number)[] | undefined): number[] {
   if (!Array.isArray(cats)) return [];
@@ -64,7 +65,7 @@ export function categoryIdsFromMeta(cats: (string | number)[] | undefined): numb
     const id = typeof raw === 'number'
       ? raw
       : LEGACY_SLUG_TO_ID[String(raw).trim().toLowerCase()] ?? null;
-    if (id !== null && id >= 0 && id <= 8 && !ids.includes(id)) ids.push(id);
+    if (id !== null && id >= 0 && id <= 9 && !ids.includes(id)) ids.push(id);
   }
   return ids;
 }

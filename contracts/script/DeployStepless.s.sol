@@ -5,7 +5,7 @@
 //  Deploy em duas fases (dependência circular Oracle ↔ Distributor):
 //    1. Oracle com address(0) no lugar do distributor
 //    2. RewardDistributor com o endereço real do Oracle
-//    3. X402API com o endereço real do Oracle
+//    3. X402API e CampaignEscrow com o endereço real do Oracle
 //    4. oracle.setRewardDistributor(distributor)
 //    5. Autoriza o relayer e o Oracle nos lugares certos
 //    6. Transfere o admin para o multisig (fase 1 de 2 — o multisig precisa
@@ -17,6 +17,8 @@
 //    RELAYER_ADDRESS   EOA do relayer (escreve em nome dos usuários)
 //    USDC_ADDRESS      interface ERC-20 do USDC na rede alvo
 //    MEMO_ADDRESS      contrato Memo da rede (0x0 desliga a indexação por memo)
+//    VERIFIER_ADDRESS  verificador inicial (0x0 = nenhum; setVerifier depois)
+//    ATTESTER_ADDRESS  atestador das campanhas (0x0 = nenhum; setAttester depois)
 //
 //  Nenhum valor tem default. Um endereço de USDC errado em mainnet é
 //  irreversível, então preferimos falhar no deploy a adivinhar.
@@ -32,6 +34,7 @@ import "forge-std/Script.sol";
 import {SteplessOracle} from "../src/SteplessOracle.sol";
 import {RewardDistributor} from "../src/RewardDistributor.sol";
 import {X402API} from "../src/X402API.sol";
+import {CampaignEscrow} from "../src/CampaignEscrow.sol";
 
 contract DeployStepless is Script {
     function run() external {
@@ -40,6 +43,8 @@ contract DeployStepless is Script {
         address relayer     = vm.envAddress("RELAYER_ADDRESS");
         address usdc        = vm.envAddress("USDC_ADDRESS");
         address memoAddr    = vm.envAddress("MEMO_ADDRESS");
+        address verifier    = vm.envOr("VERIFIER_ADDRESS", address(0));
+        address attester    = vm.envOr("ATTESTER_ADDRESS", address(0));
 
         address deployer = vm.addr(privateKey);
 
@@ -50,6 +55,9 @@ contract DeployStepless is Script {
         // O relayer NAO pode ser o admin: e exatamente o acoplamento que
         // permitia drenar a tesouraria com uma unica chave (auditoria C1).
         require(relayer != admin, "RELAYER_ADDRESS deve ser diferente de ADMIN_ADDRESS");
+        // Atestador e verificador separados do relayer: com a mesma chave, uma
+        // pessoa so registraria, aprovaria e pagaria.
+        require(attester != relayer && verifier != relayer, "VERIFIER/ATTESTER devem ser diferentes do RELAYER");
 
         vm.startBroadcast(privateKey);
 
@@ -61,6 +69,7 @@ contract DeployStepless is Script {
         // ── Fase 2 e 3 ──────────────────────────────────────────────────────
         RewardDistributor distributor = new RewardDistributor(address(oracle), deployer, usdc);
         X402API api = new X402API(address(oracle), deployer, usdc);
+        CampaignEscrow escrow = new CampaignEscrow(address(oracle), deployer, usdc);
 
         // ── Fase 4: resolve a dependencia circular ──────────────────────────
         oracle.setRewardDistributor(address(distributor));
@@ -79,10 +88,14 @@ contract DeployStepless is Script {
         // recordVerification() agora exige msg.sender == address(oracle)
         // diretamente, o que e mais restrito do que estar numa lista.
 
+        if (verifier != address(0)) distributor.setVerifier(verifier, true);
+        if (attester != address(0)) escrow.setAttester(attester, true);
+
         // ── Fase 6: entrega o admin ao multisig (fase 1 de 2) ───────────────
         oracle.transferAdmin(admin);
         distributor.transferAdmin(admin);
         api.transferAdmin(admin);
+        escrow.transferAdmin(admin);
 
         vm.stopBroadcast();
 
@@ -90,13 +103,14 @@ contract DeployStepless is Script {
         console.log("SteplessOracle:      ", address(oracle));
         console.log("RewardDistributor:   ", address(distributor));
         console.log("X402API:             ", address(api));
+        console.log("CampaignEscrow:      ", address(escrow));
         console.log("USDC (ERC-20):       ", usdc);
         console.log("Memo:                ", memoAddr);
         console.log("Relayer autorizado:  ", relayer);
         console.log("Admin pendente:      ", admin);
         console.log("");
         console.log("PROXIMOS PASSOS (nesta ordem):");
-        console.log("  1. Do multisig, chamar acceptAdmin() nos TRES contratos.");
+        console.log("  1. Do multisig, chamar acceptAdmin() nos QUATRO contratos.");
         console.log("     Ate isso acontecer, o admin ainda e o deployer.");
         console.log("  2. distributor.setVerifier(<verificador>, true)");
         console.log("  3. Aprovar USDC e chamar distributor.fundTreasury(<valor>)");

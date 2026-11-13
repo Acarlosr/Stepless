@@ -18,6 +18,7 @@ import {
   verifySignedRequest,
 } from './_stepless.js';
 import { bumpReputation } from './_risk.js';
+import { attestContribution, attesterAccount, hasEscrow } from './_campaign.js';
 
 export default async function handler(req, res) {
   cors(res, 'POST, OPTIONS', req);
@@ -123,28 +124,53 @@ export default async function handler(req, res) {
 
     const rewardType = REWARD_TYPE[meta.rewardType] ?? REWARD_TYPE.NewLocation;
     let payTx = null;
-    const claimed = await pub.readContract({
-      address: distributorAddress(), abi: DISTRIBUTOR_ABI, functionName: 'rewardClaimed', args: [contributionId],
-    });
-    if (!claimed) {
+    const dist = { address: distributorAddress(), abi: DISTRIBUTOR_ABI };
+    // v5.1: recompensa só existe enquanto houver patrocínio. Desligada (padrão),
+    // a contribuição fica verificada e NADA é pago nem fica devido.
+    let rewardsOn = true;
+    try { rewardsOn = await pub.readContract({ ...dist, functionName: 'rewardsEnabled' }); } catch (_) { /* v5.0 */ }
+
+    let claimed = await pub.readContract({ ...dist, functionName: 'rewardClaimed', args: [contributionId] });
+    if (rewardsOn && !claimed) {
       payTx = await walletFor(relayer).writeContract({
-        address: distributorAddress(),
-        abi: DISTRIBUTOR_ABI,
+        ...dist,
         functionName: 'payReward',
         args: [contributionId, recipient, rewardType],
       });
       await pub.waitForTransactionReceipt({ hash: payTx });
+      claimed = await pub.readContract({ ...dist, functionName: 'rewardClaimed', args: [contributionId] });
     }
+    const rewarded = Boolean(claimed);
 
     await store.setJSON(contribKey(contributionId), {
-      ...meta, status: 'paid', verifyTx, payTx, paidTo: recipient, paidAt: Date.now(), approvedBy,
+      ...meta, status: rewarded ? 'paid' : 'verified', rewarded, verifyTx, payTx,
+      paidTo: rewarded ? recipient : null, paidAt: rewarded ? Date.now() : null, approvedBy,
     });
     await store.listRemove(PENDING_LIST_KEY, contributionId);
     // Histórico limpo baixa o risco das próximas submissões desta carteira —
     // quem contribui de verdade encontra menos atrito com o tempo.
     await bumpReputation(recipient, 'approved');
 
-    return res.status(200).json({ success: true, approved: true, verifyTx, payTx, paidTo: recipient, approvedBy });
+    // 3) Campanha de parceiro (CampaignEscrow). Melhor esforço: a verificação
+    //    já está gravada on-chain, então uma falha aqui NÃO desfaz a aprovação —
+    //    a contribuição pode ser atestada depois por POST /api/campaign-attest.
+    let campaign = null;
+    if (hasEscrow() && process.env.ATTESTER_PRIVATE_KEY) {
+      try {
+        campaign = await attestContribution({ pub, wallet: walletFor(attesterAccount()), contributionId });
+        if (campaign.paid) {
+          const cur = (await store.getJSON(contribKey(contributionId))) || {};
+          await store.setJSON(contribKey(contributionId), {
+            ...cur, campaignId: campaign.campaignId, campaignTx: campaign.tx, campaignAmount: campaign.amount,
+          });
+        }
+      } catch (err) {
+        console.error('[verify] campanha:', err);
+        campaign = { paid: false, reason: 'erro ao atestar campanha', error: translateError(err).error };
+      }
+    }
+
+    return res.status(200).json({ success: true, approved: true, rewarded, rewardsEnabled: rewardsOn, verifyTx, payTx, paidTo: rewarded ? recipient : null, approvedBy, campaign });
   } catch (err) {
     console.error('[verify] Error:', err);
     const t = translateError(err);

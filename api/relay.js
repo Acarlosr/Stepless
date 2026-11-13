@@ -38,6 +38,7 @@ import { store, contribKey, PENDING_LIST_KEY, clientIp, cors, ORACLE_ABI, transl
 import { photoKey, photoHashKey } from './upload.js';
 import { chainConfig, rpcUrls, contractAddresses } from './_network.js';
 import { checkPlace } from './_placecheck.js';
+import { checkPhotoAI } from './_ai.js';
 import { getReputation, bumpReputation, withinDailyQuota, scoreSubmission, shouldBlock } from './_risk.js';
 
 // ─── Metadados fora da chain (Upstash Redis REST) ───────────────────────────
@@ -55,6 +56,7 @@ async function saveLocationMeta(locationHash, meta) {
       lat: typeof meta.lat === 'number' ? meta.lat : null,
       lng: typeof meta.lng === 'number' ? meta.lng : null,
       cid: meta.cid || null,
+      alt: typeof meta.alt === 'string' ? meta.alt.slice(0, 140) : null,
     });
     const res = await fetch(`${url}/set/${encodeURIComponent(key)}/${encodeURIComponent(value)}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -248,6 +250,15 @@ export default async function handler(req, res) {
       source: 'server-extracted',
     };
 
+    // Segunda opinião da IA sobre a foto (OpenRouter, modelo grátis). Disparada
+    // já, aguardada só no fim — corre em paralelo com as transações on-chain.
+    // Nunca bloqueia: sem chave ou com falha, vira { verdict: 'unknown' }.
+    const aiPromise = checkPhotoAI({
+      imageUrl: photo.cid ? `https://gateway.pinata.cloud/ipfs/${photo.cid}` : null,
+      categories: submissionData.categories,
+    }).catch(() => ({ verdict: 'unknown', risk: 0, reason: 'IA indisponível.' }));
+    let aiEvidence = null;
+
     // ── submitContribution ────────────────────────────────────────────────
     if (action === 'submitContribution') {
       const { locationHash, contributionType } = submissionData;
@@ -328,9 +339,11 @@ export default async function handler(req, res) {
       // do veredito antes de gastar gas, e quem ligou a trava aceitou a espera.
       if (Number(process.env.RISK_BLOCK_THRESHOLD || 0) > 0) {
         placeEvidence = await placePromise;
+        aiEvidence = await aiPromise;
         riskAssessment = scoreSubmission({
           exif: photoEvidence,
           place: placeEvidence,
+          ai: aiEvidence,
           reputation,
           gpsSource: gpsSource ?? null,
           gpsAccuracyM: Number(gpsAccuracyM),
@@ -431,9 +444,25 @@ export default async function handler(req, res) {
       } catch (pErr) {
         placeEvidence = { verdict: 'unknown', risk: 0, reason: `Checagem de local indisponível (${pErr?.message || pErr}).`, pois: [] };
       }
+      if (!aiEvidence) aiEvidence = await aiPromise;
       riskAssessment = scoreSubmission({
         exif: photoEvidence,
         place: placeEvidence,
+        ai: aiEvidence,
+        reputation,
+        gpsSource: submissionData.gpsSource ?? null,
+        gpsAccuracyM: Number(submissionData.gpsAccuracyM),
+        photoTs: photo.exif.timestamp,
+      });
+    }
+
+    // Contribuições sem checagem de OSM (atualizações) também recebem a IA.
+    if (!aiEvidence) aiEvidence = await aiPromise;
+    if (!riskAssessment && aiEvidence && aiEvidence.verdict !== 'unknown') {
+      riskAssessment = scoreSubmission({
+        exif: photoEvidence,
+        place: null,
+        ai: aiEvidence,
         reputation,
         gpsSource: submissionData.gpsSource ?? null,
         gpsAccuracyM: Number(submissionData.gpsAccuracyM),
@@ -458,6 +487,7 @@ export default async function handler(req, res) {
         photo: photoEvidence,
         ipfsUrl: photo.cid ? `https://gateway.pinata.cloud/ipfs/${photo.cid}` : null,
         place: placeEvidence,
+        ai: aiEvidence,
         risk: riskAssessment,
         // Congelado na submissão: se a carteira for rejeitada depois, o
         // verificador ainda vê qual era o histórico quando decidiu.
@@ -479,6 +509,8 @@ export default async function handler(req, res) {
         lat: Number.isFinite(packedLat) ? packedLat / 1e6 - 90 : null,
         lng: Number.isFinite(packedLng) ? packedLng / 1e6 - 180 : null,
         cid: photo.cid,
+        // Texto alternativo gerado pela IA — lido por leitores de tela na busca.
+        alt: aiEvidence?.alt || null,
       });
     }
 
