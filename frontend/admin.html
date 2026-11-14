@@ -37,6 +37,28 @@
       Só a carteira que aparece em "Admin pendente" consegue aceitar. Se for um multisig (Safe), aceite pelo app do Safe chamando <span class="mono">acceptAdmin()</span> em cada endereço.
     </p>
     <div class="adm-status" id="adm-status" role="status" aria-live="polite" hidden></div>
+
+    <h2 class="section-title" style="font-size:1.25rem; margin-top:36px;">Papéis</h2>
+    <p>Só o admin consegue mudar. <strong>Verificador</strong> aprova ou rejeita locais pelo painel "Mapear um local" (assinando com a própria carteira). <strong>Atestador</strong> é a chave do servidor que paga as campanhas — normalmente não precisa mexer.</p>
+    <div class="form-row" style="align-items:end;">
+      <div class="form-group">
+        <label for="role-addr">Endereço da carteira</label>
+        <input type="text" id="role-addr" placeholder="0x…" autocomplete="off" spellcheck="false" />
+      </div>
+      <div class="form-group">
+        <label for="role-kind">Papel</label>
+        <select id="role-kind">
+          <option value="verifier">Verificador (RewardDistributor)</option>
+          <option value="attester">Atestador de campanhas (CampaignEscrow)</option>
+        </select>
+      </div>
+    </div>
+    <p style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button type="button" class="btn btn-secondary" id="role-check">Consultar</button>
+      <button type="button" class="btn btn-primary" id="role-add">Dar o papel</button>
+      <button type="button" class="btn btn-secondary" id="role-remove">Remover o papel</button>
+    </p>
+    <p id="role-result" class="mono" aria-live="polite"></p>
   </main>
 
   <script type="module">
@@ -154,7 +176,62 @@
       }
     }
 
+    // ── Papéis: verificador (distributor) e atestador (escrow) ──
+    const ROLES = {
+      verifier: {
+        contract: 'RewardDistributor',
+        abi: [
+          { type: 'function', name: 'verifiers', stateMutability: 'view', inputs: [{ type: 'address' }], outputs: [{ type: 'bool' }] },
+          { type: 'function', name: 'setVerifier', stateMutability: 'nonpayable', inputs: [{ type: 'address' }, { type: 'bool' }], outputs: [] },
+          { type: 'error', name: 'Unauthorized', inputs: [] },
+        ],
+        read: 'verifiers', write: 'setVerifier', label: 'verificador',
+      },
+      attester: {
+        contract: 'CampaignEscrow',
+        abi: [
+          { type: 'function', name: 'attesters', stateMutability: 'view', inputs: [{ type: 'address' }], outputs: [{ type: 'bool' }] },
+          { type: 'function', name: 'setAttester', stateMutability: 'nonpayable', inputs: [{ type: 'address' }, { type: 'bool' }], outputs: [] },
+          { type: 'error', name: 'Unauthorized', inputs: [] },
+        ],
+        read: 'attesters', write: 'setAttester', label: 'atestador',
+      },
+    };
+    const roleOut = (msg) => { document.getElementById('role-result').textContent = msg; };
+    function roleInput() {
+      const raw = document.getElementById('role-addr').value.trim();
+      if (!viem.isAddress(raw, { strict: false })) { roleOut('Endereço inválido.'); return null; }
+      const role = ROLES[document.getElementById('role-kind').value];
+      const address = NET.contracts?.[role.contract];
+      if (!address) { roleOut(`${role.contract} não está publicado nesta rede.`); return null; }
+      return { who: viem.getAddress(raw), role, address };
+    }
+    async function roleCheck() {
+      const i = roleInput(); if (!i) return;
+      const has = await pub.readContract({ address: i.address, abi: i.role.abi, functionName: i.role.read, args: [i.who] });
+      roleOut(`${short(i.who)} ${has ? 'É' : 'NÃO é'} ${i.role.label}.`);
+    }
+    async function roleSet(value) {
+      const i = roleInput(); if (!i) return;
+      if (!me) { roleOut('Conecte a carteira admin primeiro.'); return; }
+      try {
+        const wallet = viem.createWalletClient({ account: me, chain: NET.chain, transport: viem.custom(window.ethereum) });
+        await pub.simulateContract({ account: me, address: i.address, abi: i.role.abi, functionName: i.role.write, args: [i.who, value] });
+        roleOut('Confirme na carteira…');
+        const hash = await wallet.writeContract({ address: i.address, abi: i.role.abi, functionName: i.role.write, args: [i.who, value] });
+        await pub.waitForTransactionReceipt({ hash });
+        roleOut(`✓ ${short(i.who)} ${value ? 'agora é' : 'deixou de ser'} ${i.role.label}.`);
+        status('', hash);
+      } catch (err) {
+        const msg = (err.shortMessage || err.message).split('\n')[0];
+        roleOut(err?.code === 4001 ? 'Transação cancelada.' : /Unauthorized/.test(msg) ? 'Só o admin pode mudar papéis (aceite o admin acima primeiro).' : `Não foi possível: ${msg}`);
+      }
+    }
+
     (async () => {
+      document.getElementById('role-check').addEventListener('click', () => roleCheck().catch((e) => roleOut(e.message)));
+      document.getElementById('role-add').addEventListener('click', () => roleSet(true));
+      document.getElementById('role-remove').addEventListener('click', () => roleSet(false));
       document.getElementById('adm-network').textContent = `Rede: ${NET.name} (chainId ${NET.chainId})`;
       viem = await import(VIEM_URL);
       pub = viem.createPublicClient({ chain: NET.chain, transport: viem.http(NET.httpRpcUrls?.[0] || NET.rpcUrls[0]) });
