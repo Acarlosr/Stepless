@@ -153,6 +153,30 @@ async function main() {
 
   const C = compile();
 
+  // ── Nonce controlado aqui, não pelo RPC ──────────────────────────────────
+  // O RPC público da Arc distribui as chamadas entre vários nós. Com blocos
+  // sub-segundo, um nó atrasado devolvia um nonce antigo e a transação era
+  // recusada ("nonce lower than the current nonce") — aconteceu no 1º deploy
+  // da testnet, no 4º contrato. Agora o nonce é lido uma vez e incrementado
+  // localmente; se a rede recusar mesmo assim, relê e tenta de novo.
+  let nonce = await pub.getTransactionCount({ address: deployer.address, blockTag: 'pending' });
+  const isNonceError = (e) => /nonce/i.test(`${e?.shortMessage || ''} ${e?.message || ''} ${e?.details || ''}`);
+  async function send(fn) {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        const hash = await fn(nonce);
+        nonce += 1;
+        return hash;
+      } catch (err) {
+        if (!isNonceError(err) || attempt >= 4) throw err;
+        await new Promise((r) => setTimeout(r, 1500 * attempt));
+        const fresh = await pub.getTransactionCount({ address: deployer.address, blockTag: 'pending' });
+        nonce = fresh > nonce ? fresh : nonce;
+        log(`  ↻ nonce ajustado para ${nonce} (tentativa ${attempt + 1})`);
+      }
+    }
+  }
+
   async function fees() {
     try {
       const f = await pub.estimateFeesPerGas();
@@ -171,7 +195,7 @@ async function main() {
   }
 
   async function deploy(name, art, args) {
-    const hash = await wallet.deployContract({ abi: art.abi, bytecode: art.bytecode, args, ...(await fees()) });
+    const hash = await send(async (n) => wallet.deployContract({ abi: art.abi, bytecode: art.bytecode, args, nonce: n, ...(await fees()) }));
     const r = await wait(hash, `Deploy de ${name}`);
     // Normaliza para checksum: o recibo pode vir em minúsculas e as leituras
     // do contrato vêm em checksum — sem isto a conferência acusaria diferença.
@@ -181,7 +205,7 @@ async function main() {
   }
 
   async function call(label, address, abi, functionName, args) {
-    const hash = await wallet.writeContract({ address, abi, functionName, args, ...(await fees()) });
+    const hash = await send(async (n) => wallet.writeContract({ address, abi, functionName, args, nonce: n, ...(await fees()) }));
     await wait(hash, label);
     log(`  · ${label}`);
     return hash;
