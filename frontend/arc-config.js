@@ -98,7 +98,9 @@ const CONTRACTS = {
  * Verificado no ArcScan em 2026-07-06: autorizado pelo admin
  * 0xbc8aE412f4F6aFA21aDf4A18DEfFabbFB21304aE.
  */
-const RELAYER_ADDRESS = "0xd299358Db4e263d95Fdc0B72970373470921c53A";
+// 0xd299…c53A é o VERIFICADOR; o relayer (RELAYER_PRIVATE_KEY na Vercel) é 0xbc8a…04aE
+// (conferido com o deploy v5 de 14/11/2026).
+const RELAYER_ADDRESS = "0xbc8aE412f4F6aFA21aDf4A18DEfFabbFB21304aE";
 
 /* ──────────────────────────────────────────────────────────────
  *  ABIs

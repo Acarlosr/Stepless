@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Stepless — Administração dos contratos</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Página de administração: só LEITURA pública + acceptAdmin().
+       Não dá poder a ninguém: acceptAdmin só funciona para a carteira que o
+       contrato já indicou como pendingAdmin (Admin2Step). -->
+  <script src="network.js"></script>
+  <style>
+    .adm-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    .adm-table th, .adm-table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .adm-table th { font-size: .85rem; color: var(--text-muted); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85rem; word-break: break-all; }
+    .ok   { color: var(--success); font-weight: 700; }
+    .warn { color: var(--warning); font-weight: 700; }
+    .adm-status { margin-top: 16px; padding: 12px 14px; border-radius: 10px; background: var(--bg-alt); border: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <main id="main" class="container" style="padding:40px 16px 60px; max-width:960px;">
+    <h1 class="section-title" style="margin-bottom:6px;">Administração dos contratos</h1>
+    <p class="section-subtitle" id="adm-network"></p>
+    <p>Depois do deploy, o admin fica <strong>pendente</strong> até a carteira indicada aceitar. Conecte essa carteira e clique em <strong>Aceitar</strong> em cada contrato.</p>
+
+    <button type="button" class="btn btn-primary" id="btn-connect">Conectar carteira</button>
+    <span id="adm-me" class="mono" style="margin-left:10px;"></span>
+
+    <table class="adm-table" aria-describedby="adm-help">
+      <thead><tr><th>Contrato</th><th>Admin atual</th><th>Admin pendente</th><th>Ação</th></tr></thead>
+      <tbody id="adm-rows"><tr><td colspan="4">Carregando…</td></tr></tbody>
+    </table>
+    <p id="adm-help" style="font-size:.85rem; color:var(--text-muted); margin-top:8px;">
+      Só a carteira que aparece em "Admin pendente" consegue aceitar. Se for um multisig (Safe), aceite pelo app do Safe chamando <span class="mono">acceptAdmin()</span> em cada endereço.
+    </p>
+    <div class="adm-status" id="adm-status" role="status" aria-live="polite" hidden></div>
+  </main>
+
+  <script type="module">
+    const VIEM_URL = 'https://esm.sh/viem@2.21.0';
+    const NET = window.STEPLESS_NETWORK;
+    const ABI = [
+      { type: 'function', name: 'admin', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+      { type: 'function', name: 'pendingAdmin', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+      { type: 'function', name: 'acceptAdmin', stateMutability: 'nonpayable', inputs: [], outputs: [] },
+      { type: 'error', name: 'Unauthorized', inputs: [] },
+    ];
+    const NAMES = ['SteplessOracle', 'RewardDistributor', 'X402API', 'CampaignEscrow'];
+    const ZERO = '0x0000000000000000000000000000000000000000';
+
+    let viem, pub, me = null;
+
+    const short = (a) => (a && a !== ZERO ? `${a.slice(0, 6)}…${a.slice(-4)}` : '—');
+    const same = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
+    function status(msg, txHash) {
+      const el = document.getElementById('adm-status');
+      el.hidden = !msg;
+      el.textContent = msg ? `${msg} ` : '';
+      if (txHash && NET.explorerTx) {
+        const a = document.createElement('a');
+        a.href = NET.explorerTx(txHash); a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Ver transação';
+        el.appendChild(a);
+      }
+    }
+
+    async function load() {
+      const tbody = document.getElementById('adm-rows');
+      const rows = [];
+      for (const name of NAMES) {
+        const address = NET.contracts?.[name];
+        if (!address) { rows.push({ name, address: null }); continue; }
+        try {
+          const [admin, pending] = await Promise.all([
+            pub.readContract({ address, abi: ABI, functionName: 'admin' }),
+            pub.readContract({ address, abi: ABI, functionName: 'pendingAdmin' }),
+          ]);
+          rows.push({ name, address, admin, pending });
+        } catch (err) {
+          rows.push({ name, address, error: err.shortMessage || err.message });
+        }
+      }
+      tbody.textContent = '';
+      for (const r of rows) {
+        const tr = document.createElement('tr');
+        const cell = (text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; tr.appendChild(td); return td; };
+        const c0 = cell(r.name);
+        if (r.address) {
+          const a = document.createElement('div'); a.className = 'mono';
+          const link = document.createElement('a'); link.href = NET.explorerAddress(r.address); link.target = '_blank'; link.rel = 'noopener'; link.textContent = short(r.address);
+          a.appendChild(link); c0.appendChild(a);
+        }
+        if (!r.address) { cell('não publicado nesta rede'); cell(''); cell(''); tbody.appendChild(tr); continue; }
+        if (r.error) { cell('erro ao ler: ' + r.error); cell(''); cell(''); tbody.appendChild(tr); continue; }
+        cell(short(r.admin) + (same(r.admin, me) ? ' (você)' : ''), 'mono');
+        cell(r.pending && r.pending !== ZERO ? short(r.pending) + (same(r.pending, me) ? ' (você)' : '') : 'nenhum', 'mono');
+        const act = document.createElement('td');
+        if (r.pending && r.pending !== ZERO) {
+          const btn = document.createElement('button');
+          btn.type = 'button'; btn.className = 'btn btn-primary btn-sm'; btn.textContent = 'Aceitar';
+          btn.disabled = !same(r.pending, me);
+          btn.title = btn.disabled ? 'Conecte a carteira que está como admin pendente' : '';
+          btn.addEventListener('click', () => accept(r, btn));
+          act.appendChild(btn);
+        } else if (same(r.admin, me)) {
+          act.innerHTML = '<span class="ok">✓ você é o admin</span>';
+        } else {
+          act.textContent = '—';
+        }
+        tr.appendChild(act);
+        tbody.appendChild(tr);
+      }
+    }
+
+    async function connect() {
+      if (!window.ethereum) { status('Nenhuma carteira encontrada. Instale MetaMask ou Rabby.'); return; }
+      const [addr] = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      me = viem.getAddress(addr);
+      document.getElementById('adm-me').textContent = me;
+      await ensureChain();
+      await load();
+    }
+
+    async function ensureChain() {
+      const want = `0x${Number(NET.chainId).toString(16)}`;
+      const have = await window.ethereum.request({ method: 'eth_chainId' });
+      if (have.toLowerCase() === want) return;
+      try {
+        await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: want }] });
+      } catch (err) {
+        if (err?.code !== 4902) throw err;
+        await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{
+          chainId: want, chainName: NET.name, nativeCurrency: NET.nativeCurrency,
+          rpcUrls: NET.rpcUrls, blockExplorerUrls: NET.explorerUrl ? [NET.explorerUrl] : [],
+        }] });
+      }
+    }
+
+    async function accept(r, btn) {
+      btn.disabled = true;
+      try {
+        const wallet = viem.createWalletClient({ account: me, chain: NET.chain, transport: viem.custom(window.ethereum) });
+        await pub.simulateContract({ account: me, address: r.address, abi: ABI, functionName: 'acceptAdmin' });
+        status(`Confirme na carteira: aceitar o admin de ${r.name}…`);
+        const hash = await wallet.writeContract({ address: r.address, abi: ABI, functionName: 'acceptAdmin' });
+        await pub.waitForTransactionReceipt({ hash });
+        status(`✓ Você agora é o admin de ${r.name}.`, hash);
+        await load();
+      } catch (err) {
+        status(err?.code === 4001 ? 'Transação cancelada na carteira.' : `Não foi possível: ${(err.shortMessage || err.message).split('\n')[0]}`);
+        btn.disabled = false;
+      }
+    }
+
+    (async () => {
+      document.getElementById('adm-network').textContent = `Rede: ${NET.name} (chainId ${NET.chainId})`;
+      viem = await import(VIEM_URL);
+      pub = viem.createPublicClient({ chain: NET.chain, transport: viem.http(NET.httpRpcUrls?.[0] || NET.rpcUrls[0]) });
+      document.getElementById('btn-connect').addEventListener('click', () => connect().catch((e) => status(e.message)));
+      await load();
+    })();
+  </script>
+</body>
+</html>

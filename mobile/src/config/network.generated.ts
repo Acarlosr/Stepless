@@ -40,11 +40,11 @@ export const STEPLESS_NETWORK = {
     "create2Factory": "0x4e59b44847b379578588920cA78FbF26c0B4956C"
   },
   "contracts": {
-    "$note": "Par v4, deploy de 31/07/2026. Substituir pelos endereços da v5 depois do redeploy.",
-    "SteplessOracle": "0x69b3f9caca6514f76dd2f0dc4b54409e6d5da5cc",
-    "RewardDistributor": "0xef5d148b126d8dcdc7d344dfa367c61acbb02ea0",
-    "X402API": "0x0D318864C80eCe8d28800a750bdA06b6E52ffCc9",
-    "CampaignEscrow": null
+    "$note": "Conjunto v5, deploy de 14/11/2026 pelo workflow 'Deploy contratos' (scripts/deploy-contracts.mjs). Admin: 0x828D6da9D777624C345cB51328B1F2a38af812b4 (precisa de acceptAdmin). Relayer 0xbc8a…04aE, verificador 0xd299…c53A, atestador 0x93b0…dEa0.",
+    "SteplessOracle": "0x0B2E760683f010cbff1b88c528E9d410aDf0EF7e",
+    "RewardDistributor": "0xF55d685283dFC0712960c5556099a5cDbDf00c14",
+    "X402API": "0xcD432507a3eC68A0262c7e2BE5677d46976f0394",
+    "CampaignEscrow": "0xfF05ef5e2D6dD0398C18688b7B3e90707424a8c8"
   }
 } as const;
 
