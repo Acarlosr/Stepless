@@ -444,6 +444,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script type="module">
     import { createPublicClient, http, fallback } from 'https://esm.sh/viem@2.21.0';
+    import { geocode } from './geocode.js';
 
     // ── Config ──────────────────────────────────────────
     // Vem de window.STEPLESS_NETWORK (frontend/network.js ← config/networks.json),
@@ -1226,13 +1227,14 @@
     }
 
     // ── Geocoding (Nominatim) ─────────────────────────────
+    // CEP → ViaCEP (Correios) → mapa; texto em português prioriza o Brasil.
+    // Ver frontend/geocode.js (antes, um CEP de São Paulo caía na Rússia).
     async function geocodeAddress(query) {
-      const acceptLanguage = currentLang === 'pt' ? 'pt-BR' : currentLang;
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&accept-language=${acceptLanguage}`;
-      const r = await fetch(url, { headers: { 'User-Agent': 'Stepless-dApp/1.0' } });
-      const data = await r.json();
-      if (!data.length) throw new Error(t('geocode_not_found'));
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), label: data[0].display_name };
+      try {
+        return await geocode(query, currentLang);
+      } catch {
+        throw new Error(t('geocode_not_found'));
+      }
     }
 
     // ── GPS ───────────────────────────────────────────────

@@ -15,6 +15,7 @@ import { SteplessConfig } from './arc-config.js';
 import {
   initDynamic, connectWallet as dynConnect, getProvider, tryRestoreSession,
 } from './dynamic-wallet.js';
+import { geocode } from './geocode.js';
 
 const cfg = SteplessConfig;
 const NET = window.STEPLESS_NETWORK;
@@ -108,7 +109,7 @@ const I18N = {
     s_insufficient: 'Saldo insuficiente: você tem {balance} USDC e a campanha precisa de {total} USDC.',
     s_generic: 'Não foi possível concluir: {message}', s_tx: 'Ver transação',
     s_refunding: 'Confirme a devolução na sua carteira…', s_refunded: 'Saldo devolvido ao parceiro.',
-    gps_fail: 'Não foi possível obter sua localização.', place_fail: 'Endereço não encontrado.',
+    gps_fail: 'Não foi possível obter sua localização.', place_fail: 'Endereço ou CEP não encontrado.', place_found: '📍 Encontrado: {place}. Confira no mapa e ajuste clicando, se precisar.',
     footer_text: 'Stepless — mapa aberto de acessibilidade, feito pela comunidade na rede Arc.',
   },
   en: {
@@ -162,7 +163,7 @@ const I18N = {
     s_insufficient: 'Insufficient balance: you have {balance} USDC and the campaign needs {total} USDC.',
     s_generic: 'Could not complete: {message}', s_tx: 'View transaction',
     s_refunding: 'Confirm the refund in your wallet…', s_refunded: 'Balance returned to the partner.',
-    gps_fail: 'Could not get your location.', place_fail: 'Address not found.',
+    gps_fail: 'Could not get your location.', place_fail: 'Address or postal code not found.', place_found: '📍 Found: {place}. Check the map and click to adjust if needed.',
     footer_text: 'Stepless — an open accessibility map, built by the community on the Arc network.',
   },
   es: {
@@ -216,7 +217,7 @@ const I18N = {
     s_insufficient: 'Saldo insuficiente: tienes {balance} USDC y la campaña necesita {total} USDC.',
     s_generic: 'No se pudo completar: {message}', s_tx: 'Ver transacción',
     s_refunding: 'Confirma la devolución en tu cartera…', s_refunded: 'Saldo devuelto al socio.',
-    gps_fail: 'No se pudo obtener tu ubicación.', place_fail: 'Dirección no encontrada.',
+    gps_fail: 'No se pudo obtener tu ubicación.', place_fail: 'Dirección o código postal no encontrado.', place_found: '📍 Encontrado: {place}. Revisa el mapa y haz clic para ajustar si hace falta.',
     footer_text: 'Stepless — mapa abierto de accesibilidad, hecho por la comunidad en la red Arc.',
   },
 };
@@ -729,11 +730,10 @@ async function searchPlace() {
   const q = document.getElementById('f-place').value.trim();
   if (!q) return;
   try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}&accept-language=${lang}`;
-    const r = await fetch(url, { headers: { Accept: 'application/json' } });
-    const [hit] = await r.json();
-    if (!hit) throw new Error('not found');
-    setZone(Number(hit.lat), Number(hit.lon));
+    const hit = await geocode(q, lang);
+    setZone(hit.lat, hit.lng);
+    // Mostra o que foi encontrado: se caiu no lugar errado, a pessoa vê na hora.
+    setStatus(t('place_found', { place: hit.label }));
   } catch {
     setStatus(t('place_fail'), 'err');
   }
