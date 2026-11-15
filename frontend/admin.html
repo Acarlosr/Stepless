@@ -214,6 +214,13 @@
     async function roleSet(value) {
       const i = roleInput(); if (!i) return;
       if (!me) { roleOut('Conecte a carteira admin primeiro.'); return; }
+      // Confere antes de pedir assinatura: carteira errada é o erro mais comum,
+      // e o "reverted" genérico do contrato não explica nada.
+      const admin = await pub.readContract({ address: i.address, abi: ABI, functionName: 'admin' });
+      if (!same(admin, me)) {
+        roleOut(`A carteira conectada (${short(me)}) não é o admin. Troque no MetaMask para ${admin} e clique em "Conectar carteira" de novo.`);
+        return;
+      }
       try {
         const wallet = viem.createWalletClient({ account: me, chain: NET.chain, transport: viem.custom(window.ethereum) });
         await pub.simulateContract({ account: me, address: i.address, abi: i.role.abi, functionName: i.role.write, args: [i.who, value] });
@@ -236,6 +243,13 @@
       viem = await import(VIEM_URL);
       pub = viem.createPublicClient({ chain: NET.chain, transport: viem.http(NET.httpRpcUrls?.[0] || NET.rpcUrls[0]) });
       document.getElementById('btn-connect').addEventListener('click', () => connect().catch((e) => status(e.message)));
+      // Trocou de conta no MetaMask: atualiza sem precisar recarregar a página.
+      window.ethereum?.on?.('accountsChanged', (accs) => {
+        me = accs?.[0] ? viem.getAddress(accs[0]) : null;
+        document.getElementById('adm-me').textContent = me || '';
+        roleOut('');
+        load();
+      });
       await load();
     })();
   </script>

@@ -584,7 +584,13 @@ async function createCampaign(e) {
       return;
     }
     setStatus(t('s_ok', { id: campaignId }), 'ok', hash);
+    // Limpa o formulário, mas mantém a região: o marcador continua no mapa e
+    // campos de latitude/longitude vazios ao lado dele confundiam.
+    const keep = { lat: f.zone.lat, lng: f.zone.lng, r: f.zone.radiusKm };
     document.getElementById('camp-form').reset();
+    document.getElementById('f-lat').value = keep.lat.toFixed(6);
+    document.getElementById('f-lng').value = keep.lng.toFixed(6);
+    document.getElementById('f-radius').value = String(keep.r);
     renderCategories();
     updateSummary();
     loadCampaigns();

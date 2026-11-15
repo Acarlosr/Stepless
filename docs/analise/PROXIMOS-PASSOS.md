@@ -22,3 +22,6 @@ Branch: `feat/mapeamento-voluntario`. Detalhes de tudo em `docs/analise/tesourar
 - Tesouraria própria sai do caminho principal; recompensas passam a vir de **campanhas de parceiros** (`contracts/src/CampaignEscrow.sol`, testes em `contracts/test/CampaignEscrow.t.sol`).
 - Detalhes, garantias e pendências: `docs/analise/tesouraria-sem-patrocinador.md`, seção 10.
 - Próximo: serviço atestador (`api/campaign-attest.js`) e tela "Criar campanha".
+
+## 2026-11-15 — roteiro até a mainnet
+- Checklist completo, com responsáveis e ordem: `docs/ROTEIRO-MAINNET.md`.
