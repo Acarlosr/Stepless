@@ -79,8 +79,8 @@ export async function initDynamic() {
     // client criado por createDynamicClient() ("No Dynamic client has been
     // created yet"), mesmo tendo sido chamado corretamente na sequência certa.
     const [clientMod, evmMod] = await Promise.all([
-      import('https://esm.sh/@dynamic-labs-sdk/client'),
-      import('https://esm.sh/@dynamic-labs-sdk/evm'),
+      import('https://esm.sh/@dynamic-labs-sdk/client@1.52.1'),
+      import('https://esm.sh/@dynamic-labs-sdk/evm@1.52.1'),
     ]);
     _clientMod = clientMod;
     _client = clientMod.createDynamicClient({
@@ -163,7 +163,7 @@ export async function tryRestoreSession() {
 
 async function _loadWaas() {
   if (_waasMod) return _waasMod;
-  _waasMod = await import('https://esm.sh/@dynamic-labs-sdk/client/waas');
+  _waasMod = await import('https://esm.sh/@dynamic-labs-sdk/client@1.52.1/waas');
   return _waasMod;
 }
 

@@ -244,6 +244,10 @@ export default async function handler(req, res) {
       bytes: photo.bytes,
       hasGps: photo.exif.hasGps,
       photoTs: photo.exif.timestamp,
+      // Coordenadas lidas do EXIF no servidor; usadas para pagar campanhas só
+      // quando a foto realmente foi tirada onde o local foi declarado.
+      photoLat: Number.isFinite(photo.exif.lat) ? photo.exif.lat : null,
+      photoLng: Number.isFinite(photo.exif.lng) ? photo.exif.lng : null,
       camera: [photo.exif.make, photo.exif.model].filter(Boolean).join(' ') || null,
       // Marcado explicitamente: o verificador precisa saber que estes números
       // foram MEDIDOS aqui, não declarados por quem submeteu.

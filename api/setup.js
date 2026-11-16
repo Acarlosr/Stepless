@@ -23,6 +23,7 @@
 import {
   publicClient, relayerAccount, verifierAccount,
   oracleAddress, distributorAddress, ORACLE_ABI, DISTRIBUTOR_ABI, cors, translateError,
+  store, clientIp,
 } from './_stepless.js';
 import { NETWORK_NAME, usdcAddress, memoAddress } from './_network.js';
 import { parseEther } from 'viem';
@@ -38,6 +39,11 @@ export default async function handler(req, res) {
       error: 'Somente GET. As correções de wiring saíram desta rota por segurança.',
       hint: 'Rode localmente: node scripts/setup-contracts.mjs',
     });
+  }
+
+  // Cada chamada faz várias leituras no RPC; sem limite, serve para esgotar a cota.
+  if (!(await store.rateLimit(`setup:${clientIp(req)}`, 30, 60))) {
+    return res.status(429).json({ success: false, error: 'Muitas requisições. Aguarde um minuto.' });
   }
 
   const pub = publicClient();

@@ -78,6 +78,7 @@ contract CampaignEscrow is Admin2Step, ReentrancyGuard {
     error InvalidUsdc(address usdc);
     error InvalidReward(uint256 reward);
     error InvalidMaxItems(uint256 maxItems);
+    error DepositTooSmall(uint256 total, uint256 minimum);
     error InvalidDuration(uint256 duration);
     error EmptyBrandRef();
     error CampaignNotFound(uint256 campaignId);
@@ -136,6 +137,9 @@ contract CampaignEscrow is Admin2Step, ReentrancyGuard {
     uint256 public constant MAX_REWARD = 100_000_000;
     /// @notice Limite de itens por campanha (evita overflow e campanhas absurdas).
     uint256 public constant MAX_ITEMS = 100_000;
+    /// @notice $10 — depósito mínimo por campanha. Impede encher a lista de campanhas
+    ///         com milhares de campanhas de centavos (spam) que escondem as reais.
+    uint256 public constant MIN_DEPOSIT = 10_000_000;
 
     /// @notice Prazo mínimo: tempo para a comunidade ver a campanha e mapear.
     uint256 public constant MIN_DURATION = 1 days;
@@ -228,6 +232,8 @@ contract CampaignEscrow is Admin2Step, ReentrancyGuard {
         if (brandRef == bytes32(0)) revert EmptyBrandRef();
 
         uint256 total = rewardPerItem * maxItems; // máx. 1e8 × 1e5 = 1e13, sem risco de overflow
+
+        if (total < MIN_DEPOSIT) revert DepositTooSmall(total, MIN_DEPOSIT);
 
         _pullExact(msg.sender, total);
 

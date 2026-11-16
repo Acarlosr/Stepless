@@ -44,6 +44,7 @@ const ESCROW_ABI = [
   ] },
   { type: 'error', name: 'InvalidReward', inputs: [{ name: 'reward', type: 'uint256' }] },
   { type: 'error', name: 'InvalidMaxItems', inputs: [{ name: 'maxItems', type: 'uint256' }] },
+  { type: 'error', name: 'DepositTooSmall', inputs: [{ name: 'total', type: 'uint256' }, { name: 'minimum', type: 'uint256' }] },
   { type: 'error', name: 'InvalidDuration', inputs: [{ name: 'duration', type: 'uint256' }] },
   { type: 'error', name: 'EmptyBrandRef', inputs: [] },
   { type: 'error', name: 'TransferInFailed', inputs: [{ name: 'expected', type: 'uint256' }, { name: 'received', type: 'uint256' }] },
@@ -54,7 +55,7 @@ const ESCROW_ABI = [
 
 // Mesmos limites do contrato — validar aqui evita gastar gás numa transação
 // que o contrato recusaria.
-const LIMITS = { minReward: 0.01, maxReward: 100, maxItems: 100000, minDays: 1, maxDays: 366, minRadius: 0.1, maxRadius: 50 };
+const LIMITS = { minReward: 0.01, maxReward: 100, minDeposit: 10, maxItems: 100000, minDays: 1, maxDays: 366, minRadius: 0.1, maxRadius: 50 };
 
 // ─── i18n ────────────────────────────────────────────────────────────────────
 const I18N = {
@@ -97,6 +98,7 @@ const I18N = {
     btn_create: 'Conectar carteira e criar campanha', btn_create_connected: 'Criar campanha',
     err_title: 'Dê um nome com 3 a 80 caracteres.', err_zone: 'Marque o centro da região no mapa ou digite latitude e longitude válidas.',
     err_radius: 'O raio precisa ficar entre 0,1 e 50 km.', err_reward: 'O valor por local precisa ficar entre 0,01 e 100 USDC.',
+    err_deposit: 'O total da campanha (valor × quantidade) precisa ser de pelo menos 10 USDC.',
     err_items: 'A quantidade precisa ficar entre 1 e 100.000.', err_per: 'O limite por pessoa não pode ser negativo.',
     err_days: 'O prazo precisa ficar entre 1 e 366 dias.', err_brand: 'Informe o nome da marca ou o código de apoiador.',
     s_connecting: 'Conectando a carteira…', s_rules: 'Preparando as regras da campanha…', s_chain: 'Trocando a carteira para a rede {network}…',
@@ -151,6 +153,7 @@ const I18N = {
     btn_create: 'Connect wallet and create campaign', btn_create_connected: 'Create campaign',
     err_title: 'Use a name with 3 to 80 characters.', err_zone: 'Mark the center on the map or type a valid latitude and longitude.',
     err_radius: 'Radius must be between 0.1 and 50 km.', err_reward: 'Amount per place must be between 0.01 and 100 USDC.',
+    err_deposit: 'The campaign total (amount × places) must be at least 10 USDC.',
     err_items: 'Number of places must be between 1 and 100,000.', err_per: 'Limit per person cannot be negative.',
     err_days: 'Deadline must be between 1 and 366 days.', err_brand: 'Enter the brand name or supporter code.',
     s_connecting: 'Connecting wallet…', s_rules: 'Preparing campaign rules…', s_chain: 'Switching your wallet to {network}…',
@@ -205,6 +208,7 @@ const I18N = {
     btn_create: 'Conectar cartera y crear campaña', btn_create_connected: 'Crear campaña',
     err_title: 'Usa un nombre de 3 a 80 caracteres.', err_zone: 'Marca el centro en el mapa o escribe una latitud y longitud válidas.',
     err_radius: 'El radio debe estar entre 0,1 y 50 km.', err_reward: 'El valor por lugar debe estar entre 0,01 y 100 USDC.',
+    err_deposit: 'El total de la campaña (valor × cantidad) debe ser de al menos 10 USDC.',
     err_items: 'La cantidad debe estar entre 1 y 100.000.', err_per: 'El límite por persona no puede ser negativo.',
     err_days: 'El plazo debe estar entre 1 y 366 días.', err_brand: 'Indica el nombre de la marca o el código de apoyo.',
     s_connecting: 'Conectando la cartera…', s_rules: 'Preparando las reglas de la campaña…', s_chain: 'Cambiando la cartera a la red {network}…',
@@ -446,6 +450,7 @@ function validate(f) {
   if (!(f.zone.radiusKm >= LIMITS.minRadius && f.zone.radiusKm <= LIMITS.maxRadius)) return t('err_radius');
   if (!(f.reward >= LIMITS.minReward && f.reward <= LIMITS.maxReward)) return t('err_reward');
   if (!Number.isInteger(f.items) || f.items < 1 || f.items > LIMITS.maxItems) return t('err_items');
+  if (f.reward * f.items < LIMITS.minDeposit - 1e-9) return t('err_deposit');
   if (!Number.isInteger(f.perPerson) || f.perPerson < 0) return t('err_per');
   if (!Number.isInteger(f.days) || f.days < LIMITS.minDays || f.days > LIMITS.maxDays) return t('err_days');
   if (f.brand.length < 2) return t('err_brand');

@@ -232,6 +232,8 @@ export async function listCampaigns(pub, { onlyActive = false } = {}) {
  * Tenta pagar uma contribuição verificada por alguma campanha compatível.
  * Nunca lança por "não houve campanha": devolve { paid:false, reason }.
  */
+const PHOTO_MAX_OFFSET_KM = 0.5;
+
 export async function attestContribution({ pub, wallet, contributionId }) {
   const escrow = { address: escrowAddress(), abi: CAMPAIGN_ABI };
 
@@ -253,6 +255,19 @@ export async function attestContribution({ pub, wallet, contributionId }) {
 
   const contrib = await store.getJSON(contribKey(contributionId));
   if (!contrib) return { paid: false, reason: 'dados da contribuição não encontrados' };
+
+  // Dinheiro de parceiro só paga o que o servidor mediu: foto com GPS no EXIF e
+  // tirada perto do ponto declarado. Foto sem GPS pode ser aprovada pelo
+  // verificador humano (vale como contribuição comum), mas não dispara campanha.
+  if (contrib.photo?.hasGps !== true) {
+    return { paid: false, reason: 'foto sem GPS medido pelo servidor — não elegível a campanha' };
+  }
+  if (contrib.photo.photoLat != null && contrib.photo.photoLng != null && contrib.lat != null && contrib.lng != null) {
+    const off = distanceKm(contrib.photo.photoLat, contrib.photo.photoLng, contrib.lat, contrib.lng);
+    if (off > PHOTO_MAX_OFFSET_KM) {
+      return { paid: false, reason: `foto tirada a ${off.toFixed(2)} km do ponto declarado` };
+    }
+  }
 
   const campaigns = await activeCampaigns(pub);
   const eligible = [];

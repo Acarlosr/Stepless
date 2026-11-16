@@ -15,7 +15,7 @@
  * multisig.
  */
 
-import { publicClient, relayerAccount, distributorAddress, cors, translateError } from './_stepless.js';
+import { publicClient, relayerAccount, distributorAddress, cors, translateError, store, clientIp } from './_stepless.js';
 import { usdcAddress, NETWORK_NAME } from './_network.js';
 
 const ERC20_ABI = [
@@ -32,6 +32,10 @@ export default async function handler(req, res) {
       error: 'Somente GET. Fundear a tesouraria saiu desta rota por segurança.',
       hint: 'Rode localmente: node scripts/fund-treasury.mjs <valor em USDC>',
     });
+  }
+
+  if (!(await store.rateLimit(`fund:${clientIp(req)}`, 30, 60))) {
+    return res.status(429).json({ success: false, error: 'Muitas requisições. Aguarde um minuto.' });
   }
 
   const pub = publicClient();

@@ -45,7 +45,7 @@ contract CampaignEscrowTest is Test {
     address bob      = makeAddr("bob");
     address stranger = makeAddr("stranger");
 
-    uint256 constant REWARD = 250_000; // $0,25
+    uint256 constant REWARD = 2_500_000; // $2,50 (4 itens = $10 = depósito mínimo)
     uint256 constant ITEMS  = 4;
     uint256 constant TOTAL  = REWARD * ITEMS;
     bytes32 constant BRAND  = keccak256("loja-exemplo");
@@ -116,9 +116,12 @@ contract CampaignEscrowTest is Test {
         vm.expectRevert(abi.encodeWithSelector(CampaignEscrow.InvalidMaxItems.selector, 0));
         escrow.createCampaign(REWARD, 0, 0, 30 days, BRAND, META);
         vm.expectRevert(abi.encodeWithSelector(CampaignEscrow.InvalidDuration.selector, 1 hours));
-        escrow.createCampaign(REWARD, 1, 0, 1 hours, BRAND, META);
+        escrow.createCampaign(REWARD, ITEMS, 0, 1 hours, BRAND, META);
         vm.expectRevert(CampaignEscrow.EmptyBrandRef.selector);
-        escrow.createCampaign(REWARD, 1, 0, 30 days, bytes32(0), META);
+        escrow.createCampaign(REWARD, ITEMS, 0, 30 days, bytes32(0), META);
+        // Depósito abaixo de $10: 3 itens de $2,50 = $7,50
+        vm.expectRevert(abi.encodeWithSelector(CampaignEscrow.DepositTooSmall.selector, 7_500_000, 10_000_000));
+        escrow.createCampaign(REWARD, 3, 0, 30 days, BRAND, META);
         vm.stopPrank();
     }
 
