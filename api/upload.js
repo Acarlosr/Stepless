@@ -39,6 +39,7 @@ import { keccak256 } from 'viem';
 import { randomUUID, createHash } from 'node:crypto';
 import exifr from 'exifr';
 import { store, cors, clientIp, requirePersistentStore } from './_stepless.js';
+import { stripMetadata } from './_strip.js';
 
 // Limite do corpo de requisição na Vercel é ~4.5 MB. Ficamos abaixo disso de
 // propósito: o cliente deve reduzir a imagem antes de enviar. Uma foto de
@@ -277,15 +278,32 @@ export default async function handler(req, res) {
   }
 
   try {
-    // dataHash sobre os BYTES da foto. É isto que vai para a chain, e é
-    // conferível por qualquer pessoa que baixe o arquivo do IPFS.
-    const dataHash = keccak256(buffer);
+    // ── Cópia pública sem metadados (relatório de segurança, M5) ──────────
+    // O EXIF é lido do ORIGINAL (antifraude) e fica só no registro interno.
+    // O que vai para o IPFS — público e permanente — é a cópia limpa, com os
+    // mesmos pixels.
+    const { buffer: publicBuffer, stripped } = stripMetadata(buffer, mime);
+    if (!stripped) {
+      return res.status(415).json({
+        success: false,
+        error: 'Não foi possível preparar esta foto para publicação (formato não suportado). '
+             + 'Envie em JPEG — no iPhone: Ajustes → Câmera → Formatos → "Mais Compatível".',
+      });
+    }
+
+    // dataHash sobre os BYTES da cópia pública. É isto que vai para a chain, e
+    // é conferível por qualquer pessoa que baixe o arquivo do IPFS.
+    const dataHash = keccak256(publicBuffer);
+    // Hash do original: só para detectar a mesma foto reenviada.
+    const originalHash = keccak256(buffer);
 
     // ── A MESMA foto não serve para dois locais ──────────────────────────
     // Sem esta checagem, o token de uso único não protegia nada: bastava
     // subir o mesmo arquivo de novo para receber um token novo. Uma foto de
-    // rampa baixada da internet registraria dezenas de locais.
-    const alreadyUsed = await store.getJSON(photoHashKey(dataHash));
+    // rampa baixada da internet registraria dezenas de locais. Olha os dois
+    // hashes: o da cópia limpa pega a mesma imagem com EXIF editado.
+    const alreadyUsed = (await store.getJSON(photoHashKey(dataHash)))
+      || (await store.getJSON(photoHashKey(originalHash)));
     if (alreadyUsed) {
       return res.status(409).json({
         success: false,
@@ -299,7 +317,8 @@ export default async function handler(req, res) {
     let cid = null;
     let storageError = null;
     try {
-      cid = await pinToIpfs(buffer, mime, `stepless-${dataHash.slice(2, 12)}.jpg`);
+      const ext = { 'image/png': 'png', 'image/webp': 'webp' }[mime] || 'jpg';
+      cid = await pinToIpfs(publicBuffer, mime, `stepless-${dataHash.slice(2, 12)}.${ext}`);
     } catch (err) {
       storageError = err?.message || String(err);
       console.warn('[upload] Pinata falhou:', storageError);
@@ -321,12 +340,15 @@ export default async function handler(req, res) {
     await store.setJSON(photoKey(photoToken), {
       user: userAddress.toLowerCase(),
       dataHash,
+      originalHash,
       cid,
       mime,
-      bytes: buffer.length,
+      bytes: publicBuffer.length,
+      metadataStripped: true,
       // sha256 além do keccak: facilita conferir com ferramentas comuns
-      // (sha256sum) sem precisar de biblioteca de EVM.
-      sha256: createHash('sha256').update(buffer).digest('hex'),
+      // (sha256sum) sem precisar de biblioteca de EVM. Ambos são do arquivo
+      // publicado no IPFS.
+      sha256: createHash('sha256').update(publicBuffer).digest('hex'),
       width: size?.width ?? null,
       height: size?.height ?? null,
       exif,

@@ -76,10 +76,27 @@ test('reporta ausência de GPS sem inventar coordenadas', async () => {
   assert.equal(res.body.exif.hasGps, false);
 });
 
-test('o dataHash é o keccak256 dos bytes enviados', async () => {
+test('o dataHash é o keccak256 da cópia PÚBLICA (sem metadados)', async () => {
+  // M5: o IPFS recebe a foto sem EXIF. O hash on-chain precisa bater com o
+  // arquivo que qualquer pessoa baixa de lá — não com o original do celular.
   const { keccak256 } = await import('viem');
+  const { stripMetadata } = await import('../api/_strip.js');
   const res = await post(dataUrl('com-gps.jpg'));
-  assert.equal(res.body.dataHash, keccak256(fixture('com-gps.jpg')));
+  const { buffer: pub } = stripMetadata(fixture('com-gps.jpg'), 'image/jpeg');
+  assert.equal(res.body.dataHash, keccak256(pub));
+  assert.notEqual(res.body.dataHash, keccak256(fixture('com-gps.jpg')));
+});
+
+test('a cópia pública não carrega GPS nem dados do aparelho', async () => {
+  const exifr = (await import('exifr')).default;
+  const { stripMetadata } = await import('../api/_strip.js');
+  const { buffer: pub, stripped } = stripMetadata(fixture('com-gps.jpg'), 'image/jpeg');
+  assert.equal(stripped, true);
+  assert.equal(await exifr.gps(pub).catch(() => null), undefined);
+  const tags = (await exifr.parse(pub, true).catch(() => null)) || {};
+  assert.equal(tags.Make, undefined);
+  assert.equal(tags.Model, undefined);
+  assert.equal(tags.DateTimeOriginal, undefined);
 });
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -152,6 +169,14 @@ test('a mesma foto não serve para uma segunda contribuição', async () => {
   // E vale entre carteiras diferentes — sybil não contorna.
   const third = await post(dataUrl('gps-sem-camera.jpg'), `0x${'c'.repeat(40)}`);
   assert.equal(third.code, 409);
+
+  // M5: com-gps.jpg tem os MESMOS pixels e EXIF diferente. Antes passava como
+  // foto nova; agora o hash da cópia limpa é igual e o reuso é detectado.
+  const sameImageOtherExif = await post(dataUrl('com-gps.jpg'), `0x${'d'.repeat(40)}`);
+  assert.equal(sameImageOtherExif.code, 409);
+
+  // Libera de novo para os testes seguintes (o store é compartilhado).
+  await store.setJSON(photoHashKey(first.body.dataHash), null);
 });
 
 // ════════════════════════════════════════════════════════════════════════════

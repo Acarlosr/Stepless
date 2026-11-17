@@ -437,12 +437,17 @@ export default async function handler(req, res) {
     // Sem TTL de propósito: a validade da imagem é para sempre. Só grava aqui,
     // depois de confirmar sucesso — ver comentário acima.
     await store.setJSON(photoKey(photoToken), { ...photo, used: true }, 15 * 60);
-    await store.setJSON(photoHashKey(photo.dataHash), {
+    const usedRecord = {
       user: userAddress.toLowerCase(),
       locationHash: submissionData.locationHash,
       cid: photo.cid,
       ts: Date.now(),
-    });
+    };
+    await store.setJSON(photoHashKey(photo.dataHash), usedRecord);
+    // Também o hash do ORIGINAL (com metadados): pega o reenvio do mesmo arquivo.
+    if (photo.originalHash && photo.originalHash !== photo.dataHash) {
+      await store.setJSON(photoHashKey(photo.originalHash), usedRecord);
+    }
 
     // ── Cria a contribuição recompensável do novo local ───────────────────
     // registerLocation sozinho não gera nada "pagável" — o RewardDistributor

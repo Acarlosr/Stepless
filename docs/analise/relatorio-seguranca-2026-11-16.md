@@ -143,6 +143,8 @@ os detalhes de risco só para quem assina como verificador (mesmo esquema do
 
 ### 🟠 M5 — Foto vai para o IPFS com todos os metadados
 
+> ✅ **Corrigido em 17/11** — `api/_strip.js` remove EXIF/XMP/IPTC (JPEG), blocos de texto (PNG) e EXIF/XMP (WebP) sem recomprimir; mantém só a orientação. O IPFS recebe a cópia limpa; o `dataHash` on-chain é dela. O EXIF do original é lido antes, só para antifraude. HEIC é recusado com orientação para enviar em JPEG. Bônus: reuso da mesma imagem com EXIF trocado agora é detectado. Pendente: texto de privacidade avisando que a foto fica pública.
+
 **Onde:** `api/upload.js` envia o arquivo original ao Pinata (IPFS). O EXIF
 inteiro vai junto: GPS exato, horário, modelo do aparelho e, às vezes, nome do
 dono e número de série.
