@@ -125,7 +125,7 @@ export default function RewardsScreen() {
 
   const load = useCallback(async () => {
     try {
-      const all = await fetchPending();
+      const all = walletAddress ? await fetchPending(walletAddress) : [];
       const mine = walletAddress
         ? all.filter(
             (i: PendingItem) => (i.user || '').toLowerCase() === walletAddress.toLowerCase()

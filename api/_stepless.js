@@ -463,6 +463,57 @@ export async function verifySignedRequest({ auth, contributionId, approve, domai
   return { ok: true, address: addr };
 }
 
+/**
+ * Mensagem para LER a fila completa (com risco, IA, coordenadas da foto).
+ * Não autoriza nenhuma ação — só leitura — por isso vale por mais tempo.
+ */
+const QUEUE_SIGNATURE_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutos
+
+export function buildQueueMessage({ address, timestamp, domain }) {
+  return [
+    'Stepless — ver fila de verificação',
+    '',
+    'Esta assinatura só permite LER a fila. Não aprova nem move dinheiro.',
+    `Verificador: ${String(address).toLowerCase()}`,
+    `Momento: ${new Date(timestamp).toISOString()}`,
+    `Domínio: ${domain}`,
+  ].join('\n');
+}
+
+/** Valida a assinatura de leitura e confirma o papel de verificador on-chain. */
+export async function verifyQueueRequest({ auth, domain }) {
+  if (!auth || typeof auth !== 'object') return { ok: false, status: 401, error: 'Assinatura ausente.' };
+  const { address, signature, timestamp } = auth;
+  if (typeof signature !== 'string' || !/^0x[0-9a-fA-F]+$/.test(signature)) {
+    return { ok: false, status: 401, error: 'Assinatura mal formada.' };
+  }
+  let addr;
+  try { addr = getAddress(String(address)); }
+  catch { return { ok: false, status: 401, error: 'Endereço do verificador inválido.' }; }
+  const ts = Number(timestamp);
+  if (!Number.isFinite(ts)) return { ok: false, status: 401, error: 'Horário da assinatura inválido.' };
+  const age = Date.now() - ts;
+  if (age > QUEUE_SIGNATURE_MAX_AGE_MS || age < -60_000) {
+    return { ok: false, status: 401, error: 'Assinatura expirada.' };
+  }
+  let recovered;
+  try { recovered = await recoverMessageAddress({ message: buildQueueMessage({ address: addr, timestamp: ts, domain }), signature }); }
+  catch { return { ok: false, status: 401, error: 'Não foi possível validar a assinatura.' }; }
+  if (getAddress(recovered) !== addr) {
+    return { ok: false, status: 401, error: 'A assinatura não corresponde ao endereço informado.' };
+  }
+  let isVerifier = false;
+  try {
+    isVerifier = await publicClient().readContract({
+      address: distributorAddress(), abi: DISTRIBUTOR_ABI, functionName: 'verifiers', args: [addr],
+    });
+  } catch {
+    return { ok: false, status: 503, error: 'Não foi possível consultar a lista de verificadores na Arc.' };
+  }
+  if (!isVerifier) return { ok: false, status: 403, error: 'Este endereço não é um verificador autorizado.' };
+  return { ok: true, address: addr };
+}
+
 export function clientIp(req) {
   return (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
 }

@@ -207,9 +207,11 @@ export async function registerLocation(input: RegisterLocationInput): Promise<Re
  * Consulta as contribuições pendentes de verificação (mesmo endpoint do dashboard).
  * Útil para telas de histórico/status.
  */
-export async function fetchPending(): Promise<any[]> {
+export async function fetchPending(user?: string): Promise<any[]> {
   try {
-    const resp = await fetch(`${STEPLESS_API_BASE}/api/pending`);
+    // Lista pública mínima (sem risco/IA/foto). Com `user`, só os envios daquela carteira.
+    const qs = user ? `?user=${encodeURIComponent(user)}` : '';
+    const resp = await fetch(`${STEPLESS_API_BASE}/api/pending${qs}`);
     if (!resp.ok) return [];
     const data = await resp.json();
     return Array.isArray(data?.pending) ? data.pending : Array.isArray(data) ? data : [];

@@ -30,6 +30,8 @@ para o Stepless.
 
 ### 🔴 A1 — Biblioteca da carteira carregada sem versão fixa (cadeia de suprimentos)
 
+> ✅ **Corrigido em 16/11** — Dynamic travado em 1.52.1 e exifr em 7.1.3 (SRI ainda não).
+
 **Onde:** `frontend/dynamic-wallet.js` importa
 `https://esm.sh/@dynamic-labs-sdk/client`, `/evm` e `/client/waas` **sem
 número de versão**. Também `exifr@7` (jsdelivr, versão flutuante) e
@@ -49,6 +51,8 @@ USDC real. Não há CSP nem SRI que limitem isso.
 3. Adicionar `integrity` (SRI) onde der (scripts estáticos).
 
 ### 🔴 A2 — Campanha paga local enviado sem GPS na foto
+
+> ✅ **Corrigido em 16/11** — o atestador só paga foto com GPS lido pelo servidor e a até 500 m do ponto declarado, independente de `EXIF_REQUIRED`.
 
 **Onde:** `api/_campaign.js` → `attestContribution`. O registro (`relay.js`)
 **bloqueia** foto com GPS de outro lugar, mas foto **sem** GPS passa quando
@@ -76,6 +80,8 @@ campanha ("só fotos com localização ligada recebem").
 > pessoa continuam sendo as defesas principais.
 
 ### 🟠 M1 — Spam de campanhas tira as campanhas reais do alcance do atestador
+
+> ✅ **Corrigido em 16/11** — `MIN_DEPOSIT` de 10 USDC no contrato (vale a partir do próximo deploy; testnet atual mantém a regra antiga). Índice de campanhas ativas ainda não.
 
 **Onde:** `api/_campaign.js` → `SCAN_LIMIT = 50` (só as 50 campanhas mais
 recentes são consideradas) + `CampaignEscrow.MIN_REWARD = $0,01`.
@@ -115,6 +121,8 @@ manter o relayer sempre com pouco saldo e recarregar aos poucos.
 
 ### 🟠 M4 — `/api/pending` expõe dados internos de antifraude
 
+> ✅ **Corrigido em 17/11** — GET público devolve só id, carteira, nome, categorias, tipo, status e data (o APK v1.2.0 continua funcionando). Lista completa via POST com assinatura de leitura de verificador on-chain (30 min).
+
 **Onde:** `api/pending.js` devolve, sem autenticação, o registro inteiro de
 cada contribuição pendente: coordenadas, carteira, **score de risco**,
 motivos, reputação no momento do envio e a avaliação da IA.
@@ -146,6 +154,8 @@ isso na política de privacidade antes do envio.
 
 ### 🟡 B1 — Sem cabeçalhos de segurança no site
 
+> ✅ **Parcial em 16/11** — nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy e HSTS. CSP pendente.
+
 `vercel.json` não define `Content-Security-Policy`, `X-Frame-Options`,
 `Referrer-Policy` nem `Permissions-Policy`. Uma CSP com a lista exata de
 domínios (esm.sh, unpkg, vlibras.gov.br, Dynamic, OpenStreetMap, RPCs, ViaCEP,
@@ -160,6 +170,8 @@ carregar o VLibras em `admin.html` e `campanhas.html` (formulário de depósito)
 ou limitar por CSP.
 
 ### 🟡 B3 — `/api/setup` e `/api/fund` sem limite de requisições
+
+> ✅ **Corrigido em 16/11** — 30 req/min por IP.
 
 São só leitura, mas cada chamada faz ~14 leituras na chain. Muitas chamadas
 consomem a cota do RPC dedicado. Aplicar o mesmo `rateLimit` dos outros.

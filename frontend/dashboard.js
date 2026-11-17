@@ -1337,13 +1337,72 @@ function renderEvidence(p) {
   return parts.join('');
 }
 
+// Assinatura de LEITURA da fila completa (risco, IA, foto). O servidor aceita
+// por 30 min; renovamos com folga aos 25 min. Fica só na memória da página.
+let queueAuth = null;
+
+function buildQueueMessage({ address, timestamp, domain }) {
+  return [
+    'Stepless — ver fila de verificação',
+    '',
+    'Esta assinatura só permite LER a fila. Não aprova nem move dinheiro.',
+    `Verificador: ${String(address).toLowerCase()}`,
+    `Momento: ${new Date(timestamp).toISOString()}`,
+    `Domínio: ${domain}`,
+  ].join('\n');
+}
+
+async function getQueueAuth() {
+  const fresh = queueAuth
+    && queueAuth.address.toLowerCase() === String(walletAddress || '').toLowerCase()
+    && Date.now() - queueAuth.timestamp < 25 * 60 * 1000;
+  if (fresh) return queueAuth;
+  if (!walletAddress) throw new Error('Nenhuma carteira conectada.');
+  const provider = await getProvider();
+  if (!provider?.request) throw new Error('A carteira conectada não permite assinar.');
+  const timestamp = Date.now();
+  const message = buildQueueMessage({ address: walletAddress, timestamp, domain: window.location.host });
+  const signature = await provider.request({ method: 'personal_sign', params: [message, walletAddress] });
+  queueAuth = { address: walletAddress, signature, timestamp };
+  return queueAuth;
+}
+
+async function fetchPendingFull() {
+  const auth = await getQueueAuth();
+  let resp = await fetch('/api/pending', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ auth }),
+  });
+  if (resp.status === 401) {
+    // Assinatura vencida ou recusada: pede uma nova uma única vez.
+    queueAuth = null;
+    resp = await fetch('/api/pending', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auth: await getQueueAuth() }),
+    });
+  }
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+  return data.pending || [];
+}
+
 async function loadPendingContributions() {
   const tbody = document.getElementById('verify-table-body');
   if (!tbody) return;
   const s = getStrings();
   try {
-    const resp = await fetch('/api/pending');
-    const { pending = [] } = await resp.json();
+    let pending;
+    try {
+      pending = await fetchPendingFull();
+    } catch (authErr) {
+      // Sem assinatura (cancelou ou carteira sem suporte): mostra a lista básica,
+      // sem as evidências de risco, e avisa o motivo.
+      console.warn('Fila completa indisponível:', authErr);
+      const resp = await fetch('/api/pending');
+      ({ pending = [] } = await resp.json());
+      showAlert('register-alert', 'warning',
+        'Assine a mensagem "ver fila de verificação" na carteira para ver as evidências (risco, IA, foto). '
+        + `Motivo: ${escapeHtml(authErr?.message || authErr)}`);
+    }
 
     if (pending.length === 0) {
       tbody.innerHTML = `<tr><td colspan="5" class="table-empty">${s.verify_empty || 'Nenhuma contribuição pendente'}</td></tr>`;
