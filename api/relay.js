@@ -81,6 +81,8 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 
 // Distância máxima entre o GPS da foto e o local declarado.
 const MAX_DISTANCE_KM = 0.5;
+// 0,05 USDC nativo (18 casas) — abaixo disso o relayer não completa um envio.
+const RELAYER_MIN_GAS = 50_000_000_000_000_000n;
 // Idade máxima da foto.
 const MAX_PHOTO_AGE_DAYS = 7;
 
@@ -193,6 +195,19 @@ export default async function handler(req, res) {
     return res.status(403).json({ success: false, error: 'Esta foto foi enviada por outra carteira.' });
   }
 
+  // Teto GLOBAL por dia (relatório de segurança, M3). O limite por carteira não
+  // segura quem cria muitas carteiras; este segura o gasto total de gás do
+  // relayer. Contado só aqui, depois da foto validada, para requisição lixo não
+  // consumir a cota de quem envia de verdade.
+  const globalCap = Number(process.env.MAX_RELAYS_PER_DAY_GLOBAL || 200);
+  if (!(await store.rateLimit('relay:global', globalCap, 86_400))) {
+    console.warn(`[relay] teto global diário atingido (${globalCap})`);
+    return res.status(429).json({
+      success: false,
+      error: 'O Stepless atingiu o limite de envios de hoje. Tente novamente amanhã — sua foto não foi perdida, é só enviar de novo.',
+    });
+  }
+
   const reputation = await getReputation(userAddress);
 
   try {
@@ -219,6 +234,17 @@ export default async function handler(req, res) {
       return res.status(500).json({ success: false, error: 'Endereço do Oracle não configurado.' });
     }
     const oracleAddress = getAddress(oracleRaw.toLowerCase());
+
+    // Sem gás o envio falharia no meio (foto já marcada, transação não sai).
+    // Melhor recusar antes, com mensagem clara.
+    const relayerGas = await publicClient.getBalance({ address: account.address }).catch(() => null);
+    if (relayerGas !== null && relayerGas < RELAYER_MIN_GAS) {
+      console.error(`[relay] saldo de gás do relayer baixo: ${relayerGas}`);
+      return res.status(503).json({
+        success: false,
+        error: 'O Stepless está temporariamente sem saldo para registrar envios. A equipe foi avisada; tente mais tarde.',
+      });
+    }
 
     // NOTA: a auto-autorização foi REMOVIDA aqui. Se o relayer não estiver
     // autorizado, o writeContract abaixo reverte com Unauthorized e o

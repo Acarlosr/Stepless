@@ -107,6 +107,8 @@ lista e do mapa). Mostrar no site "campanhas são criadas por terceiros".
 
 ### 🟠 M3 — Gás do relayer pode ser drenado com contas falsas
 
+> ✅ **Corrigido em 17/11** — teto global de 200 envios/dia (`MAX_RELAYS_PER_DAY_GLOBAL`), contado só após a foto validada; relay recusa com mensagem clara se o relayer tiver menos de 0,05 USDC de gás; `/api/setup` alerta `LOW_GAS` abaixo de 1 USDC para relayer, verificador e attester.
+
 **Onde:** `api/relay.js` limita 6 envios/min por IP e 10/dia por carteira.
 Carteiras novas são gratuitas (login por e-mail), e IPs se trocam.
 

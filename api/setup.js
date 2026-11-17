@@ -27,8 +27,10 @@ import {
 } from './_stepless.js';
 import { NETWORK_NAME, usdcAddress, memoAddress } from './_network.js';
 import { parseEther } from 'viem';
+import { attesterAccount } from './_campaign.js';
 
 const MIN_VERIFIER_GAS = parseEther('0.05'); // USDC nativo (18 dec) para gas
+const LOW_GAS_WARNING = parseEther('1');
 
 export default async function handler(req, res) {
   cors(res, 'GET, OPTIONS', req);
@@ -157,6 +159,24 @@ export default async function handler(req, res) {
         message: `Tesouraria vazia. Fundeie o RewardDistributor (${distributor}) para habilitar pagamentos.`,
       });
     }
+    // Alerta de gás baixo nas contas do servidor (relatório de segurança, M3).
+    // Avisa ANTES de parar: abaixo de ~1 USDC sobra pouco para um dia movimentado.
+    const lowGas = [['Relayer', relayer.address, relayerGas], ['Verificador do servidor', verifier.address, verifierGas]];
+    try {
+      const att = attesterAccount();
+      lowGas.push(['Attester', att.address, await pub.getBalance({ address: att.address })]);
+    } catch (_) { /* sem ATTESTER_PRIVATE_KEY: campanhas desligadas, nada a checar */ }
+    for (const [label, addr, bal] of lowGas) {
+      if (bal < LOW_GAS_WARNING) {
+        alerts.push({
+          severity: 'warning',
+          code: 'LOW_GAS',
+          message: `${label} (${addr}) com pouco gás: ${(Number(bal) / 1e18).toFixed(3)} USDC. `
+                 + 'Envie USDC para essa conta antes que as transações parem.',
+        });
+      }
+    }
+
     if (failedPending && failedPending > 0n) {
       alerts.push({
         severity: 'warning',
