@@ -150,7 +150,11 @@ export default async function handler(req, res) {
     return res.status(429).json({ success: false, error: 'Muitas requisições. Aguarde um minuto e tente de novo.' });
   }
 
-  const { action, userAddress, submissionData, photoToken } = req.body || {};
+  const { action, userAddress, submissionData, photoToken, termsVersion } = req.body || {};
+  // Registro do aceite (LGPD). O APK v1.2.0 ainda não envia — por isso não é
+  // obrigatório aqui; vira obrigatório quando o app novo estiver publicado.
+  const termsAccepted = typeof termsVersion === 'string' && /^\d+\.\d+$/.test(termsVersion)
+    ? { version: termsVersion, at: Date.now() } : null;
 
   if (!action || !userAddress || !submissionData) {
     return res.status(400).json({ success: false, error: 'Faltando: action, userAddress, submissionData' });
@@ -528,6 +532,7 @@ export default async function handler(req, res) {
         // verificador ainda vê qual era o histórico quando decidiu.
         reputationAtSubmit: reputation,
         rewardType: action === 'registerLocation' ? 'NewLocation' : 'LocationUpdate',
+        termsAccepted,
         status: 'pending',
         ts: Date.now(),
       });

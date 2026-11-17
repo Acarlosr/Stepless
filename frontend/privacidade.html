@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stepless — Política de Privacidade</title>
+  <meta name="description" content="Quais dados o Stepless coleta, para quê, com quem compartilha e o que fica público para sempre na blockchain e no IPFS." />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- RASCUNHO — revisar com advogado antes da mainnet. Campos entre [colchetes]
+       precisam ser preenchidos pelo responsável pelo projeto. -->
+  <style>
+    .legal h2 { margin-top: 28px; }
+    .legal li { margin-bottom: 6px; }
+    .legal .warn { border-left: 4px solid var(--warning, #d97706); padding: 12px 16px; background: rgba(217,119,6,.08); border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <main id="main" class="container legal" style="padding:48px 16px; max-width:760px;">
+    <section class="card" style="padding:32px 24px;" lang="pt-BR">
+      <h1 class="section-title">Política de Privacidade</h1>
+      <p class="section-subtitle">Versão 1.0 — vigente a partir de [data de publicação]</p>
+
+      <p>O Stepless é um mapa aberto de acessibilidade. Esta política explica, em linguagem simples, quais dados tratamos quando você usa o site <strong>stepless.lat</strong> ou o app Android, por que tratamos e quais são os seus direitos pela Lei Geral de Proteção de Dados (Lei 13.709/2018 — LGPD).</p>
+
+      <div class="warn">
+        <strong>Antes de tudo: o que você envia vira público e permanente.</strong>
+        A foto do local, a posição do local no mapa, o nome, as categorias de acessibilidade e o endereço da sua carteira ficam gravados na <strong>blockchain Arc</strong> e no <strong>IPFS</strong>. Essas redes são públicas e descentralizadas: <strong>nem o Stepless consegue apagar</strong> o que foi gravado nelas. Não envie fotos com rostos, placas de carro, documentos ou o interior da sua casa.
+      </div>
+
+      <h2>1. Quem é o responsável</h2>
+      <p>Controlador dos dados: <strong>[nome completo ou razão social]</strong>, [CPF/CNPJ], [cidade/UF]. Contato para assuntos de privacidade: <strong>[e-mail de contato]</strong>.</p>
+
+      <h2>2. Quais dados tratamos</h2>
+      <ul>
+        <li><strong>Endereço da carteira</strong> (ex.: 0x1234…). Identifica quem enviou cada local e para onde vão os pagamentos de campanhas.</li>
+        <li><strong>E-mail</strong>, se você entrar por e-mail. O login e a criação da carteira são feitos pela <strong>Dynamic</strong> (dynamic.xyz). O Stepless não guarda sua senha nem sua chave privada.</li>
+        <li><strong>Foto do local</strong>. Do arquivo original, o servidor lê o GPS, a data da foto e a marca/modelo do celular <strong>só para checar se o envio é verdadeiro</strong>. Esses metadados ficam no registro interno e são vistos apenas pelos revisores. A cópia publicada no IPFS sai <strong>sem</strong> esses metadados.</li>
+        <li><strong>Posição do local</strong> (latitude/longitude) e, se você permitir, a localização do aparelho no momento do envio.</li>
+        <li><strong>Nome do local e categorias</strong> de acessibilidade (rampa, banheiro adaptado etc.).</li>
+        <li><strong>Endereço IP</strong>, usado só para limitar abusos (número de envios por minuto). Não é guardado de forma permanente.</li>
+        <li><strong>Histórico da carteira</strong> no Stepless (quantos envios foram aprovados ou rejeitados), usado para o cálculo de risco.</li>
+      </ul>
+      <p>O Stepless <strong>não</strong> pede nem trata dados sobre deficiência ou saúde de quem usa. Se você quiser buscar locais por tipo de necessidade, o filtro funciona só no seu navegador e não é enviado ao servidor.</p>
+
+      <h2>3. Para que usamos e com qual base legal</h2>
+      <ul>
+        <li><strong>Publicar o mapa de acessibilidade</strong> — execução do serviço que você pediu ao enviar um local (art. 7º, V) e seu consentimento ao aceitar estes termos (art. 7º, I).</li>
+        <li><strong>Prevenir fraude</strong> (fotos falsas, local inventado, contas em massa) — legítimo interesse (art. 7º, IX).</li>
+        <li><strong>Pagar recompensas de campanhas</strong> para a carteira de quem mapeou — execução do serviço (art. 7º, V).</li>
+        <li><strong>Cumprir obrigações legais</strong> quando houver ordem de autoridade competente (art. 7º, II).</li>
+      </ul>
+
+      <h2>4. Com quem compartilhamos</h2>
+      <p>Usamos serviços de terceiros para funcionar. Cada um recebe só o necessário:</p>
+      <ul>
+        <li><strong>Blockchain Arc</strong> (rede pública da Circle): endereço da carteira, identificador do local, hash da foto, aprovações e pagamentos. Público e permanente.</li>
+        <li><strong>IPFS via Pinata</strong>: a foto sem metadados. Pública e, na prática, permanente.</li>
+        <li><strong>Vercel</strong>: hospedagem do site e do servidor.</li>
+        <li><strong>Upstash</strong>: banco de dados do servidor (registro interno dos envios, limites de uso).</li>
+        <li><strong>Dynamic</strong>: login por e-mail e carteira.</li>
+        <li><strong>OpenRouter</strong>: análise automática da foto por inteligência artificial (segunda opinião para o revisor). Recebe o link público da foto e as categorias.</li>
+        <li><strong>OpenStreetMap / Nominatim / Overpass</strong> e <strong>ViaCEP</strong>: busca de endereço e conferência se existe um estabelecimento naquela posição. Recebem o texto buscado ou as coordenadas.</li>
+        <li><strong>VLibras</strong> (Governo Federal): tradução da página para Libras, carregada no seu navegador.</li>
+      </ul>
+      <p>Alguns desses serviços ficam fora do Brasil, o que é uma transferência internacional de dados (art. 33 da LGPD). Não vendemos dados a ninguém.</p>
+      <p><strong>Parceiros de campanhas</strong> não recebem seus dados pessoais. Eles veem, como qualquer pessoa, o que é público na blockchain: quantos locais foram pagos e para quais carteiras.</p>
+
+      <h2>5. Por quanto tempo guardamos</h2>
+      <ul>
+        <li><strong>Blockchain e IPFS:</strong> para sempre — não depende de nós.</li>
+        <li><strong>Registro interno do envio</strong> (metadados da foto, análise de risco): enquanto o local estiver no mapa ou até você pedir a exclusão do que for possível apagar.</li>
+        <li><strong>Comprovante temporário da foto:</strong> 15 minutos.</li>
+        <li><strong>Limites de uso por IP:</strong> de 1 minuto a 1 dia.</li>
+      </ul>
+
+      <h2>6. Seus direitos</h2>
+      <p>Pela LGPD (art. 18) você pode pedir: confirmação de que tratamos seus dados, acesso a eles, correção, anonimização ou exclusão do que for desnecessário, informação sobre com quem compartilhamos e revogação do consentimento. Escreva para <strong>[e-mail de contato]</strong> informando o endereço da sua carteira. Respondemos em até 15 dias.</p>
+      <p><strong>Limite técnico:</strong> conseguimos apagar o registro interno, tirar o local da busca do site e pedir à Pinata que deixe de hospedar a foto. <strong>Não conseguimos</strong> apagar o que já está na blockchain, nem garantir que outras cópias da foto no IPFS desapareçam.</p>
+      <p>Você também pode reclamar à Autoridade Nacional de Proteção de Dados (ANPD), em gov.br/anpd.</p>
+
+      <h2>7. Segurança</h2>
+      <p>As chaves do servidor ficam em variáveis protegidas, na rede principal os contratos são administrados por carteira com várias assinaturas (multisig), a foto pública sai sem metadados e o acesso às evidências de antifraude exige assinatura de um revisor autorizado. Nenhum sistema é 100% seguro; se houver incidente que traga risco a você, avisaremos e comunicaremos a ANPD.</p>
+
+      <h2>8. Crianças e adolescentes</h2>
+      <p>O Stepless não é direcionado a menores de 18 anos. Campanhas pagas exigem carteira própria e são destinadas a maiores de idade.</p>
+
+      <h2>9. Mudanças nesta política</h2>
+      <p>Se mudarmos algo importante, avisaremos no site e no app e pediremos um novo aceite antes do próximo envio.</p>
+
+      <p style="display:flex; flex-wrap:wrap; gap:12px; margin-top:24px;">
+        <a class="btn btn-secondary" href="termos.html">Termos de Uso</a>
+        <a class="btn btn-secondary" href="index.html">Voltar ao início</a>
+      </p>
+    </section>
+
+    <section class="card" style="padding:20px 24px; margin-top:16px;" lang="en">
+      <h2 class="card-title">Privacy — summary</h2>
+      <p class="card-text">What you submit (photo without metadata, place position, name, accessibility categories and your wallet address) is written to the Arc blockchain and IPFS — public and permanent; nobody, including Stepless, can delete it. The server reads the photo's GPS, date and device model only to check for fraud; that stays internal. We use Vercel, Upstash, Dynamic, Pinata, OpenRouter, OpenStreetMap and ViaCEP to operate. We don't sell data. To exercise your rights under Brazil's LGPD, write to [contact e-mail].</p>
+    </section>
+
+    <section class="card" style="padding:20px 24px; margin-top:16px;" lang="es">
+      <h2 class="card-title">Privacidad — resumen</h2>
+      <p class="card-text">Lo que envías (foto sin metadatos, posición del lugar, nombre, categorías de accesibilidad y tu dirección de cartera) queda en la blockchain Arc y en IPFS — público y permanente; nadie, ni Stepless, puede borrarlo. El servidor lee el GPS, la fecha y el modelo del celular de la foto solo para detectar fraude; eso queda interno. Usamos Vercel, Upstash, Dynamic, Pinata, OpenRouter, OpenStreetMap y ViaCEP. No vendemos datos. Para ejercer tus derechos (LGPD de Brasil), escribe a [e-mail de contacto].</p>
+    </section>
+  </main>
+  <script src="https://vlibras.gov.br/app/vlibras-plugin.js" defer></script>
+</body>
+</html>

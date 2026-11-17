@@ -54,13 +54,14 @@ já perdeu contratos uma vez por chave perdida (v1) e teve chave vazada no git.
 
 ## Fase 3 — Conteúdo e jurídico
 
-- [ ] 🤖 Rascunho de **Termos de Uso** (o que é o Stepless, responsabilidades,
+- [x] 🤖 Rascunho de **Termos de Uso** (`frontend/termos.html`) (o que é o Stepless, responsabilidades,
       campanhas, sem promessa de pagamento fora de campanha)
-- [ ] 🤖 Rascunho de **Política de Privacidade (LGPD)**: fotos e localização
+- [x] 🤖 Rascunho de **Política de Privacidade (LGPD)** (`frontend/privacidade.html`): fotos e localização
       são dados pessoais; o que fica público na blockchain e no IPFS não pode
       ser apagado — isso precisa estar claro antes do envio
 - [ ] 👤 Revisão dos termos por um advogado (recomendado)
-- [ ] 🤖 Caixa de **aceite dos termos** antes do primeiro envio (site e app)
+- [~] 🤖 Caixa de **aceite dos termos** antes do primeiro envio — site ✅ (envio e criação de campanha); app ⏳ no próximo APK
+- [ ] 👤 Preencher os campos `[colchetes]` (responsável, CPF/CNPJ, e-mail de contato, data)
 - [ ] 🤖 Trocar os textos de "fase de testes / testnet / USDC de teste" pelos
       da mainnet (site, app, `como-sacar-recompensas.html`)
 - [ ] 🤝 **Revisão do contrato `CampaignEscrow`** por outra pessoa

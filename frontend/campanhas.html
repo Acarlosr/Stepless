@@ -293,6 +293,16 @@
 
       <div class="camp-summary" id="camp-summary" aria-live="polite"></div>
 
+      <div class="form-group">
+        <label style="display:flex; gap:8px; align-items:flex-start; font-weight:normal; cursor:pointer;">
+          <input type="checkbox" id="f-terms" required style="margin-top:3px; width:auto;" />
+          <span><span data-i18n="f_terms">Li e aceito as regras de campanha dos</span>
+            <a href="termos.html#campanhas" target="_blank" rel="noopener" data-i18n="f_terms_link">Termos de Uso</a>
+            (<a href="privacidade.html" target="_blank" rel="noopener" data-i18n="f_privacy_link">Privacidade</a>).
+            <span data-i18n="f_terms_tail">Declaro que posso usar a marca informada e entendo que o depósito só pode pagar locais aprovados ou voltar para minha carteira.</span></span>
+        </label>
+      </div>
+
       <button type="submit" class="btn btn-primary btn-block" id="btn-create" data-i18n="btn_create">Conectar carteira e criar campanha</button>
       <div class="camp-status" id="camp-status" role="status" aria-live="polite" hidden></div>
     </form>
@@ -305,6 +315,8 @@
         <a href="buscar.html" data-i18n="nav_search">Buscar</a>
         <a href="dashboard.html" data-i18n="nav_dashboard">Mapear um local</a>
         <a href="index.html" data-i18n="nav_home">Início</a>
+        <a href="termos.html">Termos de Uso</a>
+        <a href="privacidade.html">Privacidade</a>
       </div>
       <p data-i18n="footer_text">Stepless — mapa aberto de acessibilidade, feito pela comunidade na rede Arc.</p>
       <div class="arc-badge mt-1">

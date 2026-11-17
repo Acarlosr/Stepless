@@ -96,6 +96,9 @@ const I18N = {
     summary: 'Total a depositar: {total} USDC. Paga até {items} locais de {reward} USDC. O que sobrar volta para você em {date}.',
     summary_invalid: 'Preencha os campos para ver o total.',
     btn_create: 'Conectar carteira e criar campanha', btn_create_connected: 'Criar campanha',
+    f_terms: 'Li e aceito as regras de campanha dos', f_terms_link: 'Termos de Uso', f_privacy_link: 'Privacidade',
+    f_terms_tail: 'Declaro que posso usar a marca informada e entendo que o depósito só pode pagar locais aprovados ou voltar para minha carteira.',
+    err_terms: 'Marque que aceita os Termos de Uso para criar a campanha.',
     err_title: 'Dê um nome com 3 a 80 caracteres.', err_zone: 'Marque o centro da região no mapa ou digite latitude e longitude válidas.',
     err_radius: 'O raio precisa ficar entre 0,1 e 50 km.', err_reward: 'O valor por local precisa ficar entre 0,01 e 100 USDC.',
     err_deposit: 'O total da campanha (valor × quantidade) precisa ser de pelo menos 10 USDC.',
@@ -151,6 +154,9 @@ const I18N = {
     summary: 'Total deposit: {total} USDC. Pays up to {items} places at {reward} USDC. Leftovers return to you on {date}.',
     summary_invalid: 'Fill in the fields to see the total.',
     btn_create: 'Connect wallet and create campaign', btn_create_connected: 'Create campaign',
+    f_terms: 'I have read and accept the campaign rules in the', f_terms_link: 'Terms of Use', f_privacy_link: 'Privacy',
+    f_terms_tail: 'I confirm I may use the brand provided and understand the deposit can only pay approved places or return to my wallet.',
+    err_terms: 'Please accept the Terms of Use to create the campaign.',
     err_title: 'Use a name with 3 to 80 characters.', err_zone: 'Mark the center on the map or type a valid latitude and longitude.',
     err_radius: 'Radius must be between 0.1 and 50 km.', err_reward: 'Amount per place must be between 0.01 and 100 USDC.',
     err_deposit: 'The campaign total (amount × places) must be at least 10 USDC.',
@@ -206,6 +212,9 @@ const I18N = {
     summary: 'Total a depositar: {total} USDC. Paga hasta {items} lugares de {reward} USDC. Lo que sobre vuelve a ti el {date}.',
     summary_invalid: 'Completa los campos para ver el total.',
     btn_create: 'Conectar cartera y crear campaña', btn_create_connected: 'Crear campaña',
+    f_terms: 'He leído y acepto las reglas de campaña de los', f_terms_link: 'Términos de Uso', f_privacy_link: 'Privacidad',
+    f_terms_tail: 'Declaro que puedo usar la marca indicada y entiendo que el depósito solo puede pagar lugares aprobados o volver a mi cartera.',
+    err_terms: 'Marca que aceptas los Términos de Uso para crear la campaña.',
     err_title: 'Usa un nombre de 3 a 80 caracteres.', err_zone: 'Marca el centro en el mapa o escribe una latitud y longitud válidas.',
     err_radius: 'El radio debe estar entre 0,1 y 50 km.', err_reward: 'El valor por lugar debe estar entre 0,01 y 100 USDC.',
     err_deposit: 'El total de la campaña (valor × cantidad) debe ser de al menos 10 USDC.',
@@ -454,6 +463,7 @@ function validate(f) {
   if (!Number.isInteger(f.perPerson) || f.perPerson < 0) return t('err_per');
   if (!Number.isInteger(f.days) || f.days < LIMITS.minDays || f.days > LIMITS.maxDays) return t('err_days');
   if (f.brand.length < 2) return t('err_brand');
+  if (!document.getElementById('f-terms')?.checked) return t('err_terms');
   return null;
 }
 

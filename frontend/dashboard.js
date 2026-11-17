@@ -973,11 +973,22 @@ async function checkDuplicateLocation(lat, lng) {
   setRegisterBlocked(findNearbyRegistered(lat, lng, list));
 }
 
+// Versão dos Termos/Privacidade aceita no envio (termos.html / privacidade.html).
+const TERMS_VERSION = '1.0';
+
 async function handleRegisterLocation(e) {
   e.preventDefault();
   const s = getStrings();
   const submitBtn = document.getElementById('register-submit');
   const gasEl = document.getElementById('register-gas-estimate');
+
+  const terms = document.getElementById('reg-terms');
+  if (terms && !terms.checked) {
+    showAlert('register-alert', 'warning',
+      'Para enviar, marque que aceita os Termos de Uso e a Política de Privacidade.');
+    terms.focus();
+    return;
+  }
 
   const lat = parseFloat(document.getElementById('reg-lat').value);
   const lng = parseFloat(document.getElementById('reg-lng').value);
@@ -1099,6 +1110,7 @@ async function handleRegisterLocation(e) {
         action: 'registerLocation',
         userAddress: walletAddress,
         photoToken: uploadResult.photoToken,
+        termsVersion: TERMS_VERSION,
         submissionData: {
           locationHash, latPacked, lngPacked,
           // Na web a coordenada da foto só pode vir do EXIF do arquivo — não há
