@@ -1181,6 +1181,14 @@ async function handleVerify(approved, idFromTable) {
       }),
     });
     const result = await resp.json();
+    if (resp.status === 404) {
+      // Pendência de contrato antigo: limpa a fila em vez de deixar o botão travado.
+      const removed = await pruneOrphans(true);
+      await loadPendingContributions();
+      showAlert('register-alert', 'warning',
+        `Este envio era do contrato anterior e não pode mais ser aprovado. ${removed} pendência(s) antiga(s) removida(s) da fila.`);
+      return;
+    }
     if (!result.success) throw new Error(result.error || 'Verify API error');
 
     const action = approved ? 'approved' : 'rejected';
@@ -1367,8 +1375,30 @@ async function getQueueAuth() {
   return queueAuth;
 }
 
+// Pendências de contratos antigos (antes de um redeploy) não podem ser aprovadas
+// nem rejeitadas on-chain. Uma vez por página, pede ao servidor para tirá-las
+// da fila — ele só remove o que comprovadamente não existe no Oracle atual.
+let orphansPruned = false;
+
+async function pruneOrphans(force = false) {
+  if (orphansPruned && !force) return 0;
+  orphansPruned = true;
+  try {
+    const resp = await fetch('/api/prune-pending', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auth: await getQueueAuth() }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    return resp.ok ? Number(data.removed || 0) : 0;
+  } catch (err) {
+    console.warn('Limpeza de pendências antigas falhou:', err);
+    return 0;
+  }
+}
+
 async function fetchPendingFull() {
   const auth = await getQueueAuth();
+  await pruneOrphans();
   let resp = await fetch('/api/pending', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ auth }),
   });

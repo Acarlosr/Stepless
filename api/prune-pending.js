@@ -18,7 +18,7 @@
 
 import {
   publicClient, oracleAddress,
-  store, contribKey, PENDING_LIST_KEY, cors, translateError, requireAdminSecret,
+  store, contribKey, PENDING_LIST_KEY, cors, translateError, requireAdminSecret, verifyQueueRequest,
 } from './_stepless.js';
 
 const ZERO = '0x0000000000000000000000000000000000000000';
@@ -54,10 +54,17 @@ export default async function handler(req, res) {
   if (!['GET', 'POST'].includes(req.method)) {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
-  if (!process.env.ORACLE_ADDRESS) {
-    return res.status(500).json({ success: false, error: 'ORACLE_ADDRESS não configurado.' });
+  if (req.method === 'POST') {
+    // Verificador on-chain com a assinatura de leitura da fila também pode
+    // limpar: a rota só tira o que comprovadamente não existe no Oracle atual.
+    const body = typeof req.body === 'string' ? (() => { try { return JSON.parse(req.body); } catch { return {}; } })() : (req.body || {});
+    if (body.auth) {
+      const check = await verifyQueueRequest({ auth: body.auth, domain: req.headers?.host || 'www.stepless.lat' });
+      if (!check.ok) return res.status(check.status).json({ success: false, error: check.error });
+    } else if (!requireAdminSecret(req, res)) {
+      return;
+    }
   }
-  if (req.method === 'POST' && !requireAdminSecret(req, res)) return;
 
   const pub = publicClient();
   const oracle = oracleAddress();
