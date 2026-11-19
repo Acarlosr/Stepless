@@ -29,6 +29,19 @@ export const MAX_CATEGORY_ID = 31;
  * Valida e normaliza as regras. Lança Error com mensagem em português.
  * A ordem das chaves é fixa — é isso que torna o hash reproduzível.
  */
+/**
+ * Título é para nomear a região, não para propaganda: sem links, e-mails ou
+ * @perfis (spam e golpes do tipo "acesse este site para receber").
+ * Só vale na CRIAÇÃO — não entra em canonicalMeta para não invalidar as regras
+ * de campanhas que já existem (elas pararam de pagar se o hash não conferisse).
+ */
+export function assertCleanTitle(meta) {
+  const title = String(meta?.title ?? '');
+  if (/https?:\/\/|www\.|\b[a-z0-9-]+\.(com|net|org|io|xyz|br|app|link|me)\b|@\w|\S+@\S+\.\S+/i.test(title)) {
+    throw new Error('O título não pode ter links, e-mails ou @perfis.');
+  }
+}
+
 export function canonicalMeta(input) {
   if (!input || typeof input !== 'object') throw new Error('Regras da campanha ausentes.');
   const title = String(input.title ?? '').replace(/[\u0000-\u001f\u007f<>]/g, ' ').replace(/\s+/g, ' ').trim();

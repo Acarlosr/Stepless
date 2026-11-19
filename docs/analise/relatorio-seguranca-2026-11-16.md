@@ -98,6 +98,8 @@ antes de ler a chain.
 
 ### 🟠 M2 — Conteúdo das campanhas não tem moderação
 
+> ✅ **Corrigido em 19/11** — título de campanha recusa links, e-mails e @perfis na criação; campanhas abusivas são ocultadas pelo id em `HIDDEN_CAMPAIGN_IDS` (site mostra só "Campanha #N"; contrato e pagamentos não mudam). A marca nunca aparece em texto (só o hash).
+
 **Onde:** qualquer pessoa cria campanha e publica regras com título livre
 (texto é limpo de HTML, mas não de ofensas, golpes ou marcas de terceiros).
 
@@ -181,6 +183,8 @@ São só leitura, mas cada chamada faz ~14 leituras na chain. Muitas chamadas
 consomem a cota do RPC dedicado. Aplicar o mesmo `rateLimit` dos outros.
 
 ### 🟡 B4 — Aviso enganoso no painel de mapear
+
+> ✅ **Corrigido em 19/11** — aviso do dashboard aponta para `admin.html` e `/api/setup`, sem script de terminal nem botão inline.
 
 Quando algum item do `/api/setup` falha, o painel manda "rodar no terminal
 `node scripts/setup-contracts.mjs`", que pede chaves privadas no computador

@@ -207,11 +207,9 @@
       </section>
 
       <!-- ── Admin Setup Panel ── -->
-      <div id="admin-setup-panel" style="display:none; margin-bottom:1rem; padding:1rem; border-radius:8px; border:2px solid var(--warning,#b45309); background:var(--surface);">
-        <p style="margin:0 0 0.5rem"><strong>⚠️ Ação única necessária:</strong> O relayer precisa ser autorizado no Oracle para poder registrar locais.</p>
-        <p style="margin:0 0 0.75rem; font-size:0.85rem; color:var(--text-muted);">Conecte a wallet que fez o deploy dos contratos no Remix (wallet admin) e clique no botão abaixo.</p>
-        <button id="btn-setup-relay" class="btn btn-primary" onclick="window.setupRelayer()">🔐 Autorizar Relayer no Oracle</button>
-        <span id="setup-status" style="display:block; margin-top:0.5rem; font-size:0.85rem;"></span>
+      <div id="admin-setup-panel" role="status" style="display:none; margin-bottom:1rem; padding:1rem; border-radius:8px; border:2px solid var(--warning,#b45309); background:var(--surface);">
+        <p style="margin:0 0 0.5rem"><strong>⚠️ Configuração dos contratos pendente.</strong> Novos envios podem falhar até isso ser resolvido.</p>
+        <p style="margin:0; font-size:0.85rem; color:var(--text-muted);">Quem administra o Stepless resolve em <a href="admin.html">admin.html</a> (seção Papéis), assinando com a carteira admin. Diagnóstico completo: <a href="/api/setup" target="_blank" rel="noopener">/api/setup</a>.</p>
       </div>
 
       <!-- ── Register Location ── -->

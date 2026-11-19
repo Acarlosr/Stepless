@@ -26,7 +26,7 @@
 
 import { publicClient, walletFor, store, cors, clientIp, translateError, requirePersistentStore } from './_stepless.js';
 import {
-  canonicalMeta, metaRefOf, campaignMetaKey, activeCampaigns, listCampaigns, attestContribution,
+  canonicalMeta, assertCleanTitle, metaRefOf, campaignMetaKey, activeCampaigns, listCampaigns, attestContribution,
   attesterAccount, escrowAddress, hasEscrow, CAMPAIGN_ABI,
 } from './_campaign.js';
 
@@ -49,8 +49,22 @@ export function campaignStatus(c, nowSec) {
   return 'active';
 }
 
-function publicCampaign(c, nowSec) {
+/**
+ * Moderação (relatório de segurança, M2). Qualquer pessoa cria campanha, e o
+ * título aparece no site. Uma campanha com título ofensivo ou enganoso é
+ * ocultada pelo id na env HIDDEN_CAMPAIGN_IDS ("3,7"): o site mostra só
+ * "Campanha #3". O contrato e os pagamentos NÃO mudam — o dinheiro do parceiro
+ * continua pagando locais aprovados e podendo ser devolvido.
+ */
+function hiddenIds() {
+  return new Set(String(process.env.HIDDEN_CAMPAIGN_IDS || '').split(',').map((s) => s.trim()).filter(Boolean));
+}
+
+function publicCampaign(c, nowSec, hidden = hiddenIds()) {
+  const moderated = hidden.has(String(c.id));
+  const rules = moderated && c.rules ? { ...c.rules, title: `Campanha #${c.id}` } : c.rules;
   return {
+    moderated,
     id: String(c.id),
     sponsor: c.sponsor,
     refundTo: c.refundTo,
@@ -63,7 +77,7 @@ function publicCampaign(c, nowSec) {
     remaining: c.refunded ? '0' : String(c.deposited - c.paidOut),
     deadline: Number(c.deadline),
     status: campaignStatus(c, nowSec),
-    rules: c.rules,
+    rules,
     rulesVerified: c.rulesVerified,
   };
 }
@@ -86,9 +100,10 @@ export default async function handler(req, res) {
       // Relógio da chain, não do servidor: é o que o contrato usa no prazo.
       const block = await pub.getBlock();
       const now = Number(block.timestamp);
+      const hidden = hiddenIds();
       return res.status(200).json({
         success: true, escrow: escrowAddress(), now,
-        campaigns: list.map((c) => publicCampaign(c, now)),
+        campaigns: list.map((c) => publicCampaign(c, now, hidden)),
       });
     } catch (err) {
       const t = translateError(err);
@@ -109,6 +124,7 @@ export default async function handler(req, res) {
   if (action === 'meta-ref') {
     try {
       const meta = canonicalMeta(body.meta);
+      assertCleanTitle(meta);
       return res.status(200).json({ success: true, meta, metaRef: metaRefOf(meta) });
     } catch (err) {
       return res.status(400).json({ success: false, error: err.message });
@@ -123,7 +139,7 @@ export default async function handler(req, res) {
     if (id < 1n) return res.status(400).json({ success: false, error: 'campaignId inválido.' });
 
     let meta;
-    try { meta = canonicalMeta(body.meta); } catch (err) {
+    try { meta = canonicalMeta(body.meta); assertCleanTitle(meta); } catch (err) {
       return res.status(400).json({ success: false, error: err.message });
     }
 

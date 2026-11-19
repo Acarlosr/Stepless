@@ -438,9 +438,12 @@ window.setupRelayer = async function() {
   if (btn) btn.disabled = true;
   try {
     if (status) {
-      status.textContent =
-        'Autorização de relayer saiu do navegador por segurança. '
-        + 'Rode no terminal: node scripts/setup-contracts.mjs';
+      // Sem script de terminal: o administrador resolve pela página de
+      // administração, assinando com a carteira admin (ou o Safe, na mainnet).
+      status.innerHTML =
+        'Configuração dos contratos pendente. Quem administra o Stepless resolve em '
+        + '<a href="admin.html">admin.html</a> (seção Papéis). '
+        + 'Diagnóstico completo: <a href="/api/setup" target="_blank" rel="noopener">/api/setup</a>.';
     }
   } catch (err) {
     if (status) status.textContent = `❌ ${err.message}`;
