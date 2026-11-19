@@ -158,7 +158,7 @@ isso na política de privacidade antes do envio.
 
 ### 🟡 B1 — Sem cabeçalhos de segurança no site
 
-> ✅ **Parcial em 16/11** — nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy e HSTS. CSP pendente.
+> ✅ **Corrigido em 19/11** — nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy, HSTS e CSP com lista de domínios (testada em modo relatório: login por e-mail, busca e campanhas sem violação do próprio site). Mantém 'unsafe-inline' (scripts inline) e 'unsafe-eval' (extensões de carteira como Phantom/Backpack avaliam código na página).
 
 `vercel.json` não define `Content-Security-Policy`, `X-Frame-Options`,
 `Referrer-Policy` nem `Permissions-Policy`. Uma CSP com a lista exata de

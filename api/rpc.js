@@ -130,7 +130,18 @@ export default async function handler(req, res) {
     return res.status(413).json({ error: 'Payload JSON-RPC excede o limite permitido.' });
   }
   if (!validateRpcPayload(req.body)) {
-    return res.status(400).json({ error: 'Método JSON-RPC não permitido ou lote inválido.' });
+    // Diz QUAL chamada foi barrada — antes o console só mostrava "400" e não
+    // dava para saber se era método fora da lista, janela de logs grande etc.
+    const items = Array.isArray(req.body) ? req.body : [req.body];
+    const rejected = items
+      .filter((item) => !(item && item.jsonrpc === '2.0' && ALLOWED_METHODS.has(item.method) && validateMethodParams(item)))
+      .map((item) => item?.method || '(sem método)');
+    console.warn('[rpc] barrado:', rejected.join(','), Array.isArray(req.body) ? `lote=${items.length}` : '');
+    return res.status(400).json({
+      error: 'Método JSON-RPC não permitido ou lote inválido.',
+      rejected,
+      batchSize: items.length,
+    });
   }
   const requestCost = Array.isArray(req.body) ? req.body.length : 1;
   if (!(await store.rateLimit(`rpc:${clientIp(req)}`, 120, 60, requestCost))) {

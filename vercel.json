@@ -2,11 +2,11 @@
   "version": 2,
   "buildCommand": null,
   "outputDirectory": "frontend",
-
   "functions": {
-    "api/*.js": { "maxDuration": 30 }
+    "api/*.js": {
+      "maxDuration": 30
+    }
   },
-
   "routes": [
     {
       "src": "/(.*)",
@@ -16,8 +16,7 @@
         "Referrer-Policy": "strict-origin-when-cross-origin",
         "Permissions-Policy": "geolocation=(self), camera=(self), microphone=(), payment=()",
         "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-        "Content-Security-Policy": "object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests",
-        "Content-Security-Policy-Report-Only": "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://esm.sh https://unpkg.com https://cdn.jsdelivr.net https://vlibras.gov.br https://*.vlibras.gov.br; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com https://vlibras.gov.br https://*.vlibras.gov.br; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: https://vlibras.gov.br https://*.vlibras.gov.br; connect-src 'self' https://esm.sh https://*.arc.io wss://*.arc.io https://nominatim.openstreetmap.org https://viacep.com.br https://api.goldsky.com https://api.pinata.cloud https://gateway.pinata.cloud https://ipfs.io https://dweb.link https://cloudflare-ipfs.com https://*.dynamicauth.com https://*.dynamic.xyz https://*.walletconnect.com wss://*.walletconnect.com https://*.walletconnect.org wss://*.walletconnect.org https://vlibras.gov.br https://*.vlibras.gov.br; frame-src 'self' https://*.dynamicauth.com https://*.dynamic.xyz https://verify.walletconnect.com https://verify.walletconnect.org; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
+        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://esm.sh https://unpkg.com https://cdn.jsdelivr.net https://vlibras.gov.br https://*.vlibras.gov.br; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com https://vlibras.gov.br https://*.vlibras.gov.br; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: https://vlibras.gov.br https://*.vlibras.gov.br; connect-src 'self' https://esm.sh https://*.arc.io wss://*.arc.io https://nominatim.openstreetmap.org https://viacep.com.br https://api.goldsky.com https://api.pinata.cloud https://gateway.pinata.cloud https://ipfs.io https://dweb.link https://cloudflare-ipfs.com https://*.dynamicauth.com https://*.dynamic.xyz https://*.walletconnect.com wss://*.walletconnect.com https://*.walletconnect.org wss://*.walletconnect.org https://vlibras.gov.br https://*.vlibras.gov.br; frame-src 'self' https://*.dynamicauth.com https://*.dynamic.xyz https://verify.walletconnect.com https://verify.walletconnect.org; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests"
       },
       "continue": true
     },
