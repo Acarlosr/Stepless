@@ -148,14 +148,28 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: 'Limite de RPC excedido. Aguarde um minuto.' });
   }
 
+  const send = (url) => fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: serializedBody,
+    signal: AbortSignal.timeout(8_000),
+  });
+
   try {
-    const upstream = await fetch(process.env.ARC_RPC_URL || PUBLIC_RPC_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: serializedBody,
-      signal: AbortSignal.timeout(8_000),
-    });
-    const body = await upstream.text();
+    const primary = process.env.ARC_RPC_URL || PUBLIC_RPC_URL;
+    let upstream = await send(primary);
+    let body = await upstream.text();
+
+    // O nó principal recusa algumas chamadas que o RPC público aceita (o
+    // navegador via 400 aqui e caía no público). Tenta o público no servidor
+    // e registra o motivo, para não poluir o console de quem usa o site.
+    if (upstream.status >= 400 && upstream.status < 500 && primary !== PUBLIC_RPC_URL) {
+      const methods = (Array.isArray(req.body) ? req.body : [req.body]).map((i) => i?.method).join(',');
+      console.warn(`[rpc] nó principal ${upstream.status} em ${methods}: ${body.slice(0, 200)}`);
+      upstream = await send(PUBLIC_RPC_URL);
+      body = await upstream.text();
+    }
+
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     return res.status(upstream.status).send(body);
   } catch (error) {
