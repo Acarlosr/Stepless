@@ -63,17 +63,10 @@
       </a>
 
       <nav class="nav" role="navigation" aria-label="Main navigation">
-        <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="nav-links">
-          <span></span><span></span><span></span>
-        </button>
-        <ul class="nav-links" id="nav-links">
+        <ul class="nav-links nav-links-primary" id="nav-links">
           <li><a href="buscar.html" data-i18n="nav_search">Buscar</a></li>
-          <li><a href="#para-quem" data-i18n="nav_who">Para quem é</a></li>
-          <li><a href="#how" data-i18n="nav_how">Como funciona</a></li>
-          <li><a href="#voluntario" data-i18n="nav_volunteer">Por que mapear</a></li>
-          <li><a href="#sponsor" data-i18n="nav_sponsor">Apoiar</a></li>
           <li><a href="campanhas.html" data-i18n="nav_campaigns">Campanhas</a></li>
-          <li><a href="#roadmap" data-i18n="nav_roadmap">Próximos passos</a></li>
+          <li><a href="#duvidas" data-i18n="nav_faq">Dúvidas</a></li>
           <li><a href="dashboard.html" data-i18n="nav_dashboard">Mapear um local</a></li>
         </ul>
         <!-- Seletor de idioma em menu suspenso. Os itens mantêm .lang-btn e
@@ -105,6 +98,10 @@
         <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Dark mode">
           <span id="theme-icon">🌙</span>
         </button>
+        <button type="button" class="nav-menu-btn" id="side-menu-open" aria-haspopup="dialog" aria-expanded="false" aria-controls="side-menu">
+          <span class="nav-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span data-i18n="nav_menu">Menu</span>
+        </button>
         <button class="btn btn-primary btn-sm" id="connect-wallet-btn" data-i18n="connect_wallet">Entrar</button>
         <div class="wallet-info" id="wallet-info">
           <span class="status-dot connected" aria-hidden="true"></span>
@@ -115,6 +112,31 @@
       </nav>
     </div>
   </header>
+
+  <!-- Menu lateral (direita): todos os caminhos, em letra grande. Abre pelo
+       botão "Menu" do cabeçalho; fecha com Esc, no X ou clicando fora. -->
+  <div class="side-menu" id="side-menu" role="dialog" aria-modal="true" aria-labelledby="side-menu-title" hidden>
+    <div class="side-menu-backdrop" data-close-menu></div>
+    <div class="side-menu-panel">
+      <div class="side-menu-head">
+        <h2 id="side-menu-title" data-i18n="nav_menu">Menu</h2>
+        <button type="button" class="side-menu-close" data-close-menu aria-label="Fechar menu" data-i18n-aria-label="nav_close">✕</button>
+      </div>
+      <nav aria-label="Menu completo">
+        <ul class="side-menu-links">
+          <li><a href="buscar.html" data-i18n="nav_search">Buscar</a></li>
+          <li><a href="dashboard.html" data-i18n="nav_dashboard">Mapear um local</a></li>
+          <li><a href="campanhas.html" data-i18n="nav_campaigns">Campanhas</a></li>
+          <li><a href="#duvidas" data-i18n="nav_faq">Dúvidas</a></li>
+          <li><a href="#para-quem" data-i18n="nav_who">Para quem é</a></li>
+          <li><a href="#how" data-i18n="nav_how">Como funciona</a></li>
+          <li><a href="#voluntario" data-i18n="nav_volunteer">Por que mapear</a></li>
+          <li><a href="#sponsor" data-i18n="nav_sponsor">Apoiar</a></li>
+          <li><a href="#roadmap" data-i18n="nav_roadmap">Próximos passos</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
 
   <!-- ════════════════════════════════════════════════
        Main
@@ -454,6 +476,45 @@
             <p class="card-text" data-i18n="vol_3_desc">Lojas, hotéis, prefeituras e associações podem financiar o mapeamento de uma região. Se o local que você registrar estiver numa área com campanha ativa, o pagamento cai direto na sua carteira depois que um revisor confirmar.</p>
             <a href="campanhas.html" class="btn btn-secondary btn-sm" style="margin-top:12px;" data-i18n="camp_cta_btn">Ver campanhas</a>
           </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ── Dúvidas frequentes: deixa explícito quando há (e quando não há) pagamento ── -->
+    <section class="section" id="duvidas" aria-labelledby="faq-title">
+      <div class="container">
+        <h2 class="section-title" id="faq-title" data-i18n="faq_title">Dúvidas frequentes</h2>
+        <p class="section-subtitle" data-i18n="faq_sub">Respostas curtas para as perguntas mais comuns.</p>
+        <div class="faq-list">
+          <details class="faq-item">
+            <summary data-i18n="faq_1_q">Vou receber dinheiro por mapear?</summary>
+            <p data-i18n="faq_1_a">Só se o local estiver numa região com campanha ativa de um parceiro. Fora das campanhas, mapear é gratuito e voluntário: você não paga nada e também não recebe pagamento.</p>
+          </details>
+          <details class="faq-item">
+            <summary data-i18n="faq_2_q">Quem paga as recompensas?</summary>
+            <p data-i18n="faq_2_a">Parceiros: lojas, hotéis, prefeituras e associações. Eles depositam o valor num contrato público antes de a campanha começar. O Stepless não paga recompensas e não consegue sacar esse dinheiro.</p>
+          </details>
+          <details class="faq-item">
+            <summary data-i18n="faq_3_q">Como sei se tem campanha perto de mim?</summary>
+            <p data-i18n="faq_3_a">Na busca aparece o aviso “💰 Campanha ativa perto daqui”. A página Campanhas mostra no mapa todas as regiões com recompensa, o valor por local e o prazo.</p>
+          </details>
+          <details class="faq-item">
+            <summary data-i18n="faq_4_q">Quando o pagamento cai?</summary>
+            <p data-i18n="faq_4_a">Depois que um revisor confirma a foto do local. O valor vai direto para a sua carteira no Stepless, sem precisar pedir saque.</p>
+          </details>
+          <details class="faq-item">
+            <summary data-i18n="faq_5_q">Preciso pagar alguma taxa para mapear?</summary>
+            <p data-i18n="faq_5_a">Não. A taxa da rede é paga pelo Stepless. Para mapear basta entrar com seu e-mail, tirar a foto no local e enviar.</p>
+          </details>
+          <details class="faq-item">
+            <summary data-i18n="faq_6_q">Preciso entrar na conta para ver o mapa?</summary>
+            <p data-i18n="faq_6_a">Não. Buscar locais acessíveis é livre, sem cadastro. A conta só é pedida na hora de registrar um local.</p>
+          </details>
+          <details class="faq-item">
+            <summary data-i18n="faq_7_q">O que acontece com o dinheiro que sobra na campanha?</summary>
+            <p data-i18n="faq_7_a">Quando o prazo termina, o saldo não usado volta para a carteira do parceiro. Ninguém mais consegue ficar com ele.</p>
+          </details>
         </div>
       </div>
     </section>
@@ -808,7 +869,7 @@
         sponsor_wall_history: "Histórico completo no ArcScan",
         sponsor_disclaimer: "Fase de testes: use USDC de teste, sem valor real (faucet.circle.com).",
         footer_sponsor: "Apoiar",
-        nav_volunteer: "Por que mapear", vol_title: "Por que mapear", vol_subtitle: "Mapear é gratuito e voluntário. Em regiões com campanha de parceiro, você também recebe USDC por cada local verificado.", vol_1_title: "Você ajuda alguém hoje", vol_1_desc: "Cada local mapeado evita uma viagem perdida para quem usa cadeira de rodas, muletas, carrinho de bebê ou tem baixa visão.", vol_2_title: "Seu nome fica na história do mapa", vol_2_desc: "Cada contribuição fica ligada à sua conta, de forma pública e permanente. Dá para mostrar o que você construiu.", vol_3_title: "Campanhas de parceiros", vol_3_desc: "Lojas, hotéis, prefeituras e associações podem financiar o mapeamento de uma região. Se o local que você registrar estiver numa área com campanha ativa, o pagamento cai direto na sua carteira depois que um revisor confirmar.", brand_title: "Sua marca como apoiadora", brand_desc: "Comércios e marcas podem apoiar e aparecer no mural de apoiadores. Aprovamos cada marca manualmente e seu e-mail não é exibido.", brand_field_brand: "Nome da marca", brand_field_email: "E-mail de contato", brand_field_url: "Site (opcional)", brand_field_msg: "Mensagem curta (opcional)", brand_submit: "Quero apoiar", brand_wall_title: "Apoiadores", brand_wall_empty: "Seja o primeiro apoiador.", brand_ok: "Recebido! Vamos responder por e-mail. Código da sua marca:", brand_err: "Não foi possível enviar.", brand_net: "Erro de rede. Tente novamente.", brand_sending: "Enviando…", roadmap_5_phase: "Depois", roadmap_5_title: "Dados abertos para apps", roadmap_5_desc: "Uma API para aplicativos de mobilidade, turismo e prefeituras consultarem o mapa.",
+        nav_volunteer: "Por que mapear", vol_title: "Por que mapear", vol_subtitle: "Mapear é gratuito e voluntário. Em regiões com campanha de parceiro, você também recebe USDC por cada local verificado.", vol_1_title: "Você ajuda alguém hoje", vol_1_desc: "Cada local mapeado evita uma viagem perdida para quem usa cadeira de rodas, muletas, carrinho de bebê ou tem baixa visão.", vol_2_title: "Seu nome fica na história do mapa", vol_2_desc: "Cada contribuição fica ligada à sua conta, de forma pública e permanente. Dá para mostrar o que você construiu.", vol_3_title: "Campanhas de parceiros", vol_3_desc: "Lojas, hotéis, prefeituras e associações podem financiar o mapeamento de uma região. Se o local que você registrar estiver numa área com campanha ativa, o pagamento cai direto na sua carteira depois que um revisor confirmar.", brand_title: "Sua marca como apoiadora", brand_desc: "Comércios e marcas podem apoiar e aparecer no mural de apoiadores. Aprovamos cada marca manualmente e seu e-mail não é exibido.", brand_field_brand: "Nome da marca", brand_field_email: "E-mail de contato", brand_field_url: "Site (opcional)", brand_field_msg: "Mensagem curta (opcional)", brand_submit: "Quero apoiar", brand_wall_title: "Apoiadores", brand_wall_empty: "Seja o primeiro apoiador.", brand_ok: "Recebido! Vamos responder por e-mail. Código da sua marca:", brand_err: "Não foi possível enviar.", brand_net: "Erro de rede. Tente novamente.", brand_sending: "Enviando…", roadmap_5_phase: "Depois", roadmap_5_title: "Dados abertos para apps", roadmap_5_desc: "Uma API para aplicativos de mobilidade, turismo e prefeituras consultarem o mapa.", faq_title: "Dúvidas frequentes", faq_sub: "Respostas curtas para as perguntas mais comuns.", faq_1_q: "Vou receber dinheiro por mapear?", faq_1_a: "Só se o local estiver numa região com campanha ativa de um parceiro. Fora das campanhas, mapear é gratuito e voluntário: você não paga nada e também não recebe pagamento.", faq_2_q: "Quem paga as recompensas?", faq_2_a: "Parceiros: lojas, hotéis, prefeituras e associações. Eles depositam o valor num contrato público antes de a campanha começar. O Stepless não paga recompensas e não consegue sacar esse dinheiro.", faq_3_q: "Como sei se tem campanha perto de mim?", faq_3_a: "Na busca aparece o aviso “💰 Campanha ativa perto daqui”. A página Campanhas mostra no mapa todas as regiões com recompensa, o valor por local e o prazo.", faq_4_q: "Quando o pagamento cai?", faq_4_a: "Depois que um revisor confirma a foto do local. O valor vai direto para a sua carteira no Stepless, sem precisar pedir saque.", faq_5_q: "Preciso pagar alguma taxa para mapear?", faq_5_a: "Não. A taxa da rede é paga pelo Stepless. Para mapear basta entrar com seu e-mail, tirar a foto no local e enviar.", faq_6_q: "Preciso entrar na conta para ver o mapa?", faq_6_a: "Não. Buscar locais acessíveis é livre, sem cadastro. A conta só é pedida na hora de registrar um local.", faq_7_q: "O que acontece com o dinheiro que sobra na campanha?", faq_7_a: "Quando o prazo termina, o saldo não usado volta para a carteira do parceiro. Ninguém mais consegue ficar com ele.", nav_faq: "Dúvidas", nav_menu: "Menu", nav_close: "Fechar menu",
         nav_who: "Para quem é", who_cta: "Ver locais", who_title: "Para quem é o Stepless", who_subtitle: "Para qualquer pessoa que precisa saber, antes de sair de casa, se vai conseguir entrar, circular e ser atendida.", who_1_title: "Cadeirantes e mobilidade reduzida", who_1_desc: "Rampa, entrada sem degrau, elevador e banheiro com espaço para a cadeira.", who_2_title: "Pessoas idosas", who_2_desc: "Menos escadas, elevador, vaga perto da entrada e banheiro com barras. Saber antes evita cansaço e quedas.", who_3_title: "Pessoas com deficiência visual", who_3_desc: "Piso tátil, braile e avisos sonoros.", who_4_title: "Pessoas com deficiência auditiva", who_4_desc: "Sinalização visual e informação escrita no local.", who_5_title: "Quem está com mobilidade reduzida por um tempo", who_5_desc: "Gesso, recuperação de cirurgia, gravidez ou carrinho de bebê — qualquer pessoa pode precisar um dia.", who_6_title: "Familiares e cuidadores", who_6_desc: "Planeje o passeio, a consulta ou a viagem de quem você acompanha.", travel_title: "Vai viajar?", travel_desc: "Antes de reservar, veja se o hotel ou a pousada tem quarto adaptado, banheiro com barras e elevador. Quem já se hospedou lá pode registrar e ajudar o próximo hóspede.", travel_cta_search: "Buscar quartos adaptados", travel_cta_add: "Registrar uma hospedagem",
       },
       en: {
@@ -900,7 +961,7 @@
         sponsor_wall_history: "Full history on ArcScan",
         sponsor_disclaimer: "Testing phase: use test USDC, no real value (faucet.circle.com).",
         footer_sponsor: "Support",
-        nav_volunteer: "Why map", vol_title: "Why map", vol_subtitle: "Mapping is free and voluntary. In areas with a partner campaign, you also get USDC for each verified place.", vol_1_title: "You help someone today", vol_1_desc: "Every mapped place saves a wasted trip for wheelchair users, people on crutches, parents with strollers, or people with low vision.", vol_2_title: "Your name stays in the map's history", vol_2_desc: "Each contribution is linked to your account, publicly and permanently. You can show what you built.", vol_3_title: "Partner campaigns", vol_3_desc: "Shops, hotels, cities and associations can fund mapping in an area. If the place you add is inside an active campaign, the payment goes straight to your wallet once a reviewer confirms it.", brand_title: "Your brand as a supporter", brand_desc: "Businesses and brands can support us and appear on the supporters wall. We approve each brand manually and never show your email.", brand_field_brand: "Brand name", brand_field_email: "Contact email", brand_field_url: "Website (optional)", brand_field_msg: "Short message (optional)", brand_submit: "I want to support", brand_wall_title: "Supporters", brand_wall_empty: "Be the first supporter.", brand_ok: "Received! We'll reply by email. Your brand code:", brand_err: "Could not send.", brand_net: "Network error. Please try again.", brand_sending: "Sending…", roadmap_5_phase: "Later", roadmap_5_title: "Open data for apps", roadmap_5_desc: "An API so mobility, travel and city apps can query the map.",
+        nav_volunteer: "Why map", vol_title: "Why map", vol_subtitle: "Mapping is free and voluntary. In areas with a partner campaign, you also get USDC for each verified place.", vol_1_title: "You help someone today", vol_1_desc: "Every mapped place saves a wasted trip for wheelchair users, people on crutches, parents with strollers, or people with low vision.", vol_2_title: "Your name stays in the map's history", vol_2_desc: "Each contribution is linked to your account, publicly and permanently. You can show what you built.", vol_3_title: "Partner campaigns", vol_3_desc: "Shops, hotels, cities and associations can fund mapping in an area. If the place you add is inside an active campaign, the payment goes straight to your wallet once a reviewer confirms it.", brand_title: "Your brand as a supporter", brand_desc: "Businesses and brands can support us and appear on the supporters wall. We approve each brand manually and never show your email.", brand_field_brand: "Brand name", brand_field_email: "Contact email", brand_field_url: "Website (optional)", brand_field_msg: "Short message (optional)", brand_submit: "I want to support", brand_wall_title: "Supporters", brand_wall_empty: "Be the first supporter.", brand_ok: "Received! We'll reply by email. Your brand code:", brand_err: "Could not send.", brand_net: "Network error. Please try again.", brand_sending: "Sending…", roadmap_5_phase: "Later", roadmap_5_title: "Open data for apps", roadmap_5_desc: "An API so mobility, travel and city apps can query the map.", faq_title: "Frequently asked questions", faq_sub: "Short answers to the most common questions.", faq_1_q: "Will I get paid for mapping?", faq_1_a: "Only if the place is inside an area with an active partner campaign. Outside campaigns, mapping is free and voluntary: you pay nothing and receive nothing.", faq_2_q: "Who pays the rewards?", faq_2_a: "Partners: shops, hotels, cities and associations. They deposit the amount into a public contract before the campaign starts. Stepless doesn't pay rewards and can't withdraw that money.", faq_3_q: "How do I know if there's a campaign near me?", faq_3_a: "Search shows the notice “💰 Active campaign nearby”. The Campaigns page shows every rewarded area on the map, the amount per place and the deadline.", faq_4_q: "When does the payment arrive?", faq_4_a: "After a reviewer confirms the place's photo. The amount goes straight to your Stepless wallet — no withdrawal request needed.", faq_5_q: "Do I pay any fee to map?", faq_5_a: "No. Stepless pays the network fee. Just sign in with your email, take the photo on site and submit.", faq_6_q: "Do I need an account to see the map?", faq_6_a: "No. Searching accessible places is open, no sign-up. An account is only needed to add a place.", faq_7_q: "What happens to money left in a campaign?", faq_7_a: "When the deadline ends, the unused balance goes back to the partner's wallet. Nobody else can keep it.", nav_faq: "FAQ", nav_menu: "Menu", nav_close: "Close menu",
         nav_who: "Who it's for", who_cta: "See places", who_title: "Who Stepless is for", who_subtitle: "For anyone who needs to know, before leaving home, whether they'll be able to get in, move around and be served.", who_1_title: "Wheelchair users and reduced mobility", who_1_desc: "Ramps, step-free entrances, elevators and restrooms with room for a wheelchair.", who_2_title: "Older adults", who_2_desc: "Fewer stairs, elevators, parking near the entrance and restrooms with grab bars. Knowing ahead avoids fatigue and falls.", who_3_title: "People with visual impairments", who_3_desc: "Tactile paving, braille and audio signals.", who_4_title: "People with hearing impairments", who_4_desc: "Visual signage and written information on site.", who_5_title: "People with temporary reduced mobility", who_5_desc: "A cast, surgery recovery, pregnancy or a stroller — anyone may need it one day.", who_6_title: "Family members and caregivers", who_6_desc: "Plan the outing, appointment or trip of the person you support.", travel_title: "Travelling?", travel_desc: "Before booking, check whether the hotel or inn has an accessible room, a bathroom with grab bars and an elevator. Past guests can add it and help the next one.", travel_cta_search: "Find accessible rooms", travel_cta_add: "Add a place to stay",
       },
       es: {
@@ -992,7 +1053,7 @@
         sponsor_wall_history: "Historial completo en ArcScan",
         sponsor_disclaimer: "Fase de pruebas: usa USDC de prueba, sin valor real (faucet.circle.com).",
         footer_sponsor: "Apoyar",
-        nav_volunteer: "Por qué mapear", vol_title: "Por qué mapear", vol_subtitle: "Mapear es gratis y voluntario. En zonas con campaña de un socio, también recibes USDC por cada lugar verificado.", vol_1_title: "Ayudas a alguien hoy", vol_1_desc: "Cada lugar mapeado evita un viaje perdido a quien usa silla de ruedas, muletas, cochecito de bebé o tiene baja visión.", vol_2_title: "Tu nombre queda en la historia del mapa", vol_2_desc: "Cada contribución queda ligada a tu cuenta, de forma pública y permanente.", vol_3_title: "Campañas de socios", vol_3_desc: "Tiendas, hoteles, municipios y asociaciones pueden financiar el mapeo de una zona. Si el lugar que registras está en una zona con campaña activa, el pago llega directo a tu cartera cuando un revisor lo confirma.", brand_title: "Tu marca como patrocinadora", brand_desc: "Comercios y marcas pueden apoyar y aparecer en el mural de patrocinadores. Aprobamos cada marca manualmente y no mostramos tu correo.", brand_field_brand: "Nombre de la marca", brand_field_email: "Correo de contacto", brand_field_url: "Sitio web (opcional)", brand_field_msg: "Mensaje corto (opcional)", brand_submit: "Quiero apoyar", brand_wall_title: "Patrocinadores", brand_wall_empty: "Sé el primer patrocinador.", brand_ok: "¡Recibido! Te responderemos por correo. Código de tu marca:", brand_err: "No se pudo enviar.", brand_net: "Error de red. Inténtalo de nuevo.", brand_sending: "Enviando…", roadmap_5_phase: "Después", roadmap_5_title: "Datos abiertos para apps", roadmap_5_desc: "Una API para que apps de movilidad, turismo y municipios consulten el mapa.",
+        nav_volunteer: "Por qué mapear", vol_title: "Por qué mapear", vol_subtitle: "Mapear es gratis y voluntario. En zonas con campaña de un socio, también recibes USDC por cada lugar verificado.", vol_1_title: "Ayudas a alguien hoy", vol_1_desc: "Cada lugar mapeado evita un viaje perdido a quien usa silla de ruedas, muletas, cochecito de bebé o tiene baja visión.", vol_2_title: "Tu nombre queda en la historia del mapa", vol_2_desc: "Cada contribución queda ligada a tu cuenta, de forma pública y permanente.", vol_3_title: "Campañas de socios", vol_3_desc: "Tiendas, hoteles, municipios y asociaciones pueden financiar el mapeo de una zona. Si el lugar que registras está en una zona con campaña activa, el pago llega directo a tu cartera cuando un revisor lo confirma.", brand_title: "Tu marca como patrocinadora", brand_desc: "Comercios y marcas pueden apoyar y aparecer en el mural de patrocinadores. Aprobamos cada marca manualmente y no mostramos tu correo.", brand_field_brand: "Nombre de la marca", brand_field_email: "Correo de contacto", brand_field_url: "Sitio web (opcional)", brand_field_msg: "Mensaje corto (opcional)", brand_submit: "Quiero apoyar", brand_wall_title: "Patrocinadores", brand_wall_empty: "Sé el primer patrocinador.", brand_ok: "¡Recibido! Te responderemos por correo. Código de tu marca:", brand_err: "No se pudo enviar.", brand_net: "Error de red. Inténtalo de nuevo.", brand_sending: "Enviando…", roadmap_5_phase: "Después", roadmap_5_title: "Datos abiertos para apps", roadmap_5_desc: "Una API para que apps de movilidad, turismo y municipios consulten el mapa.", faq_title: "Preguntas frecuentes", faq_sub: "Respuestas cortas a las preguntas más comunes.", faq_1_q: "¿Recibiré dinero por mapear?", faq_1_a: "Solo si el lugar está en una zona con una campaña activa de un socio. Fuera de las campañas, mapear es gratis y voluntario: no pagas nada y tampoco recibes pago.", faq_2_q: "¿Quién paga las recompensas?", faq_2_a: "Socios: tiendas, hoteles, municipios y asociaciones. Depositan el valor en un contrato público antes de que empiece la campaña. Stepless no paga recompensas y no puede retirar ese dinero.", faq_3_q: "¿Cómo sé si hay una campaña cerca?", faq_3_a: "En la búsqueda aparece el aviso “💰 Campaña activa cerca”. La página Campañas muestra en el mapa todas las zonas con recompensa, el valor por lugar y el plazo.", faq_4_q: "¿Cuándo llega el pago?", faq_4_a: "Después de que un revisor confirma la foto del lugar. El valor va directo a tu cartera de Stepless, sin pedir retiro.", faq_5_q: "¿Tengo que pagar alguna tarifa para mapear?", faq_5_a: "No. Stepless paga la tarifa de la red. Solo entra con tu correo, toma la foto en el lugar y envía.", faq_6_q: "¿Necesito una cuenta para ver el mapa?", faq_6_a: "No. Buscar lugares accesibles es libre, sin registro. La cuenta solo se pide para registrar un lugar.", faq_7_q: "¿Qué pasa con el dinero que sobra en la campaña?", faq_7_a: "Cuando termina el plazo, el saldo no usado vuelve a la cartera del socio. Nadie más puede quedárselo.", nav_faq: "Preguntas", nav_menu: "Menú", nav_close: "Cerrar menú",
         nav_who: "Para quién es", who_cta: "Ver lugares", who_title: "Para quién es Stepless", who_subtitle: "Para cualquier persona que necesita saber, antes de salir de casa, si podrá entrar, moverse y ser atendida.", who_1_title: "Usuarios de silla de ruedas y movilidad reducida", who_1_desc: "Rampa, entrada sin escalón, ascensor y baño con espacio para la silla.", who_2_title: "Personas mayores", who_2_desc: "Menos escaleras, ascensor, estacionamiento cerca de la entrada y baño con barras. Saberlo antes evita cansancio y caídas.", who_3_title: "Personas con discapacidad visual", who_3_desc: "Pavimento táctil, braille y avisos sonoros.", who_4_title: "Personas con discapacidad auditiva", who_4_desc: "Señalización visual e información escrita en el lugar.", who_5_title: "Movilidad reducida temporal", who_5_desc: "Yeso, recuperación de cirugía, embarazo o cochecito de bebé — cualquiera puede necesitarlo un día.", who_6_title: "Familiares y cuidadores", who_6_desc: "Planifica el paseo, la consulta o el viaje de quien acompañas.", travel_title: "¿Vas a viajar?", travel_desc: "Antes de reservar, revisa si el hotel o la posada tiene habitación adaptada, baño con barras y ascensor. Quien ya se hospedó puede registrarlo y ayudar al próximo huésped.", travel_cta_search: "Buscar habitaciones adaptadas", travel_cta_add: "Registrar un alojamiento",
       }
     };
@@ -1019,6 +1080,10 @@
         if (strings[key]) el.textContent = strings[key];
       });
       window.STEPLESS_T = (k) => (I18N[currentLang] && I18N[currentLang][k]) || I18N.pt[k] || k;
+      document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+        const key = el.getAttribute('data-i18n-aria-label');
+        if (strings[key]) el.setAttribute('aria-label', strings[key]);
+      });
       document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
         const key = el.getAttribute('data-i18n-placeholder');
         if (strings[key]) el.setAttribute('placeholder', strings[key]);
@@ -1452,14 +1517,39 @@
 
     /* ── Mobile nav ── */
     function initNav() {
-      const toggle = document.querySelector('.nav-toggle');
-      const links = document.getElementById('nav-links');
-      if (toggle) {
-        toggle.addEventListener('click', () => {
-          const open = links.classList.toggle('open');
-          toggle.setAttribute('aria-expanded', open);
-        });
-      }
+      const menu = document.getElementById('side-menu');
+      const openBtn = document.getElementById('side-menu-open');
+      if (!menu || !openBtn) return;
+      const close = () => {
+        menu.hidden = true;
+        document.body.classList.remove('side-menu-open');
+        openBtn.setAttribute('aria-expanded', 'false');
+        openBtn.focus();
+      };
+      openBtn.addEventListener('click', () => {
+        menu.hidden = false;
+        document.body.classList.add('side-menu-open');
+        openBtn.setAttribute('aria-expanded', 'true');
+        menu.querySelector('.side-menu-close').focus();
+      });
+      menu.querySelectorAll('[data-close-menu]').forEach((el) => el.addEventListener('click', close));
+      // Ao escolher um item, fecha e segue o link (âncora ou página).
+      menu.querySelectorAll('.side-menu-links a').forEach((a) => a.addEventListener('click', () => {
+        menu.hidden = true;
+        document.body.classList.remove('side-menu-open');
+        openBtn.setAttribute('aria-expanded', 'false');
+      }));
+      document.addEventListener('keydown', (e) => {
+        if (menu.hidden) return;
+        if (e.key === 'Escape') { close(); return; }
+        // Mantém o foco do teclado dentro do menu enquanto ele está aberto.
+        if (e.key === 'Tab') {
+          const f = [...menu.querySelectorAll('button, a')];
+          const first = f[0], last = f[f.length - 1];
+          if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+      });
     }
 
     /* ── Wallet UI ── */

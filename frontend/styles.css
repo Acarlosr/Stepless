@@ -2488,3 +2488,100 @@ pre code {
   --vlibras-btn-focus-visible-outline: 3px solid var(--accent);
   --vlibras-btn-focus-visible-shadow: 0 0 0 6px rgba(0, 0, 0, .25);
 }
+
+/* ──────────────────────────────────────────────────────────────
+ *  Menu do cabeçalho (index): 4 caminhos principais + menu lateral
+ *  O menu de 8 itens ficava apertado e com letra miúda. Agora o topo
+ *  mostra só o essencial, em letra legível, e o resto fica num painel
+ *  à direita com itens grandes (bom para toque e para baixa visão).
+ * ────────────────────────────────────────────────────────────── */
+
+.nav-links-primary a { font-size: 0.95rem; padding: 6px 10px; }
+@media (min-width: 1101px) {
+  .nav-links-primary { gap: 4px; }
+  .nav-links-primary a { font-size: 0.95rem; padding: 6px 10px; }
+}
+
+.nav-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 8px 12px;
+  min-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface, transparent);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.nav-menu-btn:hover { background: var(--accent-bg); }
+.nav-menu-icon { display: inline-flex; flex-direction: column; gap: 3px; }
+.nav-menu-icon span { display: block; width: 18px; height: 2px; border-radius: 2px; background: currentColor; }
+
+.side-menu { position: fixed; inset: 0; z-index: 1000; }
+.side-menu[hidden] { display: none; }
+.side-menu-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.45); }
+.side-menu-panel {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: min(340px, 88vw);
+  background: var(--bg);
+  border-left: 1px solid var(--border);
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.25);
+  padding: 20px;
+  overflow-y: auto;
+  animation: side-menu-in 0.18s ease-out;
+}
+@keyframes side-menu-in { from { transform: translateX(100%); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .side-menu-panel { animation: none; } }
+.side-menu-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.side-menu-head h2 { font-size: 1.25rem; margin: 0; }
+.side-menu-close {
+  width: 44px; height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+.side-menu-links { list-style: none; margin: 0; padding: 0; }
+.side-menu-links a {
+  display: block;
+  padding: 14px 12px;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+}
+.side-menu-links a:hover, .side-menu-links a:focus-visible { background: var(--accent-bg); color: var(--link); }
+.side-menu-links li + li { border-top: 1px solid var(--border); }
+body.side-menu-open { overflow: hidden; }
+
+/* ── Dúvidas frequentes ── */
+.faq-list { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.faq-item {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface, var(--bg));
+  padding: 0 18px;
+}
+.faq-item summary {
+  cursor: pointer;
+  padding: 16px 0;
+  font-weight: 600;
+  font-size: 1.05rem;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after { content: "+"; font-size: 1.3rem; line-height: 1; color: var(--text-muted); }
+.faq-item[open] summary::after { content: "−"; }
+.faq-item p { margin: 0 0 16px; color: var(--text-muted); line-height: 1.6; }
