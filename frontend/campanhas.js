@@ -14,6 +14,7 @@
 import { SteplessConfig } from './arc-config.js';
 import {
   initDynamic, connectWallet as dynConnect, getProvider, tryRestoreSession,
+  disconnectWallet, onWalletChange,
 } from './dynamic-wallet.js';
 import { geocode } from './geocode.js';
 
@@ -95,7 +96,7 @@ const I18N = {
     f_brand_hint: 'Se você já se cadastrou como apoiador, cole o código (0x…). A marca só aparece publicamente depois de aprovada.',
     summary: 'Total a depositar: {total} USDC. Paga até {items} locais de {reward} USDC. O que sobrar volta para você em {date}.',
     summary_invalid: 'Preencha os campos para ver o total.',
-    btn_create: 'Conectar carteira e criar campanha', btn_create_connected: 'Criar campanha',
+    btn_create: 'Conectar carteira e criar campanha', btn_create_connected: 'Criar campanha', w_connect: 'Conectar carteira', w_switch: 'Trocar', w_disconnect: 'Sair', w_email_note: 'Conectado por e-mail — para criar ou devolver, use Trocar e escolha MetaMask/Rabby.',
     f_terms: 'Li e aceito as regras de campanha dos', f_terms_link: 'Termos de Uso', f_privacy_link: 'Privacidade',
     f_terms_tail: 'Declaro que posso usar a marca informada e entendo que o depósito só pode pagar locais aprovados ou voltar para minha carteira.',
     err_terms: 'Marque que aceita os Termos de Uso para criar a campanha.',
@@ -153,7 +154,7 @@ const I18N = {
     f_brand_hint: 'If you already signed up as a supporter, paste your code (0x…). The brand is only shown publicly after approval.',
     summary: 'Total deposit: {total} USDC. Pays up to {items} places at {reward} USDC. Leftovers return to you on {date}.',
     summary_invalid: 'Fill in the fields to see the total.',
-    btn_create: 'Connect wallet and create campaign', btn_create_connected: 'Create campaign',
+    btn_create: 'Connect wallet and create campaign', btn_create_connected: 'Create campaign', w_connect: 'Connect wallet', w_switch: 'Switch', w_disconnect: 'Disconnect', w_email_note: 'Signed in by email — to create or refund, use Switch and pick MetaMask/Rabby.',
     f_terms: 'I have read and accept the campaign rules in the', f_terms_link: 'Terms of Use', f_privacy_link: 'Privacy',
     f_terms_tail: 'I confirm I may use the brand provided and understand the deposit can only pay approved places or return to my wallet.',
     err_terms: 'Please accept the Terms of Use to create the campaign.',
@@ -211,7 +212,7 @@ const I18N = {
     f_brand_hint: 'Si ya te registraste como patrocinador, pega el código (0x…). La marca solo aparece públicamente tras la aprobación.',
     summary: 'Total a depositar: {total} USDC. Paga hasta {items} lugares de {reward} USDC. Lo que sobre vuelve a ti el {date}.',
     summary_invalid: 'Completa los campos para ver el total.',
-    btn_create: 'Conectar cartera y crear campaña', btn_create_connected: 'Crear campaña',
+    btn_create: 'Conectar cartera y crear campaña', btn_create_connected: 'Crear campaña', w_connect: 'Conectar cartera', w_switch: 'Cambiar', w_disconnect: 'Salir', w_email_note: 'Conectado por correo — para crear o devolver, usa Cambiar y elige MetaMask/Rabby.',
     f_terms: 'He leído y acepto las reglas de campaña de los', f_terms_link: 'Términos de Uso', f_privacy_link: 'Privacidad',
     f_terms_tail: 'Declaro que puedo usar la marca indicada y entiendo que el depósito solo puede pagar lugares aprobados o volver a mi cartera.',
     err_terms: 'Marca que aceptas los Términos de Uso para crear la campaña.',
@@ -315,6 +316,61 @@ let account = null;
 let escrowAddress = NET.contracts?.CampaignEscrow || null;
 let escrowAvailable = false;
 
+// Barra da carteira no cabeçalho: mostra QUAL carteira está conectada e
+// permite trocar ou sair — antes, quem conectava a carteira errada (ou tinha
+// a sessão de e-mail restaurada) ficava preso nela.
+function renderWalletBar() {
+  const connectBtn = document.getElementById('wallet-connect');
+  const info = document.getElementById('wallet-info');
+  const addr = document.getElementById('wallet-addr');
+  if (!connectBtn || !info) return;
+  connectBtn.hidden = Boolean(account);
+  info.hidden = !account;
+  if (account && addr) {
+    addr.textContent = `${account.slice(0, 6)}…${account.slice(-4)}`;
+    addr.title = account;
+  }
+}
+
+async function connectFlow() {
+  try {
+    const { address } = await dynConnect();
+    account = address;
+  } catch (_) { /* fechou o modal */ }
+  renderWalletBar();
+  updateCreateButton();
+}
+
+async function disconnectFlow() {
+  try { await disconnectWallet(); } catch (_) {}
+  account = null;
+  renderWalletBar();
+  updateCreateButton();
+}
+
+function initWalletBar() {
+  document.getElementById('wallet-connect')?.addEventListener('click', connectFlow);
+  document.getElementById('wallet-disconnect')?.addEventListener('click', disconnectFlow);
+  // Trocar = sair + conectar de novo. No MetaMask/Rabby, a carteira pede para
+  // escolher a conta outra vez (as permissões são revogadas ao sair).
+  document.getElementById('wallet-switch')?.addEventListener('click', async () => {
+    await disconnectFlow();
+    await connectFlow();
+  });
+  onWalletChange((st) => {
+    account = st.isConnected ? st.address : null;
+    renderWalletBar();
+    updateCreateButton();
+  });
+  // Trocou de conta dentro da extensão: acompanha sem recarregar a página.
+  window.ethereum?.on?.('accountsChanged', (accs) => {
+    if (!account) return;
+    account = accs?.[0] || null;
+    renderWalletBar();
+    updateCreateButton();
+  });
+}
+
 function updateCreateButton() {
   const btn = document.getElementById('btn-create');
   if (!btn) return;
@@ -335,7 +391,7 @@ async function ensureSigner() {
   try {
     await provider.request({ method: 'eth_accounts' });
   } catch {
-    throw Object.assign(new Error(t('s_email')), { friendly: true });
+    throw Object.assign(new Error(t('w_email_note')), { friendly: true });
   }
   await ensureChain(provider);
   const viem = await loadViem();
@@ -805,8 +861,9 @@ function init() {
   loadCampaigns();
 
   // Sessão anterior: só mostra o endereço; a assinatura é conferida na hora de criar.
+  initWalletBar();
   initDynamic().then(() => tryRestoreSession()).then((s) => {
-    if (s?.address) { account = s.address; updateCreateButton(); }
+    if (s?.address) { account = s.address; renderWalletBar(); updateCreateButton(); }
   }).catch(() => {});
 }
 

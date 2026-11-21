@@ -105,6 +105,10 @@
     .camp-form fieldset { border: 0; padding: 0; margin: 0 0 20px; }
     .camp-form legend { font-weight: 700; margin-bottom: 8px; color: var(--text); font-size: 1rem; }
     .camp-hint { font-size: .85rem; color: var(--text-muted); margin: 4px 0 0; }
+    .camp-wallet { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .camp-wallet-info { display: inline-flex; align-items: center; gap: 6px; }
+    .camp-wallet-info[hidden] { display: none; }
+    .camp-wallet .wallet-address { font-family: monospace; font-size: .85rem; }
     .camp-cats { display: flex; flex-wrap: wrap; gap: 8px 16px; }
     .camp-cats label { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; margin: 0; }
     .camp-cats input { width: 20px; height: 20px; min-height: 0; }
@@ -198,6 +202,16 @@
         <button class="theme-toggle" id="theme-toggle" aria-label="Alternar modo escuro" data-i18n-aria-label="theme_toggle">
           <span id="theme-icon">🌙</span>
         </button>
+        <!-- Carteira: conectar, ver qual está conectada, trocar ou sair. -->
+        <div class="camp-wallet" id="camp-wallet">
+          <button type="button" class="btn btn-primary btn-sm" id="wallet-connect" data-i18n="w_connect">Conectar carteira</button>
+          <span class="camp-wallet-info" id="wallet-info" hidden>
+            <span class="status-dot connected" aria-hidden="true"></span>
+            <span class="wallet-address" id="wallet-addr" title="">—</span>
+            <button type="button" class="btn btn-secondary btn-sm" id="wallet-switch" data-i18n="w_switch">Trocar</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="wallet-disconnect" data-i18n="w_disconnect">Sair</button>
+          </span>
+        </div>
       </nav>
     </div>
   </header>
