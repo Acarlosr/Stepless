@@ -272,8 +272,30 @@
               <label for="reg-name" data-i18n="reg_name">Nome do Local</label>
               <input type="text" id="reg-name" name="name" required maxlength="100" placeholder="Ex: Rampa Hotel Pajuçara, Maceió" /></div>
 
+            <!-- Estado de acessibilidade: registrar BARREIRAS é tão útil quanto
+                 registrar recursos — evita a viagem perdida. -->
+            <fieldset class="form-group access-pick" id="reg-access-group">
+              <legend data-i18n="reg_access">Como é a acessibilidade deste local?</legend>
+              <div class="access-options">
+                <label class="access-opt access-ok"><input type="radio" name="access" value="ok" checked /><span><strong data-i18n="access_ok">✅ Acessível</strong><small data-i18n="access_ok_hint">Tem o que precisa</small></span></label>
+                <label class="access-opt access-partial"><input type="radio" name="access" value="partial" /><span><strong data-i18n="access_partial">⚠️ Parcial</strong><small data-i18n="access_partial_hint">Tem algo, mas com problema</small></span></label>
+                <label class="access-opt access-none"><input type="radio" name="access" value="none" /><span><strong data-i18n="access_none">❌ Sem acessibilidade</strong><small data-i18n="access_none_hint">Tem barreira para entrar ou usar</small></span></label>
+              </div>
+            </fieldset>
+
+            <div class="form-group" id="reg-barrier-wrap" hidden>
+              <label data-i18n="reg_barriers">Qual a barreira? Marque todas que existem.</label>
+              <div id="reg-barrier-group" role="group" aria-label="Barreiras" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+              <fieldset id="reg-step-group" class="step-pick" hidden>
+                <legend data-i18n="reg_step">Altura do degrau</legend>
+                <label><input type="radio" name="stepHeight" value="small" /> <span data-i18n="step_small">Pequeno (até 5 cm)</span></label>
+                <label><input type="radio" name="stepHeight" value="medium" /> <span data-i18n="step_medium">Médio (até 15 cm)</span></label>
+                <label><input type="radio" name="stepHeight" value="high" /> <span data-i18n="step_high">Alto (mais de 15 cm)</span></label>
+              </fieldset>
+            </div>
+
             <div class="form-row">
-              <div class="form-group">
+              <div class="form-group" id="reg-feature-wrap">
                 <label data-i18n="reg_category">Categoria</label>
                 <div id="reg-category-group" role="group" aria-label="Categorias de acessibilidade" style="display:flex; flex-wrap:wrap; gap:8px;">
                   <!-- Populated by JS -->
@@ -435,6 +457,7 @@
         register_title:"Mapear Novo Local", register_subtitle:"Registre um local acessível. É gratuito: a taxa da rede é paga pelo Stepless. Se o local estiver numa região com campanha de parceiro, você recebe USDC quando ele for verificado.",
         reg_location:"Localização", reg_gps_btn:"📍 Usar minha localização", reg_address_placeholder:"Ou busque um endereço...", reg_search_btn:"🔍",
         reg_name:"Nome do Local", reg_category:"Categoria", reg_category_hint:"Marque todas as opções que se aplicam.", reg_photo:"Foto do Local", reg_submit:"Registrar Local",
+        reg_access:"Como é a acessibilidade deste local?", access_ok:"✅ Acessível", access_ok_hint:"Tem o que precisa", access_partial:"⚠️ Parcial", access_partial_hint:"Tem algo, mas com problema", access_none:"❌ Sem acessibilidade", access_none_hint:"Tem barreira para entrar ou usar", reg_barriers:"Qual a barreira? Marque todas que existem.", reg_step:"Altura do degrau", step_small:"Pequeno (até 5 cm)", step_medium:"Médio (até 15 cm)", step_high:"Alto (mais de 15 cm)", bar_20:"🪜 Degrau/escada sem rampa", bar_21:"🚪 Porta estreita", bar_22:"🚻 Sem banheiro adaptado", bar_23:"🅿️ Sem vaga PCD", bar_24:"🛗 Sem elevador / quebrado", bar_25:"🚧 Calçada ruim / obstáculo", bar_26:"⚠️ Outra barreira", reg_missing_barrier:"Marque pelo menos uma barreira.",
         reg_terms:'Li e aceito os <a href="termos.html" target="_blank" rel="noopener">Termos de Uso</a> e a <a href="privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>. Entendo que a foto, a posição do local e minha carteira ficam <strong>públicas e permanentes</strong> na blockchain e no IPFS.',
         reg_map_hint:"Toque no mapa ou arraste o marcador para ajustar o local exato.",
         evid_coord:"Coordenada", evid_gps:"GPS da foto", evid_from_point:"do ponto",
@@ -490,6 +513,7 @@
         register_title:"Map New Location", register_subtitle:"Add an accessible place. It's free: the network fee is paid by Stepless. If the place is inside a partner campaign area, you get USDC once it's verified.",
         reg_location:"Location", reg_gps_btn:"📍 Use my location", reg_address_placeholder:"Or search an address...", reg_search_btn:"🔍",
         reg_name:"Location Name", reg_category:"Category", reg_category_hint:"Check all that apply.", reg_photo:"Location Photo", reg_submit:"Register Location",
+        reg_access:"How accessible is this place?", access_ok:"✅ Accessible", access_ok_hint:"Has what you need", access_partial:"⚠️ Partial", access_partial_hint:"Has something, but with problems", access_none:"❌ Not accessible", access_none_hint:"There's a barrier to enter or use it", reg_barriers:"What's the barrier? Check all that apply.", reg_step:"Step height", step_small:"Small (up to 5 cm)", step_medium:"Medium (up to 15 cm)", step_high:"High (over 15 cm)", bar_20:"🪜 Step/stairs, no ramp", bar_21:"🚪 Narrow door", bar_22:"🚻 No accessible restroom", bar_23:"🅿️ No accessible parking", bar_24:"🛗 No elevator / broken", bar_25:"🚧 Bad sidewalk / obstacle", bar_26:"⚠️ Other barrier", reg_missing_barrier:"Check at least one barrier.",
         reg_terms:'I have read and accept the <a href="termos.html" target="_blank" rel="noopener">Terms of Use</a> and the <a href="privacidade.html" target="_blank" rel="noopener">Privacy Policy</a>. I understand that the photo, the place position and my wallet become <strong>public and permanent</strong> on the blockchain and IPFS.',
         reg_map_hint:"Tap the map or drag the marker to set the exact spot.",
         evid_coord:"Coordinates", evid_gps:"Photo GPS", evid_from_point:"from the point",
@@ -544,6 +568,7 @@
         event_log_title:"Eventos en Tiempo Real", event_log_desc:"Actualizaciones en vivo de Arc Testnet vía WebSocket.", event_log_empty:"Esperando eventos...",
         register_title:"Mapear Nuevo Lugar", register_subtitle:"Registra un lugar accesible. Es gratis: la tarifa de la red la paga Stepless. Si el lugar está en una zona con campaña de un socio, recibes USDC cuando sea verificado.",
         reg_lat:"Latitud", reg_lng:"Longitud", reg_name:"Nombre del Lugar", reg_category:"Categoría", reg_category_hint:"Marca todas las opciones que apliquen.", reg_photo:"Foto del Lugar", reg_submit:"Registrar Lugar",
+        reg_access:"¿Cómo es la accesibilidad de este lugar?", access_ok:"✅ Accesible", access_ok_hint:"Tiene lo necesario", access_partial:"⚠️ Parcial", access_partial_hint:"Tiene algo, pero con problemas", access_none:"❌ Sin accesibilidad", access_none_hint:"Hay una barrera para entrar o usarlo", reg_barriers:"¿Cuál es la barrera? Marca todas las que existan.", reg_step:"Altura del escalón", step_small:"Pequeño (hasta 5 cm)", step_medium:"Medio (hasta 15 cm)", step_high:"Alto (más de 15 cm)", bar_20:"🪜 Escalón/escalera sin rampa", bar_21:"🚪 Puerta estrecha", bar_22:"🚻 Sin baño adaptado", bar_23:"🅿️ Sin estacionamiento accesible", bar_24:"🛗 Sin ascensor / averiado", bar_25:"🚧 Acera mala / obstáculo", bar_26:"⚠️ Otra barrera", reg_missing_barrier:"Marca al menos una barrera.",
         reg_terms:'He leído y acepto los <a href="termos.html" target="_blank" rel="noopener">Términos de Uso</a> y la <a href="privacidade.html" target="_blank" rel="noopener">Política de Privacidad</a>. Entiendo que la foto, la posición del lugar y mi cartera quedan <strong>públicas y permanentes</strong> en la blockchain y en IPFS.',
         reg_map_hint:"Toca el mapa o arrastra el marcador para ajustar el lugar exacto.",
         reg_location:"Ubicación", reg_gps_btn:"📍 Usar mi ubicación",
@@ -635,6 +660,15 @@
             ${c.label}
           </label>
         `).join('');
+        const barGroup = document.getElementById('reg-barrier-group');
+        if (barGroup) {
+          const barChecked = new Set(Array.from(barGroup.querySelectorAll('input:checked')).map(el => el.value));
+          barGroup.innerHTML = [20,21,22,23,24,25,26].map(id => `
+            <label style="display:flex; align-items:center; gap:5px; font-weight:400; font-size:.88rem; border:1px solid var(--border); border-radius:999px; padding:5px 12px; cursor:pointer;">
+              <input type="checkbox" name="barrier" value="${id}" ${barChecked.has(String(id)) ? 'checked' : ''} style="min-height:auto; width:auto;" />
+              ${strings['bar_' + id]}
+            </label>`).join('');
+        }
         // Show/hide "Outro" description field based on the "Outro" checkbox (id=7)
         catGroup.addEventListener('change', function(e) {
           if (e.target.name !== 'category') return;

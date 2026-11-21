@@ -2585,3 +2585,31 @@ body.side-menu-open { overflow: hidden; }
 .faq-item summary::after { content: "+"; font-size: 1.3rem; line-height: 1; color: var(--text-muted); }
 .faq-item[open] summary::after { content: "−"; }
 .faq-item p { margin: 0 0 16px; color: var(--text-muted); line-height: 1.6; }
+
+/* ── Registro: estado de acessibilidade e barreiras ── */
+.access-pick { border: 0; padding: 0; margin: 0 0 0.75rem; }
+.access-pick legend { font-weight: 600; margin-bottom: 8px; }
+.access-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.access-opt {
+  display: flex; align-items: flex-start; gap: 10px;
+  border: 2px solid var(--border); border-radius: 12px; padding: 12px 14px;
+  cursor: pointer; font-weight: 400;
+}
+.access-opt input { width: auto; min-height: auto; margin-top: 4px; }
+.access-opt strong { display: block; font-size: 1rem; }
+.access-opt small { display: block; color: var(--text-muted); font-size: 0.82rem; }
+.access-opt.is-selected.access-ok { border-color: var(--success, #15803d); background: rgba(21,128,61,.08); }
+.access-opt.is-selected.access-partial { border-color: #d97706; background: rgba(217,119,6,.08); }
+.access-opt.is-selected.access-none { border-color: #dc2626; background: rgba(220,38,38,.08); }
+.access-opt:focus-within { outline: 3px solid var(--link); outline-offset: 2px; }
+.step-pick { border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-top: 10px; display: flex; flex-wrap: wrap; gap: 14px; }
+.step-pick legend { font-weight: 600; padding: 0 4px; }
+.step-pick label { display: flex; align-items: center; gap: 6px; font-weight: 400; cursor: pointer; }
+.step-pick input { width: auto; min-height: auto; }
+
+/* ── Busca: aviso de barreira no cartão ── */
+.access-banner { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; font-weight: 700; border-radius: 8px; padding: 4px 10px; margin: 6px 0; }
+.access-banner.none { background: rgba(220,38,38,.12); color: #b91c1c; border: 1px solid rgba(220,38,38,.4); }
+.access-banner.partial { background: rgba(217,119,6,.12); color: #b45309; border: 1px solid rgba(217,119,6,.4); }
+[data-theme="dark"] .access-banner.none { color: #fca5a5; }
+[data-theme="dark"] .access-banner.partial { color: #fcd34d; }

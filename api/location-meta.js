@@ -72,6 +72,9 @@ export default async function handler(req, res) {
           lng: typeof parsed.lng === 'number' ? parsed.lng : null,
           // Descrição da foto gerada pela IA (api/_ai.js) — texto alternativo.
           alt: typeof parsed.alt === 'string' ? parsed.alt : null,
+          // 'ok' | 'partial' | 'none' — locais antigos não têm: são de acessibilidade.
+          access: ['ok', 'partial', 'none'].includes(parsed.access) ? parsed.access : 'ok',
+          stepHeight: ['small', 'medium', 'high'].includes(parsed.stepHeight) ? parsed.stepHeight : null,
         };
       } catch {
         // Valor legado (string simples, só nome) — trata como nome sem categorias/coords.

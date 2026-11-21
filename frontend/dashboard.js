@@ -976,6 +976,34 @@ async function checkDuplicateLocation(lat, lng) {
   setRegisterBlocked(findNearbyRegistered(lat, lng, list));
 }
 
+// ── Estado de acessibilidade + barreiras (formulário de registro) ──────────
+// ok → só recursos (0–9) · partial → recursos e barreiras · none → só barreiras
+// (20–26). O servidor normaliza de novo (api/relay.js accessInfo).
+function readAccessForm() {
+  const access = document.querySelector('input[name="access"]:checked')?.value || 'ok';
+  const pick = (sel) => Array.from(document.querySelectorAll(sel)).map(el => parseInt(el.value, 10));
+  const features = access === 'none' ? [] : pick('#reg-category-group input[name="category"]:checked');
+  const barriers = access === 'ok' ? [] : pick('#reg-barrier-group input[name="barrier"]:checked');
+  const stepHeight = barriers.includes(20)
+    ? (document.querySelector('input[name="stepHeight"]:checked')?.value || null) : null;
+  return { access, features, barriers, categories: [...features, ...barriers], stepHeight };
+}
+
+function syncAccessForm() {
+  const { access, barriers, features } = readAccessForm();
+  const featWrap = document.getElementById('reg-feature-wrap');
+  const barWrap = document.getElementById('reg-barrier-wrap');
+  const stepGroup = document.getElementById('reg-step-group');
+  if (featWrap) featWrap.hidden = access === 'none';
+  if (barWrap) barWrap.hidden = access === 'ok';
+  if (stepGroup) stepGroup.hidden = !barriers.includes(20);
+  const otherGroup = document.getElementById('reg-other-group');
+  if (otherGroup) otherGroup.style.display = (features.includes(7) || barriers.includes(26)) ? 'block' : 'none';
+  document.querySelectorAll('.access-opt').forEach(el => {
+    el.classList.toggle('is-selected', el.querySelector('input')?.checked);
+  });
+}
+
 // Versão dos Termos/Privacidade aceita no envio (termos.html / privacidade.html).
 const TERMS_VERSION = '1.0';
 
@@ -996,13 +1024,11 @@ async function handleRegisterLocation(e) {
   const lat = parseFloat(document.getElementById('reg-lat').value);
   const lng = parseFloat(document.getElementById('reg-lng').value);
   const name = document.getElementById('reg-name').value.trim();
-  // Multi-select: um local pode ter várias features (rampa + banheiro + vaga, etc.)
-  const categories = Array.from(
-    document.querySelectorAll('#reg-category-group input[name="category"]:checked')
-  ).map(el => parseInt(el.value, 10));
+  // Multi-select: recursos (rampa + banheiro…) e/ou barreiras (degrau, porta…).
+  const { access, barriers, categories, stepHeight } = readAccessForm();
   const otherDesc = document.getElementById('reg-other-desc')?.value.trim() || '';
-  // When "Outro" (id=7) is selected and user filled the description, append it
-  const fullName = (categories.includes(7) && otherDesc) ? `${name} — ${otherDesc}` : name;
+  // "Outro" (7) ou "Outra barreira" (26) com descrição: acrescenta ao nome.
+  const fullName = ((categories.includes(7) || categories.includes(26)) && otherDesc) ? `${name} — ${otherDesc}` : name;
   const photoInput = document.getElementById('reg-photo');
 
   if (isNaN(lat) || isNaN(lng)) {
@@ -1025,6 +1051,10 @@ async function handleRegisterLocation(e) {
   }
   if (!name) {
     showAlert('register-alert', 'danger', s.reg_missing_name || 'Preencha o nome do local.');
+    return;
+  }
+  if (access !== 'ok' && barriers.length === 0) {
+    showAlert('register-alert', 'danger', s.reg_missing_barrier || 'Marque pelo menos uma barreira.');
     return;
   }
   if (categories.length === 0) {
@@ -1120,7 +1150,7 @@ async function handleRegisterLocation(e) {
           // como o navegador atestar que a câmera tirou a foto agora. O backend
           // usa isto para pesar o risco.
           gpsSource: uploadResult.exif?.hasGps ? 'exif' : null,
-          name: fullName, categories,
+          name: fullName, categories, access, stepHeight,
         },
       }),
     });
@@ -1620,9 +1650,7 @@ async function estimateRegisterGas() {
   const lat = parseFloat(document.getElementById('reg-lat')?.value);
   const lng = parseFloat(document.getElementById('reg-lng')?.value);
   const name = document.getElementById('reg-name')?.value.trim();
-  const categories = Array.from(
-    document.querySelectorAll('#reg-category-group input[name="category"]:checked')
-  ).map(el => parseInt(el.value, 10));
+  const { categories } = readAccessForm();
   const gasEl = document.getElementById('register-gas-estimate');
 
   if (isNaN(lat) || isNaN(lng) || !name || categories.length === 0 || !publicClient) return;
@@ -1774,6 +1802,14 @@ function initEventListeners() {
   if (regNameEl) regNameEl.addEventListener('change', estimateRegisterGas);
   const regCatGroup = document.getElementById('reg-category-group');
   if (regCatGroup) regCatGroup.addEventListener('change', estimateRegisterGas);
+  // Mostra/esconde recursos, barreiras e altura do degrau conforme a escolha.
+  if (regForm) {
+    regForm.addEventListener('change', (e) => {
+      if (['access', 'barrier', 'category'].includes(e.target?.name)) syncAccessForm();
+    });
+    window.addEventListener('langchange', syncAccessForm);
+    syncAccessForm();
+  }
 
   // Aviso imediato de GPS ao escolher a foto.
   //

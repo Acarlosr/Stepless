@@ -851,6 +851,14 @@ const LOCATION_CATEGORIES = [
   { id: 8, label: { pt: "Entrada Acessível", en: "Accessible Entrance", es: "Entrada Accesible" } },
   // 9: hotel/pousada com quarto adaptado (barras, porta larga, chuveiro sem degrau)
   { id: 9, label: { pt: "Quarto Adaptado", en: "Accessible Room", es: "Habitación Adaptada" } },
+  // 20–26: BARREIRAS — o que falta ou atrapalha. Mesmos ids em api/relay.js.
+  { id: 20, barrier: true, label: { pt: "Degrau/escada sem rampa", en: "Step/stairs, no ramp", es: "Escalón/escalera sin rampa" } },
+  { id: 21, barrier: true, label: { pt: "Porta estreita", en: "Narrow door", es: "Puerta estrecha" } },
+  { id: 22, barrier: true, label: { pt: "Sem banheiro adaptado", en: "No accessible restroom", es: "Sin baño adaptado" } },
+  { id: 23, barrier: true, label: { pt: "Sem vaga PCD", en: "No accessible parking", es: "Sin estacionamiento accesible" } },
+  { id: 24, barrier: true, label: { pt: "Sem elevador / quebrado", en: "No elevator / broken", es: "Sin ascensor / averiado" } },
+  { id: 25, barrier: true, label: { pt: "Calçada ruim / obstáculo", en: "Bad sidewalk / obstacle", es: "Acera mala / obstáculo" } },
+  { id: 26, barrier: true, label: { pt: "Outra barreira", en: "Other barrier", es: "Otra barrera" } },
 ];
 
 /* ──────────────────────────────────────────────────────────────

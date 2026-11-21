@@ -362,6 +362,7 @@
       <button class="filter-chip" data-cat="8" data-i18n="cat_entrance">Entrada</button>
       <button class="filter-chip" data-cat="9" data-i18n="cat_room">Quarto adaptado</button>
       <button class="filter-chip" data-cat="7" data-i18n="cat_other">Outro</button>
+      <button class="filter-chip" data-cat="barrier" data-i18n="filter_barriers">⚠️ Barreiras</button>
 
       <div class="radius-row" style="margin-left:auto;">
         <label for="radius-select" data-i18n="radius_label">Raio:</label>
@@ -514,6 +515,7 @@
         cat_braille: 'Braile',
         cat_other: 'Outro',
         cat_entrance: 'Entrada', cat_room: 'Quarto adaptado',
+        filter_barriers: "⚠️ Barreiras", access_none_badge: "❌ Sem acessibilidade", access_partial_badge: "⚠️ Acessibilidade parcial", step_small: "degrau pequeno (até 5 cm)", step_medium: "degrau médio (até 15 cm)", step_high: "degrau alto (mais de 15 cm)", cat_20: "Degrau/escada sem rampa", cat_21: "Porta estreita", cat_22: "Sem banheiro adaptado", cat_23: "Sem vaga PCD", cat_24: "Sem elevador / quebrado", cat_25: "Calçada ruim / obstáculo", cat_26: "Outra barreira",
         loading_read_count: 'Lendo {count} local(is) da blockchain...',
         result_count_one: '1 local encontrado',
         result_count_many: '{count} locais encontrados',
@@ -587,6 +589,7 @@
         cat_braille: 'Braille',
         cat_other: 'Other',
         cat_entrance: 'Entrance', cat_room: 'Accessible room',
+        filter_barriers: "⚠️ Barriers", access_none_badge: "❌ Not accessible", access_partial_badge: "⚠️ Partially accessible", step_small: "small step (up to 5 cm)", step_medium: "medium step (up to 15 cm)", step_high: "high step (over 15 cm)", cat_20: "Step/stairs, no ramp", cat_21: "Narrow door", cat_22: "No accessible restroom", cat_23: "No accessible parking", cat_24: "No elevator / broken", cat_25: "Bad sidewalk / obstacle", cat_26: "Other barrier",
         loading_read_count: 'Reading {count} location(s) from the blockchain...',
         result_count_one: '1 place found',
         result_count_many: '{count} places found',
@@ -660,6 +663,7 @@
         cat_braille: 'Braille',
         cat_other: 'Otro',
         cat_entrance: 'Entrada', cat_room: 'Habitación adaptada',
+        filter_barriers: "⚠️ Barreras", access_none_badge: "❌ Sin accesibilidad", access_partial_badge: "⚠️ Accesibilidad parcial", step_small: "escalón pequeño (hasta 5 cm)", step_medium: "escalón medio (hasta 15 cm)", step_high: "escalón alto (más de 15 cm)", cat_20: "Escalón/escalera sin rampa", cat_21: "Puerta estrecha", cat_22: "Sin baño adaptado", cat_23: "Sin estacionamiento accesible", cat_24: "Sin ascensor / averiado", cat_25: "Acera mala / obstáculo", cat_26: "Otra barrera",
         loading_read_count: 'Leyendo {count} lugar(es) de la blockchain...',
         result_count_one: '1 lugar encontrado',
         result_count_many: '{count} lugares encontrados',
@@ -738,15 +742,26 @@
     let activeNeed   = null;
 
     /** O local passa nos filtros de categoria e de necessidade? */
+    // Barreiras que importam para cada necessidade: o local aparece como AVISO.
+    //   20 degrau · 21 porta estreita · 22 sem banheiro · 23 sem vaga
+    //   24 sem elevador · 25 calçada/obstáculo · 26 outra
+    const NEED_BARRIERS = {
+      motora:     [20, 21, 22, 24, 25],
+      mobilidade: [20, 21, 23, 24, 25],
+      visual:     [25, 26],
+      auditiva:   [26],
+    };
     function matchesFilters(loc) {
-      if (activeCat !== 'all' && (!loc.categories || !loc.categories.includes(Number(activeCat)))) return false;
-      if (activeNeed && (!loc.categories || !loc.categories.some(c => NEEDS[activeNeed].includes(Number(c))))) return false;
+      const cats = (loc.categories || []).map(Number);
+      if (activeCat === 'barrier') { if (!loc.access || loc.access === 'ok') return false; }
+      else if (activeCat !== 'all' && !cats.includes(Number(activeCat))) return false;
+      if (activeNeed && !cats.some(c => NEEDS[activeNeed].includes(c) || NEED_BARRIERS[activeNeed].includes(c))) return false;
       return true;
     }
     let currentLang  = 'pt';
 
     // Mesma ordem/ids usados no formulário de registro (dashboard.html)
-    const CATEGORY_ICONS = { 0:'♿', 1:'🛗', 2:'🚻', 3:'🅿️', 4:'🔔', 5:'🔊', 6:'✋', 7:'✨', 8:'🚪', 9:'🛏️' };
+    const CATEGORY_ICONS = { 0:'♿', 1:'🛗', 2:'🚻', 3:'🅿️', 4:'🔔', 5:'🔊', 6:'✋', 7:'✨', 8:'🚪', 9:'🛏️', 20:'🪜', 21:'🚪', 22:'🚻', 23:'🅿️', 24:'🛗', 25:'🚧', 26:'⚠️' };
     let CATEGORY_LABELS = {};
 
     // As leituras dos locais usam Multicall3 para não gerar duas requisições RPC
@@ -792,6 +807,8 @@
         8: `${CATEGORY_ICONS[8]} ${t('cat_entrance')}`,
         9: `${CATEGORY_ICONS[9]} ${t('cat_room')}`,
       };
+      // Barreiras (20–26): o que falta ou atrapalha.
+      for (let id = 20; id <= 26; id++) CATEGORY_LABELS[id] = `${CATEGORY_ICONS[id]} ${t('cat_' + id)}`;
     }
 
     function setLanguage(lang) {
@@ -979,6 +996,8 @@
           loc.categories = m ? (m.categories || []) : null;
           // Descrição da foto gerada pela IA (texto alternativo para leitor de tela).
           loc.alt = (m && typeof m.alt === 'string') ? m.alt : null;
+          loc.access = (m && ['ok', 'partial', 'none'].includes(m.access)) ? m.access : 'ok';
+          loc.stepHeight = m?.stepHeight || null;
           // lat/lng salvos no momento do registro (api/relay.js) são a fonte confiável —
           // sobrescreve o valor obtido por escaneamento de eventos (mais frágil/incompleto).
           if (m && typeof m.lat === 'number' && typeof m.lng === 'number') {
@@ -1070,6 +1089,14 @@
       box.classList.remove('hidden');
     }
 
+    /** Aviso em destaque para locais com barreira (evita a viagem perdida). */
+    function accessBanner(loc) {
+      if (!loc.access || loc.access === 'ok') return '';
+      const label = loc.access === 'none' ? t('access_none_badge') : t('access_partial_badge');
+      const step = loc.stepHeight ? ` · ${t('step_' + loc.stepHeight)}` : '';
+      return `<div class="access-banner ${loc.access}" role="note">${escapeHtml(label + step)}</div>`;
+    }
+
     function renderResults() {
       const radiusKm = Number(document.getElementById('radius-select').value);
       const grid     = document.getElementById('results-grid');
@@ -1140,12 +1167,13 @@
         return `
           <article class="location-card" role="listitem">
             <div class="location-card-top">
-              <div class="location-icon" aria-hidden="true">♿</div>
+              <div class="location-icon" aria-hidden="true">${loc.access === "none" ? "❌" : loc.access === "partial" ? "⚠️" : "♿"}</div>
               <div>
                 <p class="location-name">${loc.name ? escapeHtml(loc.name) : escapeHtml(t('fallback_location', { index: loc.index }))}</p>
                 <p class="location-cat" style="font-family:monospace;font-size:.75rem;">${shortHash(loc.locationHash)}</p>
               </div>
             </div>
+            ${accessBanner(loc)}
             ${catBadges}
             ${loc.alt ? `<p class="location-alt" style="font-size:.85rem;margin:4px 0;color:var(--text-muted);"><span aria-hidden="true">📷 </span>${escapeHtml(loc.alt)}</p>` : ''}
             <div class="location-meta">
@@ -1194,7 +1222,14 @@
           ? (CATEGORY_LABELS[loc.categories[0]] || '') : '';
         const title = loc.name ? escapeHtml(loc.name) : escapeHtml(t('fallback_location', { index: loc.index }));
         const popup = `<strong>♿ ${title}</strong><br/>${cat ? escapeHtml(cat) + '<br/>' : ''}<span style="color:#667">${shortAddr(loc.contributor)}</span>`;
-        window.L.marker([loc.lat, loc.lng]).addTo(resultsMarkers).bindPopup(popup);
+        if (loc.access === 'none' || loc.access === 'partial') {
+          const color = loc.access === 'none' ? '#dc2626' : '#d97706';
+          const warn = `<br/><strong style="color:${color}">${escapeHtml(loc.access === 'none' ? t('access_none_badge') : t('access_partial_badge'))}</strong>`;
+          window.L.circleMarker([loc.lat, loc.lng], { radius: 10, color: '#fff', weight: 3, fillColor: color, fillOpacity: 1 })
+            .addTo(resultsMarkers).bindPopup(popup + warn);
+        } else {
+          window.L.marker([loc.lat, loc.lng]).addTo(resultsMarkers).bindPopup(popup);
+        }
         pts.push([loc.lat, loc.lng]);
       });
 

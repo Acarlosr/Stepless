@@ -41,6 +41,28 @@ import { checkPlace } from './_placecheck.js';
 import { checkPhotoAI } from './_ai.js';
 import { getReputation, bumpReputation, withinDailyQuota, scoreSubmission, shouldBlock } from './_risk.js';
 
+// ─── Barreiras ──────────────────────────────────────────────────────────────
+// Categorias 0–9 dizem o que EXISTE (rampa, elevador…). 20–26 dizem o que
+// FALTA ou atrapalha (degrau sem rampa, porta estreita…). Um local sem
+// acessibilidade é informação tão útil quanto um acessível: evita a viagem
+// perdida. Ver frontend/arc-config.js (LOCATION_CATEGORIES).
+export const BARRIER_MIN_ID = 20;
+const ACCESS_LEVELS = ['ok', 'partial', 'none'];
+const STEP_HEIGHTS = ['small', 'medium', 'high'];
+
+/** Normaliza o estado de acessibilidade. O APK antigo não envia: infere. */
+export function accessInfo(sd = {}) {
+  const cats = (Array.isArray(sd.categories) ? sd.categories : []).map(Number).filter(Number.isInteger);
+  const hasBarrier = cats.some((c) => c >= BARRIER_MIN_ID);
+  const hasFeature = cats.some((c) => c >= 0 && c < BARRIER_MIN_ID);
+  let access = ACCESS_LEVELS.includes(sd.access) ? sd.access : null;
+  if (!access) access = hasBarrier ? (hasFeature ? 'partial' : 'none') : 'ok';
+  // "Acessível" com barreira marcada é contraditório: vale o que foi marcado.
+  if (access === 'ok' && hasBarrier) access = hasFeature ? 'partial' : 'none';
+  const stepHeight = cats.includes(20) && STEP_HEIGHTS.includes(sd.stepHeight) ? sd.stepHeight : null;
+  return { access, stepHeight };
+}
+
 // ─── Metadados fora da chain (Upstash Redis REST) ───────────────────────────
 // O contrato só guarda locationHash (hash unidirecional) — nome e categorias
 // nunca vão para a chain. Para exibir depois, guardamos aqui.
@@ -57,6 +79,8 @@ async function saveLocationMeta(locationHash, meta) {
       lng: typeof meta.lng === 'number' ? meta.lng : null,
       cid: meta.cid || null,
       alt: typeof meta.alt === 'string' ? meta.alt.slice(0, 140) : null,
+      access: meta.access || 'ok',
+      stepHeight: meta.stepHeight || null,
     });
     const res = await fetch(`${url}/set/${encodeURIComponent(key)}/${encodeURIComponent(value)}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -519,6 +543,7 @@ export default async function handler(req, res) {
         locationHash: submissionData.locationHash,
         name: submissionData.name || null,
         categories: Array.isArray(submissionData.categories) ? submissionData.categories : [],
+        ...accessInfo(submissionData),
         lat: Number.isFinite(pLat) ? pLat / 1e6 - 90 : null,
         lng: Number.isFinite(pLng) ? pLng / 1e6 - 180 : null,
         // O verificador consegue ABRIR a foto e conferir o hash — antes só via
@@ -551,6 +576,7 @@ export default async function handler(req, res) {
         cid: photo.cid,
         // Texto alternativo gerado pela IA — lido por leitores de tela na busca.
         alt: aiEvidence?.alt || null,
+        ...accessInfo(submissionData),
       });
     }
 
