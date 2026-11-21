@@ -7,6 +7,7 @@
  */
 
 import { SteplessConfig } from './arc-config.js';
+import { geocode } from './geocode.js';
 import { initDynamic, connectWallet as _dynamicConnect, disconnectWallet, onWalletChange, getProvider, tryRestoreSession as _dynamicRestore, adoptExternalConnection } from './dynamic-wallet.js';
 
 // Inicializa Dynamic em background — guardamos a promise pra poder esperar
@@ -1713,29 +1714,30 @@ function setDetectedLocation(lat, lng, label) {
   document.getElementById('reg-lng').value = lng;
   const status = document.getElementById('reg-location-status');
   const s = getStrings();
-  if (status) status.innerHTML = `<span style="color:var(--success)">✅ ${label}</span>`;
+  if (status) status.innerHTML = `<span style="color:var(--success)">✅ ${escapeHtml(label)}</span>`;
   syncRegPickerMap(parseFloat(lat), parseFloat(lng)); // move o marcador no mapa interativo
   estimateRegisterGas();
   checkDuplicateLocation(parseFloat(lat), parseFloat(lng));
 }
 
 async function reverseGeocode(lat, lng) {
+  const fallback = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
   try {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&accept-language=pt`;
-    const r = await fetch(url, { headers: { 'User-Agent': 'Stepless-dApp/1.0' } });
+    // Sem cabeçalho próprio (User-Agent customizado força preflight de CORS)
+    // e com prazo: se o Nominatim demorar, fica a coordenada mesmo.
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=17&accept-language=${getLang()}`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
     const data = await r.json();
-    return data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    return data.display_name || fallback;
   } catch {
-    return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    return fallback;
   }
 }
 
+// Mesma busca da página de busca: CEP via ViaCEP, Brasil primeiro (geocode.js).
 async function geocodeAddress(query) {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&accept-language=pt`;
-  const r = await fetch(url, { headers: { 'User-Agent': 'Stepless-dApp/1.0' } });
-  const data = await r.json();
-  if (!data.length) throw new Error('Endereço não encontrado');
-  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), label: data[0].display_name };
+  const r = await geocode(query, getLang());
+  return { lat: r.lat, lng: r.lng, label: r.label || query };
 }
 
 function initEventListeners() {
@@ -1766,18 +1768,32 @@ function initEventListeners() {
         btnGps.disabled = false;
         return;
       }
+      // 1ª tentativa: GPS preciso. Se demorar (dentro de prédio, céu fechado),
+      // 2ª tentativa: posição aproximada/recente — melhor que nada.
+      const ok = async (pos) => {
+        const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+        // Fixa o ponto NA HORA; o nome da rua chega depois, sem travar.
+        setDetectedLocation(lat, lng, `${lat.toFixed(5)}, ${lng.toFixed(5)}${accuracy ? ` (±${Math.round(accuracy)} m)` : ''}`);
+        btnGps.disabled = false;
+        const label = await reverseGeocode(lat, lng);
+        if (status) status.innerHTML = `<span style="color:var(--success)">✅ ${escapeHtml(label)}${accuracy ? ` (±${Math.round(accuracy)} m)` : ''}</span>`;
+      };
+      const fail = (err) => {
+        const msg = err?.code === 1
+          ? 'Permissão de localização negada. Toque no cadeado ao lado do endereço do site → Permissões → Localização → Permitir, e tente de novo.'
+          : err?.code === 2
+            ? 'Localização indisponível. Ligue o GPS (Localização) do celular e tente de novo.'
+            : 'Não foi possível obter a localização a tempo. Tente de novo ao ar livre, ou toque no mapa para marcar o local.';
+        if (status) status.textContent = msg;
+        btnGps.disabled = false;
+      };
       navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          const { latitude: lat, longitude: lng } = pos.coords;
-          const label = await reverseGeocode(lat, lng);
-          setDetectedLocation(lat, lng, label);
-          btnGps.disabled = false;
+        ok,
+        (err) => {
+          if (err?.code === 1) return fail(err);
+          navigator.geolocation.getCurrentPosition(ok, fail, { timeout: 15000, enableHighAccuracy: false, maximumAge: 60000 });
         },
-        () => {
-          if (status) status.textContent = s.reg_gps_error || 'Não foi possível obter localização.';
-          btnGps.disabled = false;
-        },
-        { timeout: 10000, enableHighAccuracy: true }
+        { timeout: 12000, enableHighAccuracy: true, maximumAge: 0 },
       );
     });
   }
