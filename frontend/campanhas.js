@@ -324,7 +324,8 @@ function renderWalletBar() {
   const info = document.getElementById('wallet-info');
   const addr = document.getElementById('wallet-addr');
   if (!connectBtn || !info) return;
-  connectBtn.hidden = Boolean(account);
+  // style.display, não `hidden`: a classe .btn define display e venceria o atributo.
+  connectBtn.style.display = account ? 'none' : '';
   info.hidden = !account;
   if (account && addr) {
     addr.textContent = `${account.slice(0, 6)}…${account.slice(-4)}`;
