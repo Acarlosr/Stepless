@@ -1085,12 +1085,16 @@ async function handleRegisterLocation(e) {
     // gravado on-chain finalmente corresponde a um arquivo que dá para conferir.
     submitBtn.textContent = s.reg_uploading || 'Enviando foto...';
 
-    const dataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error('Não foi possível ler a foto.'));
-      reader.readAsDataURL(photoFile);
-    });
+    // Foto de celular passa do limite de envio: reduz no navegador mantendo o
+    // GPS/data do EXIF (frontend/photo-shrink.js). Sem o módulo, envia como está.
+    const dataUrl = window.SteplessPhoto
+      ? await window.SteplessPhoto.prepare(photoFile)
+      : await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Não foi possível ler a foto.'));
+        reader.readAsDataURL(photoFile);
+      });
 
     const uploadResp = await fetch('/api/upload', {
       method: 'POST',
@@ -1824,6 +1828,17 @@ function initEventListeners() {
   // POST. Manter a checagem como aviso é útil; tratá-la como prova não era.
   const photoInput = document.getElementById('reg-photo');
   if (photoInput) {
+    // ✕ para tirar a foto escolhida (antes só dava para trocar por outra).
+    const clearBtn = document.getElementById('reg-photo-clear');
+    const syncClear = () => { if (clearBtn) clearBtn.hidden = !photoInput.files?.length; };
+    clearBtn?.addEventListener('click', () => {
+      photoInput.value = '';
+      const st = document.getElementById('reg-photo-status');
+      if (st) st.textContent = '';
+      syncClear();
+      photoInput.focus();
+    });
+    photoInput.addEventListener('change', syncClear);
     photoInput.addEventListener('change', async () => {
       const statusEl = document.getElementById('reg-photo-status');
       const file = photoInput.files?.[0];
