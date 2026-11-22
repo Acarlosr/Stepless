@@ -1242,7 +1242,13 @@ async function handleVerify(approved, idFromTable) {
     if (!result.success) throw new Error(result.error || 'Verify API error');
 
     const action = approved ? 'approved' : 'rejected';
-    const paid = result.payTx ? ` 💸 USDC pago para ${shortAddr(result.paidTo)}` : '';
+    // Pagamento de campanha (CampaignEscrow): mostra o valor ou o motivo.
+    const c = result.campaign;
+    const paid = result.payTx
+      ? ` 💸 USDC pago para ${shortAddr(result.paidTo)}`
+      : c?.paid
+        ? ` 💸 Campanha #${c.campaignId} pagou ${(Number(c.amount) / 1e6).toFixed(2)} USDC para ${shortAddr(c.contributor)}`
+        : c?.reason ? ` · Campanha: não pagou (${escapeHtml(c.reason)})` : '';
     showAlert('register-alert', 'success', `✓ ${s.success_verified || 'Contribution verified!'} (${action})${paid}`);
     logEvent('ContributionVerified', `${shortHash(contributionId)} ${action}${paid}`);
     if (idInput) idInput.value = '';

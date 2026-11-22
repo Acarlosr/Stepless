@@ -158,6 +158,7 @@ export default async function handler(req, res) {
     if (hasEscrow() && process.env.ATTESTER_PRIVATE_KEY) {
       try {
         campaign = await attestContribution({ pub, wallet: walletFor(attesterAccount()), contributionId });
+        console.log(`[verify] campanha ${contributionId.slice(0, 10)}: ${campaign.paid ? `pagou ${Number(campaign.amount) / 1e6} USDC (campanha #${campaign.campaignId}, tx ${campaign.tx})` : `não pagou — ${campaign.reason}`}`);
         if (campaign.paid) {
           const cur = (await store.getJSON(contribKey(contributionId))) || {};
           await store.setJSON(contribKey(contributionId), {
