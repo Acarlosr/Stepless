@@ -35,6 +35,24 @@ export function isNewer(a: string, b: string): boolean {
   return false;
 }
 
+export type UpdateInfo = { latest: string; installed: string; url: string } | null;
+
+/** Consulta a última release. null = já está na mais recente (ou sem rede). */
+export async function fetchLatestUpdate(): Promise<UpdateInfo | 'offline'> {
+  const installed = Constants.expoConfig?.version || '0.0.0';
+  try {
+    const resp = await fetch(LATEST_URL, { headers: { Accept: 'application/vnd.github+json' } });
+    if (!resp.ok) return 'offline';
+    const rel = await resp.json();
+    const latest: string = rel?.tag_name || '';
+    if (!latest || !isNewer(latest, installed)) return null;
+    const apk = (rel.assets || []).find((a: any) => /\.apk$/i.test(a?.name || ''));
+    return { latest, installed, url: apk?.browser_download_url || RELEASES_PAGE };
+  } catch {
+    return 'offline';
+  }
+}
+
 export function useUpdateCheck() {
   const { t } = useTranslation();
 

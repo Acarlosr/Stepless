@@ -27,6 +27,8 @@ import { Colors } from '../config/colors';
 import { useWallet } from '../services/wallet';
 import { fetchMyStats } from '../services/api';
 import Constants from 'expo-constants';
+import { fetchLatestUpdate } from '../services/updates';
+import { STEPLESS_NETWORK } from '../config/network.generated';
 
 export default function ProfileScreen() {
   const { t, i18n } = useTranslation();
@@ -93,6 +95,25 @@ export default function ProfileScreen() {
   }, [walletAddress]);
 
   const appVersion = Constants.expoConfig?.version || '—';
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+
+  const handleCheckUpdate = async () => {
+    setCheckingUpdate(true);
+    const r = await fetchLatestUpdate();
+    setCheckingUpdate(false);
+    if (r === 'offline') return Alert.alert(t('profile.checkUpdate'), t('profile.offline'));
+    if (!r) return Alert.alert(t('profile.checkUpdate'), t('profile.upToDate'));
+    Alert.alert(
+      t('update.title'),
+      t('update.message', { version: r.latest.replace(/^v/i, ''), current: r.installed }),
+      [
+        { text: t('update.later'), style: 'cancel' },
+        { text: t('update.download'), onPress: () => { Linking.openURL(r.url).catch(() => {}); } },
+      ],
+    );
+  };
+
+  const openUrl = (url: string) => { Linking.openURL(url).catch(() => {}); };
 
   const openA11ySettings = () => {
     if (Platform.OS === 'android') {
@@ -222,11 +243,60 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Ajuda em Libras: o VLibras só existe para páginas web, então o
+            guia fica no site (stepless.lat/ajuda.html) com o tradutor ativo. */}
+        <TouchableOpacity
+          style={styles.librasButton}
+          onPress={() => openUrl('https://www.stepless.lat/ajuda.html')}
+          accessibilityRole="link"
+          accessibilityLabel={t('profile.helpLibras')}
+          accessibilityHint={t('profile.helpLibrasHint')}
+        >
+          <Ionicons name="hand-left-outline" size={26} color={Colors.light.onPrimary} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.librasTitle}>{t('profile.helpLibras')}</Text>
+            <Text style={styles.librasHint}>{t('profile.helpLibrasHint')}</Text>
+          </View>
+          <Ionicons name="open-outline" size={18} color={Colors.light.onPrimary} />
+        </TouchableOpacity>
+
         {/* About */}
         <Text style={styles.sectionTitle}>{t('profile.about')}</Text>
         <View style={styles.aboutCard}>
           <Text style={styles.aboutText}>{t('profile.aboutText')}</Text>
-          <Text style={styles.versionText}>{t('profile.version')} {appVersion}</Text>
+        </View>
+
+        {/* Sobre o app: versão, rede, atualização e links */}
+        <Text style={styles.sectionTitle}>{t('profile.appInfo')}</Text>
+        <View style={styles.aboutCard}>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>{t('profile.version')}</Text>
+            <Text style={styles.infoValue}>{appVersion}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>{t('profile.network')}</Text>
+            <Text style={styles.infoValue}>{STEPLESS_NETWORK.name}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.exportButton}
+            onPress={handleCheckUpdate}
+            disabled={checkingUpdate}
+            accessibilityRole="button"
+            accessibilityLabel={t('profile.checkUpdate')}
+          >
+            <Ionicons name="refresh-outline" size={18} color={Colors.light.text} />
+            <Text style={styles.exportButtonText}>{checkingUpdate ? t('profile.checking') : t('profile.checkUpdate')}</Text>
+          </TouchableOpacity>
+          {[
+            { label: t('profile.website'), url: 'https://www.stepless.lat', icon: 'globe-outline' as const },
+            { label: t('profile.termsOfUse'), url: 'https://www.stepless.lat/termos.html', icon: 'document-text-outline' as const },
+            { label: t('profile.privacyPolicy'), url: 'https://www.stepless.lat/privacidade.html', icon: 'shield-checkmark-outline' as const },
+          ].map((l) => (
+            <TouchableOpacity key={l.url} style={styles.linkRow} onPress={() => openUrl(l.url)} accessibilityRole="link" accessibilityLabel={l.label}>
+              <Ionicons name={l.icon} size={18} color={Colors.light.primary} />
+              <Text style={styles.linkText}>{l.label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         {/* Levar a carteira para outro app — escondido: para o público do
@@ -368,6 +438,14 @@ const styles = StyleSheet.create({
   toggleLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: Colors.light.text },
   aboutCard: { marginHorizontal: 20, backgroundColor: Colors.light.surface, borderRadius: 16, padding: 20 },
   aboutText: { fontSize: 14, lineHeight: 22, color: Colors.light.textSecondary },
+  librasButton: { flexDirection: 'row', alignItems: 'center', gap: 14, marginHorizontal: 20, marginTop: 24, padding: 16, minHeight: 64, borderRadius: 16, backgroundColor: Colors.light.primary },
+  librasTitle: { fontSize: 17, fontWeight: '700', color: Colors.light.onPrimary },
+  librasHint: { fontSize: 13, color: Colors.light.onPrimary, opacity: 0.9, marginTop: 2 },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 },
+  infoLabel: { fontSize: 15, color: Colors.light.textSecondary },
+  infoValue: { fontSize: 15, fontWeight: '700', color: Colors.light.text },
+  linkRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, minHeight: 44 },
+  linkText: { fontSize: 15, fontWeight: '600', color: Colors.light.primary },
   advancedToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 20, marginTop: 24, paddingVertical: 12, minHeight: 48 },
   advancedText: { fontSize: 15, fontWeight: '600', color: Colors.light.textSecondary },
   versionText: { fontSize: 12, color: Colors.light.textMuted, marginTop: 12, fontWeight: '600' },
