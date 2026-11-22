@@ -107,6 +107,12 @@ const resources = {
       },
 
       // ─── Categories ───
+      update: {
+        title: "Nova versão do Stepless",
+        message: "A versão {{version}} está disponível (você tem a {{current}}). Baixe e toque em \"Instalar\" — sua conta continua a mesma.",
+        download: "Baixar agora",
+        later: "Depois",
+      },
       barriers: {
         step: "Degrau/escada sem rampa",
         door: "Porta estreita",
@@ -392,6 +398,12 @@ const resources = {
       },
 
       // ─── Categories ───
+      update: {
+        title: "New Stepless version",
+        message: "Version {{version}} is available (you have {{current}}). Download it and tap \"Install\" — your account stays the same.",
+        download: "Download now",
+        later: "Later",
+      },
       barriers: {
         step: "Step/stairs, no ramp",
         door: "Narrow door",
@@ -677,6 +689,12 @@ const resources = {
       },
 
       // ─── Categories ───
+      update: {
+        title: "Nueva versión de Stepless",
+        message: "La versión {{version}} está disponible (tienes la {{current}}). Descárgala y toca \"Instalar\": tu cuenta sigue igual.",
+        download: "Descargar ahora",
+        later: "Después",
+      },
       barriers: {
         step: "Escalón/escalera sin rampa",
         door: "Puerta estrecha",

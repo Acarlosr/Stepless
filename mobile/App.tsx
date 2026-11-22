@@ -31,6 +31,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as Localization from 'expo-localization';
 import { useTranslation } from 'react-i18next';
 import './src/i18n/translations';
+import { useUpdateCheck } from './src/services/updates';
 import { Colors } from './src/config/colors';
 import { ARC_TESTNET_CONFIG } from './src/config/arc';
 
@@ -169,6 +170,9 @@ function AppInner() {
       notification: colors.error,
     },
   };
+
+  // Avisa quando há APK novo no GitHub Releases (ver src/services/updates.ts).
+  useUpdateCheck();
 
   return (
     <NavigationContainer theme={navTheme}>
