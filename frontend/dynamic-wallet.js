@@ -161,6 +161,29 @@ export async function tryRestoreSession() {
   }
 }
 
+/**
+ * Reconecta em SILÊNCIO a mesma carteira em qualquer página: primeiro a
+ * extensão (MetaMask/Rabby) já autorizada — eth_accounts não abre janela —,
+ * depois a sessão do login por e-mail. Antes, só o dashboard fazia os dois;
+ * as outras páginas pediam para conectar de novo a cada navegação.
+ * Respeita o "Sair" (chave stepless-wallet-disconnected).
+ */
+export const WALLET_DISCONNECT_KEY = 'stepless-wallet-disconnected';
+export async function restoreAnySession() {
+  try { if (localStorage.getItem(WALLET_DISCONNECT_KEY) === '1') return null; } catch (_) {}
+  if (window.ethereum?.request) {
+    try {
+      const accs = await window.ethereum.request({ method: 'eth_accounts' });
+      if (accs?.length) {
+        adoptExternalConnection(accs[0], window.ethereum);
+        return { address: accs[0], walletClient: window.ethereum, provider: window.ethereum, kind: 'injected' };
+      }
+    } catch (_) { /* extensão travada: tenta o e-mail */ }
+  }
+  const s = await tryRestoreSession();
+  return s ? { ...s, kind: 'email' } : null;
+}
+
 async function _loadWaas() {
   if (_waasMod) return _waasMod;
   _waasMod = await import('https://esm.sh/@dynamic-labs-sdk/client@1.52.1/waas');

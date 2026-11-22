@@ -1403,7 +1403,12 @@ function renderEvidence(p) {
 
 // Assinatura de LEITURA da fila completa (risco, IA, foto). O servidor aceita
 // por 30 min; renovamos com folga aos 25 min. Fica só na memória da página.
-let queueAuth = null;
+// Guardada também no sessionStorage (só esta aba, some ao fechar): assim a
+// assinatura de LEITURA não é pedida de novo a cada troca de página.
+const QUEUE_AUTH_KEY = 'stepless-queue-auth';
+let queueAuth = (() => {
+  try { return JSON.parse(sessionStorage.getItem(QUEUE_AUTH_KEY) || 'null'); } catch { return null; }
+})();
 
 function buildQueueMessage({ address, timestamp, domain }) {
   return [
@@ -1428,6 +1433,7 @@ async function getQueueAuth() {
   const message = buildQueueMessage({ address: walletAddress, timestamp, domain: window.location.host });
   const signature = await provider.request({ method: 'personal_sign', params: [message, walletAddress] });
   queueAuth = { address: walletAddress, signature, timestamp };
+  try { sessionStorage.setItem(QUEUE_AUTH_KEY, JSON.stringify(queueAuth)); } catch (_) {}
   return queueAuth;
 }
 
@@ -1461,6 +1467,7 @@ async function fetchPendingFull() {
   if (resp.status === 401) {
     // Assinatura vencida ou recusada: pede uma nova uma única vez.
     queueAuth = null;
+    try { sessionStorage.removeItem(QUEUE_AUTH_KEY); } catch (_) {}
     resp = await fetch('/api/pending', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ auth: await getQueueAuth() }),

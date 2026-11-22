@@ -774,7 +774,7 @@
     window.SteplessConfig = SteplessConfig;
 
     /* ── Dynamic Wallet ── */
-    import { initDynamic, connectWallet as _connectWallet, disconnectWallet as _disconnectWallet, onWalletChange, getProvider, tryRestoreSession as _dynamicRestore } from './dynamic-wallet.js';
+    import { initDynamic, connectWallet as _connectWallet, disconnectWallet as _disconnectWallet, onWalletChange, getProvider, tryRestoreSession as _dynamicRestore, restoreAnySession } from './dynamic-wallet.js';
     const _dynamicInitPromise = initDynamic(); // inicia em background, guarda a promise pra auto-connect
     const WALLET_DISCONNECT_KEY = 'stepless-wallet-disconnected';
 
@@ -1655,7 +1655,7 @@
       if (localStorage.getItem(WALLET_DISCONNECT_KEY) === '1') return;
       try {
         await _dynamicInitPromise;
-        const restored = await _dynamicRestore();
+        const restored = await restoreAnySession();
         if (!restored) return;
         await _showConnectedUI(restored.address);
         console.log('[Stepless] Sessão restaurada via Dynamic:', restored.address);

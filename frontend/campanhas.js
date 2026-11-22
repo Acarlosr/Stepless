@@ -14,7 +14,7 @@
 import { SteplessConfig } from './arc-config.js';
 import {
   initDynamic, connectWallet as dynConnect, getProvider, tryRestoreSession,
-  disconnectWallet, onWalletChange,
+  disconnectWallet, onWalletChange, restoreAnySession, WALLET_DISCONNECT_KEY,
 } from './dynamic-wallet.js';
 import { geocode } from './geocode.js';
 
@@ -334,6 +334,7 @@ function renderWalletBar() {
 }
 
 async function connectFlow() {
+  try { localStorage.removeItem(WALLET_DISCONNECT_KEY); } catch (_) {}
   try {
     const { address } = await dynConnect();
     account = address;
@@ -343,6 +344,7 @@ async function connectFlow() {
 }
 
 async function disconnectFlow() {
+  try { localStorage.setItem(WALLET_DISCONNECT_KEY, '1'); } catch (_) {}
   try { await disconnectWallet(); } catch (_) {}
   account = null;
   renderWalletBar();
@@ -863,7 +865,7 @@ function init() {
 
   // Sessão anterior: só mostra o endereço; a assinatura é conferida na hora de criar.
   initWalletBar();
-  initDynamic().then(() => tryRestoreSession()).then((s) => {
+  initDynamic().then(() => restoreAnySession()).then((s) => {
     if (s?.address) { account = s.address; renderWalletBar(); updateCreateButton(); }
   }).catch(() => {});
 }
