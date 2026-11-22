@@ -1855,6 +1855,8 @@ function initEventListeners() {
       photoInput.focus();
     });
     photoInput.addEventListener('change', syncClear);
+    // Depois do envio o formulário é limpo (reset não dispara 'change').
+    photoInput.form?.addEventListener('reset', () => setTimeout(() => { syncClear(); syncAccessForm(); }, 0));
     photoInput.addEventListener('change', async () => {
       const statusEl = document.getElementById('reg-photo-status');
       const file = photoInput.files?.[0];
