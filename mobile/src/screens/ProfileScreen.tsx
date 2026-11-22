@@ -12,7 +12,8 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Switch,
+  Platform,
+  Linking,
   Alert,
   Share,
   Modal,
@@ -24,7 +25,8 @@ import { format } from 'date-fns';
 import * as Clipboard from 'expo-clipboard';
 import { Colors } from '../config/colors';
 import { useWallet } from '../services/wallet';
-import { RewardDistributor } from '../services/contracts';
+import { fetchMyStats } from '../services/api';
+import Constants from 'expo-constants';
 
 export default function ProfileScreen() {
   const { t, i18n } = useTranslation();
@@ -81,24 +83,24 @@ export default function ProfileScreen() {
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const [highContrast, setHighContrast] = useState(false);
-  const [largeText, setLargeText] = useState(false);
-  const [screenReader, setScreenReader] = useState(false);
-  const [reduceMotion, setReduceMotion] = useState(false);
-  const [stats, setStats] = useState<{
-    totalEarned: string;
-    contributionCount: number;
-    verificationCount: number;
-    isTopContributor: boolean;
-  } | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  // Totais reais da carteira no Stepless (servidor). O contador antigo vinha
+  // da recompensa automática, desligada no modelo de campanhas — mostrava 0.
+  const [stats, setStats] = useState<{ submitted: number; approved: number; rejected: number } | null>(null);
 
   useEffect(() => {
-    if (walletAddress) {
-      RewardDistributor.getContributorStats(walletAddress)
-        .then(setStats)
-        .catch(console.error);
-    }
+    if (walletAddress) fetchMyStats(walletAddress).then(setStats).catch(() => {});
   }, [walletAddress]);
+
+  const appVersion = Constants.expoConfig?.version || '—';
+
+  const openA11ySettings = () => {
+    if (Platform.OS === 'android') {
+      Linking.sendIntent('android.settings.ACCESSIBILITY_SETTINGS').catch(() => Linking.openSettings());
+    } else {
+      Linking.openSettings();
+    }
+  };
 
   const handleDisconnect = () => {
     Alert.alert(
@@ -157,10 +159,8 @@ export default function ProfileScreen() {
           </View>
           {user && (
             <View style={styles.connectedViaRow}>
-              <Ionicons name="logo-google" size={14} color={Colors.light.textSecondary} />
-              <Text style={styles.connectedViaText}>
-                {t('profile.connectedWith')} {user.provider}
-              </Text>
+              <Ionicons name="phone-portrait-outline" size={14} color={Colors.light.textSecondary} />
+              <Text style={styles.connectedViaText}>{t('profile.connectedEmbedded')}</Text>
             </View>
           )}
           <View style={styles.balanceRow}>
@@ -172,12 +172,12 @@ export default function ProfileScreen() {
         {/* Contribution Stats */}
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{stats?.contributionCount || 0}</Text>
-            <Text style={styles.statText}>{t('profile.myContributions')}</Text>
+            <Text style={styles.statNumber}>{stats?.submitted ?? 0}</Text>
+            <Text style={styles.statText}>{t('profile.sent')}</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{stats?.verificationCount || 0}</Text>
-            <Text style={styles.statText}>{t('profile.myVerifications')}</Text>
+            <Text style={styles.statNumber}>{stats?.approved ?? 0}</Text>
+            <Text style={styles.statText}>{t('profile.approved')}</Text>
           </View>
         </View>
 
@@ -205,55 +205,42 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        {/* Accessibility Settings */}
+        {/* Acessibilidade: o app segue o sistema (texto, TalkBack, contraste).
+            Os interruptores antigos não faziam nada — para um app de
+            acessibilidade, isso é pior que não ter. */}
         <Text style={styles.sectionTitle}>{t('profile.accessibility')}</Text>
-        <View style={styles.settingsCard}>
-          <View style={styles.toggleRow}>
-            <Ionicons name="contrast" size={20} color={Colors.light.textSecondary} />
-            <Text style={styles.toggleLabel}>{t('profile.highContrast')}</Text>
-            <Switch
-              value={highContrast}
-              onValueChange={setHighContrast}
-              trackColor={{ false: Colors.light.border, true: Colors.light.primary }}
-            />
-          </View>
-          <View style={styles.toggleRow}>
-            <Ionicons name="text" size={20} color={Colors.light.textSecondary} />
-            <Text style={styles.toggleLabel}>{t('profile.largeText')}</Text>
-            <Switch
-              value={largeText}
-              onValueChange={setLargeText}
-              trackColor={{ false: Colors.light.border, true: Colors.light.primary }}
-            />
-          </View>
-          <View style={styles.toggleRow}>
-            <Ionicons name="volume-high" size={20} color={Colors.light.textSecondary} />
-            <Text style={styles.toggleLabel}>{t('profile.screenReader')}</Text>
-            <Switch
-              value={screenReader}
-              onValueChange={setScreenReader}
-              trackColor={{ false: Colors.light.border, true: Colors.light.primary }}
-            />
-          </View>
-          <View style={styles.toggleRow}>
-            <Ionicons name="pause" size={20} color={Colors.light.textSecondary} />
-            <Text style={styles.toggleLabel}>{t('profile.reduceMotion')}</Text>
-            <Switch
-              value={reduceMotion}
-              onValueChange={setReduceMotion}
-              trackColor={{ false: Colors.light.border, true: Colors.light.primary }}
-            />
-          </View>
+        <View style={styles.aboutCard}>
+          <Text style={styles.aboutText}>{t('profile.a11yNote')}</Text>
+          <TouchableOpacity
+            style={styles.exportButton}
+            onPress={openA11ySettings}
+            accessibilityRole="button"
+            accessibilityLabel={t('profile.a11yOpen')}
+          >
+            <Ionicons name="accessibility-outline" size={18} color={Colors.light.text} />
+            <Text style={styles.exportButtonText}>{t('profile.a11yOpen')}</Text>
+          </TouchableOpacity>
         </View>
 
         {/* About */}
         <Text style={styles.sectionTitle}>{t('profile.about')}</Text>
         <View style={styles.aboutCard}>
           <Text style={styles.aboutText}>{t('profile.aboutText')}</Text>
-          <Text style={styles.versionText}>{t('profile.version')} 1.0.0</Text>
+          <Text style={styles.versionText}>{t('profile.version')} {appVersion}</Text>
         </View>
 
-        {/* Levar a carteira para outro app (avançado) */}
+        {/* Levar a carteira para outro app — escondido: para o público do
+            Stepless, uma chave privada à vista é risco, não recurso. */}
+        <TouchableOpacity
+          onPress={() => setShowAdvanced((v) => !v)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showAdvanced }}
+          style={styles.advancedToggle}
+        >
+          <Text style={styles.advancedText}>{t('profile.advanced')}</Text>
+          <Ionicons name={showAdvanced ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.light.textSecondary} />
+        </TouchableOpacity>
+        {showAdvanced && (<>
         <Text style={styles.sectionTitle}>{t('profile.walletPortability')}</Text>
         <View style={styles.aboutCard}>
           <Text style={styles.aboutText}>{t('profile.walletPortabilityDesc')}</Text>
@@ -267,6 +254,7 @@ export default function ProfileScreen() {
             <Text style={styles.exportButtonText}>{t('profile.exportKeyButton')}</Text>
           </TouchableOpacity>
         </View>
+        </>)}
 
         {/* Disconnect */}
         <TouchableOpacity
@@ -380,6 +368,8 @@ const styles = StyleSheet.create({
   toggleLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: Colors.light.text },
   aboutCard: { marginHorizontal: 20, backgroundColor: Colors.light.surface, borderRadius: 16, padding: 20 },
   aboutText: { fontSize: 14, lineHeight: 22, color: Colors.light.textSecondary },
+  advancedToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 20, marginTop: 24, paddingVertical: 12, minHeight: 48 },
+  advancedText: { fontSize: 15, fontWeight: '600', color: Colors.light.textSecondary },
   versionText: { fontSize: 12, color: Colors.light.textMuted, marginTop: 12, fontWeight: '600' },
   disconnectButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,

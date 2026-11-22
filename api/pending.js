@@ -16,6 +16,7 @@
 import {
   store, contribKey, PENDING_LIST_KEY, cors, clientIp, verifyQueueRequest,
 } from './_stepless.js';
+import { getReputation } from './_risk.js';
 
 /** Campos que qualquer pessoa pode ver (o app v1.2.0 usa user, status, name, ts). */
 function publicView(id, meta) {
@@ -68,7 +69,13 @@ export default async function handler(req, res) {
     const pending = items
       .filter(({ meta }) => !user || String(meta.user || '').toLowerCase() === user)
       .map(({ id, meta }) => publicView(id, meta));
-    return res.status(200).json({ full: false, pending });
+    // Com ?user=, devolve também os totais da carteira (enviadas, aprovadas,
+    // rejeitadas) — é o que o perfil do app mostra. Sem nova rota: o plano da
+    // Vercel limita o número de funções.
+    const stats = user && /^0x[0-9a-f]{40}$/.test(user)
+      ? (({ submitted, approved, rejected }) => ({ submitted, approved, rejected }))(await getReputation(user))
+      : undefined;
+    return res.status(200).json({ full: false, pending, ...(stats ? { stats } : {}) });
   } catch (err) {
     return res.status(500).json({ error: err?.message || String(err) });
   }

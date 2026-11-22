@@ -122,6 +122,12 @@ export interface RegisterLocationInput {
   gpsSource?: 'exif' | 'device' | null;
   /** Precisão do GPS em metros, quando conhecida. */
   gpsAccuracyM?: number | null;
+  /** 'ok' | 'partial' | 'none' — o servidor normaliza (api/relay.js accessInfo). */
+  access?: 'ok' | 'partial' | 'none';
+  /** Altura do degrau quando a barreira 20 (degrau) está marcada. */
+  stepHeight?: 'small' | 'medium' | 'high' | null;
+  /** Versão dos Termos/Privacidade aceita no envio (LGPD). */
+  termsVersion?: string;
 }
 
 export interface RegisterLocationResult {
@@ -170,7 +176,10 @@ export async function registerLocation(input: RegisterLocationInput): Promise<Re
       gpsAccuracyM: input.gpsAccuracyM ?? null,
       name,
       categories,
+      access: input.access,
+      stepHeight: input.stepHeight ?? null,
     },
+    termsVersion: input.termsVersion,
   };
 
   let resp: Response;
@@ -217,6 +226,18 @@ export async function fetchPending(user?: string): Promise<any[]> {
     return Array.isArray(data?.pending) ? data.pending : Array.isArray(data) ? data : [];
   } catch {
     return [];
+  }
+}
+
+/** Totais da carteira no Stepless (enviados, aprovados, rejeitados). */
+export async function fetchMyStats(user: string): Promise<{ submitted: number; approved: number; rejected: number } | null> {
+  try {
+    const resp = await fetch(`${STEPLESS_API_BASE}/api/pending?user=${encodeURIComponent(user)}`);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return data?.stats ?? null;
+  } catch {
+    return null;
   }
 }
 

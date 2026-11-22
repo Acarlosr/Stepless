@@ -29,7 +29,18 @@ export const LOCATION_CATEGORIES: LocationCategoryMeta[] = [
   { id: 7, labelKey: 'categories.other',    icon: 'ellipsis-horizontal-circle', color: '#64748B' },
   { id: 8, labelKey: 'categories.entrance', icon: 'enter',                      color: '#15803D' },
   { id: 9, labelKey: 'categories.room',     icon: 'bed',                        color: '#9333EA' },
+  // 20–26: BARREIRAS — o que falta ou atrapalha (mesmos ids da web e de api/relay.js).
+  { id: 20, labelKey: 'barriers.step',     icon: 'trending-up',     color: '#DC2626' },
+  { id: 21, labelKey: 'barriers.door',     icon: 'resize',          color: '#DC2626' },
+  { id: 22, labelKey: 'barriers.restroom', icon: 'water',           color: '#DC2626' },
+  { id: 23, labelKey: 'barriers.parking',  icon: 'car',             color: '#DC2626' },
+  { id: 24, labelKey: 'barriers.elevator', icon: 'arrow-up-circle', color: '#DC2626' },
+  { id: 25, labelKey: 'barriers.sidewalk', icon: 'construct',       color: '#DC2626' },
+  { id: 26, labelKey: 'barriers.other',    icon: 'warning',         color: '#DC2626' },
 ];
+
+export const BARRIER_FORM_ORDER = [20, 21, 22, 23, 24, 25, 26];
+export const isBarrier = (id: number) => id >= 20;
 
 // Ordem no formulário: acesso físico primeiro, sensorial depois, outro no fim.
 export const CATEGORY_FORM_ORDER = [0, 2, 3, 8, 9, 1, 4, 5, 6, 7];
@@ -65,7 +76,7 @@ export function categoryIdsFromMeta(cats: (string | number)[] | undefined): numb
     const id = typeof raw === 'number'
       ? raw
       : LEGACY_SLUG_TO_ID[String(raw).trim().toLowerCase()] ?? null;
-    if (id !== null && id >= 0 && id <= 9 && !ids.includes(id)) ids.push(id);
+    if (id !== null && ((id >= 0 && id <= 9) || (id >= 20 && id <= 26)) && !ids.includes(id)) ids.push(id);
   }
   return ids;
 }

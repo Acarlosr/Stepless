@@ -34,7 +34,7 @@ import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { Colors } from '../config/colors';
 import {
-  CATEGORY_FORM_ORDER,
+  CATEGORY_FORM_ORDER, BARRIER_FORM_ORDER,
   metaForId,
   metaOrDefault,
   categoryIdsFromMeta,
@@ -101,7 +101,22 @@ interface AddLocationForm {
   photoGpsSource: 'exif' | 'device' | null;
   /** Precisão do GPS em metros no momento da captura (quando conhecida). */
   photoAccuracyM: number | null;
+  /** Estado de acessibilidade: registrar BARREIRAS vale tanto quanto recursos. */
+  access: 'ok' | 'partial' | 'none';
+  barriers: number[];
+  stepHeight: 'small' | 'medium' | 'high' | null;
+  termsAccepted: boolean;
 }
+
+const TERMS_VERSION = '1.0';
+
+// Esconde ícones de lojas/pontos do Google: o mapa fica limpo e os pins do
+// Stepless (acessível / barreira) se destacam — importante para baixa visão.
+const MAP_STYLE_NO_POI = [
+  { featureType: 'poi', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+];
 
 // ─── Category Metadata ────────────────────────────────────────────────
 // Taxonomia canônica mora em config/categories.ts (mesma da web, ids 0-8).
@@ -153,6 +168,10 @@ export default function MapScreen() {
     photoTimestamp: null,
     photoGpsSource: null,
     photoAccuracyM: null,
+    access: 'ok',
+    barriers: [],
+    stepHeight: null,
+    termsAccepted: false,
   });
 
   // ─── Request location permissions ─────────────────────────────────
@@ -267,6 +286,10 @@ export default function MapScreen() {
       photoTimestamp: null,
       photoGpsSource: null,
       photoAccuracyM: null,
+      access: 'ok',
+      barriers: [],
+      stepHeight: null,
+      termsAccepted: false,
     });
     setSubmissionStatus('idle');
     setPendingReward(null);
@@ -389,8 +412,18 @@ export default function MapScreen() {
       return;
     }
 
-    if (formData.categories.length === 0) {
+    const features = formData.access === 'none' ? [] : formData.categories;
+    const barriers = formData.access === 'ok' ? [] : formData.barriers;
+    if (formData.access !== 'ok' && barriers.length === 0) {
+      Alert.alert(t('map.accessQuestion'), t('map.selectBarrier'));
+      return;
+    }
+    if (features.length + barriers.length === 0) {
       Alert.alert(t('map.category'), t('map.select_category'));
+      return;
+    }
+    if (!formData.termsAccepted) {
+      Alert.alert(t('profile.termsOfUse'), t('map.termsRequired'));
       return;
     }
 
@@ -417,8 +450,8 @@ export default function MapScreen() {
       // a web e o mobile leem os mesmos dados do Upstash. "Outros" (id 7)
       // com texto entra no NOME ("Local — texto"), como o dashboard web faz.
       const custom = formData.customCategory.trim();
-      const categories = [...formData.categories].sort((a, b) => a - b);
-      const finalName = categories.includes(7) && custom
+      const categories = [...features, ...barriers].sort((a, b) => a - b);
+      const finalName = (categories.includes(7) || categories.includes(26)) && custom
         ? `${formData.name.trim()} — ${custom}`
         : formData.name.trim();
 
@@ -435,6 +468,9 @@ export default function MapScreen() {
         photoBase64: formData.photoBase64,
         gpsSource: formData.photoGpsSource,
         gpsAccuracyM: formData.photoAccuracyM,
+        access: formData.access,
+        stepHeight: barriers.includes(20) ? formData.stepHeight : null,
+        termsVersion: TERMS_VERSION,
       });
 
       console.log('[Stepless] Local registrado. TX:', result.txHash, 'contrib:', result.contributionId);
@@ -565,6 +601,121 @@ export default function MapScreen() {
     );
   };
 
+  // ─── Estado de acessibilidade + barreiras ─────────────────────────
+  const renderAccessSelector = () => {
+    const opts: { key: 'ok' | 'partial' | 'none'; label: string; hint: string; color: string }[] = [
+      { key: 'ok', label: t('map.accessOk'), hint: t('map.accessOkHint'), color: Colors.light.success },
+      { key: 'partial', label: t('map.accessPartial'), hint: t('map.accessPartialHint'), color: '#D97706' },
+      { key: 'none', label: t('map.accessNone'), hint: t('map.accessNoneHint'), color: '#DC2626' },
+    ];
+    return (
+      <View accessibilityRole="radiogroup" style={{ gap: 8 }}>
+        {opts.map((o) => {
+          const sel = formData.access === o.key;
+          return (
+            <TouchableOpacity
+              key={o.key}
+              onPress={() => setFormData((prev) => ({ ...prev, access: o.key }))}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: sel }}
+              accessibilityLabel={`${o.label}. ${o.hint}`}
+              style={[styles.accessOption, { borderColor: sel ? o.color : Colors.light.border, backgroundColor: sel ? `${o.color}15` : Colors.light.surface }]}
+            >
+              <Ionicons name={sel ? 'radio-button-on' : 'radio-button-off'} size={22} color={sel ? o.color : Colors.light.textMuted} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.accessLabel}>{o.label}</Text>
+                <Text style={styles.accessHint}>{o.hint}</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
+  };
+
+  const renderBarrierSelector = () => (
+    <>
+      <Text style={styles.categoryHint}>{t('map.barriersTitle')}</Text>
+      <View style={styles.categoryGrid}>
+        {BARRIER_FORM_ORDER.map((id) => {
+          const meta = metaForId(id);
+          if (!meta) return null;
+          const isSelected = formData.barriers.includes(id);
+          return (
+            <TouchableOpacity
+              key={id}
+              style={[styles.categoryButton, { borderColor: isSelected ? meta.color : Colors.light.border, backgroundColor: isSelected ? `${meta.color}15` : Colors.light.surface }]}
+              onPress={() => setFormData((prev) => ({
+                ...prev,
+                barriers: prev.barriers.includes(id) ? prev.barriers.filter((c) => c !== id) : [...prev.barriers, id],
+              }))}
+              accessibilityRole="checkbox"
+              accessibilityLabel={t(meta.labelKey)}
+              accessibilityState={{ checked: isSelected }}
+            >
+              <Ionicons name={meta.icon} size={24} color={meta.color} />
+              <Text style={[styles.categoryLabel, { color: Colors.light.text }]}>{t(meta.labelKey)}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+      {formData.barriers.includes(20) && (
+        <>
+          <Text style={[styles.fieldLabel, { marginTop: 12 }]}>{t('map.stepHeight')}</Text>
+          <View style={{ gap: 8 }} accessibilityRole="radiogroup">
+            {(['small', 'medium', 'high'] as const).map((h) => {
+              const sel = formData.stepHeight === h;
+              const label = t(h === 'small' ? 'map.stepSmall' : h === 'medium' ? 'map.stepMedium' : 'map.stepHigh');
+              return (
+                <TouchableOpacity
+                  key={h}
+                  onPress={() => setFormData((prev) => ({ ...prev, stepHeight: h }))}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: sel }}
+                  accessibilityLabel={label}
+                  style={[styles.accessOption, { paddingVertical: 10, borderColor: sel ? '#DC2626' : Colors.light.border }]}
+                >
+                  <Ionicons name={sel ? 'radio-button-on' : 'radio-button-off'} size={20} color={sel ? '#DC2626' : Colors.light.textMuted} />
+                  <Text style={styles.accessLabel}>{label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </>
+      )}
+      {formData.barriers.includes(26) && !formData.categories.includes(7) && (
+        <TextInput
+          style={[styles.textInput, { marginTop: 10 }]}
+          value={formData.customCategory}
+          onChangeText={(text) => setFormData((prev) => ({ ...prev, customCategory: text }))}
+          placeholder={t('map.otherCategoryPlaceholder')}
+          placeholderTextColor={Colors.light.textMuted}
+          maxLength={60}
+          accessibilityLabel={t('map.otherCategoryPlaceholder')}
+          editable={!isSubmitting}
+        />
+      )}
+    </>
+  );
+
+  const renderTerms = () => (
+    <View style={styles.termsRow}>
+      <TouchableOpacity
+        onPress={() => setFormData((prev) => ({ ...prev, termsAccepted: !prev.termsAccepted }))}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: formData.termsAccepted }}
+        accessibilityLabel={t('map.termsAccept')}
+        style={{ flexDirection: 'row', gap: 10, flex: 1, alignItems: 'flex-start' }}
+      >
+        <Ionicons name={formData.termsAccepted ? 'checkbox' : 'square-outline'} size={24} color={Colors.light.primary} />
+        <Text style={styles.termsText}>{t('map.termsAccept')}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => Linking.openURL('https://www.stepless.lat/termos.html')} accessibilityRole="link">
+        <Text style={styles.termsLink}>{t('map.termsOpen')}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   // ─── Render submission status ─────────────────────────────────────
   const renderSubmissionStatus = () => {
     if (submissionStatus === 'idle') return null;
@@ -601,6 +752,8 @@ export default function MapScreen() {
       {/* Map */}
       <MapView
         ref={mapRef}
+        showsPointsOfInterest={false}
+        customMapStyle={MAP_STYLE_NO_POI}
         style={styles.map}
         initialRegion={region}
         onRegionChangeComplete={handleRegionChange}
@@ -790,9 +943,19 @@ export default function MapScreen() {
               editable={!isSubmitting}
             />
 
-            {/* Category Selector */}
-            <Text style={styles.fieldLabel}>{t('map.category')}</Text>
-            {renderCategorySelector()}
+            {/* Estado de acessibilidade */}
+            <Text style={styles.fieldLabel}>{t('map.accessQuestion')}</Text>
+            {renderAccessSelector()}
+
+            {formData.access !== 'ok' && renderBarrierSelector()}
+
+            {/* Category Selector (recursos que existem) */}
+            {formData.access !== 'none' && (
+              <>
+                <Text style={styles.fieldLabel}>{t('map.category')}</Text>
+                {renderCategorySelector()}
+              </>
+            )}
 
             {/* GPS Coordinates */}
             <Text style={styles.fieldLabel}>{t('map.coordinates')}</Text>
@@ -839,6 +1002,8 @@ export default function MapScreen() {
                 </View>
               )}
             </TouchableOpacity>
+
+            {renderTerms()}
 
             {/* Submit Button */}
             <TouchableOpacity
@@ -1123,6 +1288,21 @@ const styles = StyleSheet.create({
     color: Colors.light.textMuted,
     marginBottom: 8,
   },
+  accessOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 2,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    minHeight: 48,
+  },
+  accessLabel: { fontSize: 16, fontWeight: '700', color: Colors.light.text },
+  accessHint: { fontSize: 13, color: Colors.light.textSecondary, marginTop: 2 },
+  termsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 20, marginBottom: 4 },
+  termsText: { flex: 1, fontSize: 14, lineHeight: 20, color: Colors.light.text },
+  termsLink: { fontSize: 14, fontWeight: '700', color: Colors.light.primary, paddingVertical: 2 },
   coordsRow: {
     flexDirection: 'row',
     gap: 8,
