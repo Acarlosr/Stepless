@@ -294,7 +294,7 @@
         <div class="hero-actions hero-actions-secondary">
           <a href="buscar.html" class="btn btn-secondary btn-lg" data-i18n="hero_cta_search">Ver todos os locais</a>
           <a href="dashboard.html" class="btn btn-secondary btn-lg" data-i18n="hero_cta_contribute">Contribuir com o mapa</a>
-          <a href="https://github.com/Acarlosr/Stepless/releases/download/v1.2.0-build.6/stepless-v1.2.0-build6.apk"
+          <a href="https://github.com/Acarlosr/Stepless/releases/latest"
              target="_blank" rel="noopener" class="btn btn-secondary btn-lg" id="download-apk-btn"
              data-i18n="hero_cta_download">Baixar app Android</a>
         </div>
@@ -1515,6 +1515,25 @@
       localStorage.setItem('stepless-theme', next);
       document.getElementById('theme-icon').textContent = next === 'dark' ? '☀️' : '🌙';
     }
+
+    /* ── Botão "Baixar app Android": sempre a última versão ──
+       Antes o link era fixo num arquivo (v1.2.0) e não acompanhava as
+       releases novas. Agora o padrão é a página da última release e, se o
+       GitHub responder, o botão aponta direto para o .apk mais recente. */
+    (async function latestApk() {
+      const btn = document.getElementById('download-apk-btn');
+      if (!btn) return;
+      try {
+        const r = await fetch('https://api.github.com/repos/Acarlosr/Stepless/releases/latest', { headers: { Accept: 'application/vnd.github+json' } });
+        if (!r.ok) return;
+        const rel = await r.json();
+        const apk = (rel.assets || []).find(a => /\.apk$/i.test(a.name || ''));
+        if (apk?.browser_download_url) {
+          btn.href = apk.browser_download_url;
+          btn.title = `${rel.tag_name || ''}`.replace(/^v/, 'Versão ');
+        }
+      } catch (_) { /* sem rede: fica a página da release */ }
+    })();
 
     /* ── Mobile nav ── */
     function initNav() {
