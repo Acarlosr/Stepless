@@ -101,6 +101,10 @@ interface AddLocationForm {
   photoGpsSource: 'exif' | 'device' | null;
   /** Precisão do GPS em metros no momento da captura (quando conhecida). */
   photoAccuracyM: number | null;
+  /** Posição do celular no disparo da câmera (prova de presença para campanhas). */
+  deviceLat: number | null;
+  deviceLng: number | null;
+  deviceAccuracyM: number | null;
   /** Estado de acessibilidade: registrar BARREIRAS vale tanto quanto recursos. */
   access: 'ok' | 'partial' | 'none';
   barriers: number[];
@@ -168,6 +172,9 @@ export default function MapScreen() {
     photoTimestamp: null,
     photoGpsSource: null,
     photoAccuracyM: null,
+    deviceLat: null,
+    deviceLng: null,
+    deviceAccuracyM: null,
     access: 'ok',
     barriers: [],
     stepHeight: null,
@@ -286,6 +293,9 @@ export default function MapScreen() {
       photoTimestamp: null,
       photoGpsSource: null,
       photoAccuracyM: null,
+      deviceLat: null,
+      deviceLng: null,
+      deviceAccuracyM: null,
       access: 'ok',
       barriers: [],
       stepHeight: null,
@@ -361,17 +371,25 @@ export default function MapScreen() {
           }
         }
 
-        if (photoGpsSource === null) {
-          try {
-            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-            photoLat = loc.coords.latitude;
-            photoLng = loc.coords.longitude;
-            photoAccuracyM = loc.coords.accuracy ?? null;
-            photoGpsSource = 'device';
-          } catch {
-            // Sem EXIF e sem GPS: seguimos sem prova. O backend decide se
-            // aceita ou manda para revisão — mentir aqui seria pior.
-          }
+        // Localização do CELULAR no disparo — lida sempre, mesmo quando a foto
+        // tem GPS no EXIF: a cópia que sobe para o servidor pode perder esses
+        // metadados, e aí é esta posição que serve de prova para a campanha.
+        let deviceLat: number | null = null;
+        let deviceLng: number | null = null;
+        let deviceAccuracyM: number | null = null;
+        try {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+          deviceLat = loc.coords.latitude;
+          deviceLng = loc.coords.longitude;
+          deviceAccuracyM = loc.coords.accuracy ?? null;
+        } catch {
+          // Sem GPS do celular: seguimos sem essa prova — mentir seria pior.
+        }
+        if (photoGpsSource === null && deviceLat !== null && deviceLng !== null) {
+          photoLat = deviceLat;
+          photoLng = deviceLng;
+          photoAccuracyM = deviceAccuracyM;
+          photoGpsSource = 'device';
         }
 
         // MIME real da captura da câmera. `asset.mimeType` existe no SDK 51+;
@@ -397,6 +415,9 @@ export default function MapScreen() {
           photoTimestamp: photoTimestamp ?? new Date().toISOString(),
           photoGpsSource,
           photoAccuracyM,
+          deviceLat,
+          deviceLng,
+          deviceAccuracyM,
         }));
       }
     } catch (error) {
@@ -468,6 +489,9 @@ export default function MapScreen() {
         photoBase64: formData.photoBase64,
         gpsSource: formData.photoGpsSource,
         gpsAccuracyM: formData.photoAccuracyM,
+        deviceLat: formData.deviceLat,
+        deviceLng: formData.deviceLng,
+        deviceAccuracyM: formData.deviceAccuracyM,
         access: formData.access,
         stepHeight: barriers.includes(20) ? formData.stepHeight : null,
         termsVersion: TERMS_VERSION,

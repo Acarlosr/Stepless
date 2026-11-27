@@ -128,6 +128,10 @@ export interface RegisterLocationInput {
   stepHeight?: 'small' | 'medium' | 'high' | null;
   /** Versão dos Termos/Privacidade aceita no envio (LGPD). */
   termsVersion?: string;
+  /** Posição do celular no disparo da câmera — prova de presença para campanhas. */
+  deviceLat?: number | null;
+  deviceLng?: number | null;
+  deviceAccuracyM?: number | null;
 }
 
 export interface RegisterLocationResult {
@@ -178,6 +182,9 @@ export async function registerLocation(input: RegisterLocationInput): Promise<Re
       categories,
       access: input.access,
       stepHeight: input.stepHeight ?? null,
+      deviceLat: input.deviceLat ?? null,
+      deviceLng: input.deviceLng ?? null,
+      deviceAccuracyM: input.deviceAccuracyM ?? null,
     },
     termsVersion: input.termsVersion,
   };
