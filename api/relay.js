@@ -38,6 +38,7 @@ import { store, contribKey, PENDING_LIST_KEY, clientIp, cors, ORACLE_ABI, transl
 import { photoKey, photoHashKey } from './upload.js';
 import { chainConfig, rpcUrls, contractAddresses } from './_network.js';
 import { checkPlace } from './_placecheck.js';
+import { deviceEvidence } from './_campaign.js';
 import { checkPhotoAI } from './_ai.js';
 import { getReputation, bumpReputation, withinDailyQuota, scoreSubmission, shouldBlock } from './_risk.js';
 
@@ -376,6 +377,9 @@ export default async function handler(req, res) {
       photoEvidence.warning = check.ok ? null : check.error;
       photoEvidence.gpsSource = gpsSource ?? null;
       photoEvidence.gpsAccuracyM = Number.isFinite(Number(gpsAccuracyM)) ? Number(gpsAccuracyM) : null;
+      // Localização do celular no envio — segunda prova de presença para as
+      // campanhas quando a foto chega sem GPS (ver locationProof em _campaign.js).
+      photoEvidence.device = deviceEvidence(submissionData, Number(latPacked) / 1e6 - 90, Number(lngPacked) / 1e6 - 180);
 
       // ── Anti-fraude: o local declarado existe no mundo? ───────────────
       // O EXIF prova presença, não identidade do lugar. Esta checagem responde

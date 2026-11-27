@@ -246,6 +246,68 @@ export async function listCampaigns(pub, { onlyActive = false } = {}) {
  * Nunca lança por "não houve campanha": devolve { paid:false, reason }.
  */
 const PHOTO_MAX_OFFSET_KM = 0.5;
+/** Localização do celular: aceita só se precisa e perto do ponto declarado. */
+export const DEVICE_MAX_ACCURACY_M = 50;
+export const DEVICE_MAX_OFFSET_M = 150;
+
+/**
+ * A campanha só paga com prova de que a pessoa esteve no local.
+ *
+ * 1) GPS gravado na foto (EXIF, lido pelo servidor): até 500 m do ponto.
+ * 2) Sem GPS na foto — o Android apaga a localização de fotos escolhidas pelo
+ *    navegador —, vale a localização do CELULAR no momento do envio, com regra
+ *    mais apertada: precisão de até 50 m e no máximo 150 m do ponto declarado.
+ *    É mais fácil de falsificar que o EXIF; por isso o revisor vê a origem
+ *    marcada na fila e os valores por local são pequenos.
+ */
+export function locationProof(contrib) {
+  const ph = contrib?.photo || {};
+  if (ph.hasGps === true) {
+    if (ph.photoLat != null && ph.photoLng != null && contrib.lat != null && contrib.lng != null) {
+      const off = distanceKm(ph.photoLat, ph.photoLng, contrib.lat, contrib.lng);
+      if (off > PHOTO_MAX_OFFSET_KM) {
+        return { ok: false, reason: `foto tirada a ${off.toFixed(2)} km do ponto declarado` };
+      }
+    }
+    return { ok: true, via: 'photo' };
+  }
+  const d = ph.device;
+  if (d && Number.isFinite(d.accuracyM) && Number.isFinite(d.distM)) {
+    if (d.accuracyM > DEVICE_MAX_ACCURACY_M) {
+      return { ok: false, reason: `localização do celular imprecisa (±${Math.round(d.accuracyM)} m; máximo ${DEVICE_MAX_ACCURACY_M} m)` };
+    }
+    if (d.distM > DEVICE_MAX_OFFSET_M) {
+      return { ok: false, reason: `celular estava a ${Math.round(d.distM)} m do ponto declarado (máximo ${DEVICE_MAX_OFFSET_M} m)` };
+    }
+    return { ok: true, via: 'device' };
+  }
+  return { ok: false, reason: 'sem GPS na foto nem localização do celular no envio — não elegível a campanha' };
+}
+
+/**
+ * Normaliza a localização do celular enviada junto com o registro.
+ * Site: manda deviceLat/deviceLng/deviceAccuracyM. App (v1.3): o ponto
+ * declarado É a posição do GPS do celular, e manda gpsSource='device' com a
+ * precisão — então a distância é zero.
+ */
+export function deviceEvidence(sd = {}, declLat, declLng) {
+  const num = (v) => (v === null || v === undefined || v === '' ? NaN : Number(v));
+  let lat = num(sd.deviceLat), lng = num(sd.deviceLng);
+  let acc = num(sd.deviceAccuracyM);
+  let source = 'web';
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    if (sd.gpsSource !== 'device') return null;
+    lat = declLat; lng = declLng; acc = num(sd.gpsAccuracyM); source = 'app';
+  }
+  if (![lat, lng, acc, declLat, declLng].every(Number.isFinite)) return null;
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180 || acc < 0) return null;
+  return {
+    lat, lng,
+    accuracyM: Math.round(acc),
+    distM: Math.round(distanceKm(lat, lng, declLat, declLng) * 1000),
+    source,
+  };
+}
 
 export async function attestContribution({ pub, wallet, contributionId }) {
   const escrow = { address: escrowAddress(), abi: CAMPAIGN_ABI };
@@ -269,18 +331,10 @@ export async function attestContribution({ pub, wallet, contributionId }) {
   const contrib = await store.getJSON(contribKey(contributionId));
   if (!contrib) return { paid: false, reason: 'dados da contribuição não encontrados' };
 
-  // Dinheiro de parceiro só paga o que o servidor mediu: foto com GPS no EXIF e
-  // tirada perto do ponto declarado. Foto sem GPS pode ser aprovada pelo
-  // verificador humano (vale como contribuição comum), mas não dispara campanha.
-  if (contrib.photo?.hasGps !== true) {
-    return { paid: false, reason: 'foto sem GPS medido pelo servidor — não elegível a campanha' };
-  }
-  if (contrib.photo.photoLat != null && contrib.photo.photoLng != null && contrib.lat != null && contrib.lng != null) {
-    const off = distanceKm(contrib.photo.photoLat, contrib.photo.photoLng, contrib.lat, contrib.lng);
-    if (off > PHOTO_MAX_OFFSET_KM) {
-      return { paid: false, reason: `foto tirada a ${off.toFixed(2)} km do ponto declarado` };
-    }
-  }
+  // Prova de presença: GPS da foto (forte) OU localização do celular no envio
+  // (mais fraca, por isso com regra mais apertada). Ver locationProof().
+  const proof = locationProof(contrib);
+  if (!proof.ok) return { paid: false, reason: proof.reason };
 
   const campaigns = await activeCampaigns(pub);
   const eligible = [];
@@ -311,6 +365,7 @@ export async function attestContribution({ pub, wallet, contributionId }) {
 
   return {
     paid: true,
+    via: proof.via,
     campaignId: String(chosen.id),
     amount: String(chosen.rewardPerItem),
     contributor,

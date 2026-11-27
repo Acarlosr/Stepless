@@ -52,6 +52,8 @@ USDC real. Não há CSP nem SRI que limitem isso.
 
 ### 🔴 A2 — Campanha paga local enviado sem GPS na foto
 
+> 🔄 **Ajuste em 27/11 (decisão do responsável):** o Android apaga o GPS de fotos escolhidas pelo navegador, e quase nenhum envio pelo site podia receber. A campanha passou a aceitar também a **localização do celular no envio**, com regra mais apertada (precisão ≤ 50 m, ≤ 150 m do ponto declarado), marcada como "atenção" na fila do revisor. Risco residual aceito: localização falsificada por app; mitigado por revisão humana, foto única, limites por carteira/dia/campanha e valores pequenos. Ver `locationProof()` em `api/_campaign.js`.
+
 > ✅ **Corrigido em 16/11** — o atestador só paga foto com GPS lido pelo servidor e a até 500 m do ponto declarado, independente de `EXIF_REQUIRED`.
 
 **Onde:** `api/_campaign.js` → `attestContribution`. O registro (`relay.js`)

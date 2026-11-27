@@ -1005,6 +1005,23 @@ function syncAccessForm() {
   });
 }
 
+/**
+ * Localização do celular NO MOMENTO do envio. O Android apaga o GPS das fotos
+ * escolhidas pelo navegador; sem isto, nenhum envio pelo site poderia receber
+ * de campanha. O servidor só aceita como prova se for precisa (≤ 50 m) e
+ * perto do ponto declarado (≤ 150 m). Sem permissão, segue sem ela.
+ */
+function getDevicePosition() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 },
+    );
+  });
+}
+
 // Versão dos Termos/Privacidade aceita no envio (termos.html / privacidade.html).
 const TERMS_VERSION = '1.0';
 
@@ -1141,6 +1158,7 @@ async function handleRegisterLocation(e) {
     // ── Passo 2: relay ───────────────────────────────────────────────────
     // O dataHash e o EXIF vêm do token, medidos pelo servidor.
     submitBtn.textContent = s.loading || 'Loading...';
+    const device = await getDevicePosition();
     const resp = await fetch('/api/relay', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1154,7 +1172,10 @@ async function handleRegisterLocation(e) {
           // Na web a coordenada da foto só pode vir do EXIF do arquivo — não há
           // como o navegador atestar que a câmera tirou a foto agora. O backend
           // usa isto para pesar o risco.
-          gpsSource: uploadResult.exif?.hasGps ? 'exif' : null,
+          gpsSource: uploadResult.exif?.hasGps ? 'exif' : (device ? 'device' : null),
+          deviceLat: device?.lat ?? null,
+          deviceLng: device?.lng ?? null,
+          deviceAccuracyM: device?.accuracy ?? null,
           name: fullName, categories, access, stepHeight,
         },
       }),
@@ -1339,8 +1360,8 @@ function renderEvidence(p) {
     parts.push(`<div class="evid-line evid-warn">${s.evid_no_coord || 'Sem coordenada registrada'}</div>`);
   }
 
-  // Resultado da checagem de GPS da foto
-  const e = p.exif;
+  // Resultado da checagem de GPS da foto (o registro guarda em p.photo)
+  const e = p.photo || p.exif;
   if (e && e.hasGps && Number.isFinite(e.distKm)) {
     const m = Math.round(e.distKm * 1000);
     const ok = e.ok !== false;
@@ -1360,6 +1381,19 @@ function renderEvidence(p) {
     parts.push(
       `<div class="evid-line evid-dim">${strong ? 'EXIF da câmera' : 'GPS do aparelho'}` +
       `${Number.isFinite(e.gpsAccuracyM) ? ` (±${Math.round(e.gpsAccuracyM)}m)` : ''}</div>`
+    );
+  }
+
+  // Localização do celular no envio: vale para campanha quando a foto não tem
+  // GPS. Marcada como "atenção" para o revisor olhar a foto com mais cuidado.
+  const dv = e && e.device;
+  if (dv && Number.isFinite(dv.accuracyM) && Number.isFinite(dv.distM)) {
+    const ok = dv.accuracyM <= 50 && dv.distM <= 150;
+    const tone = e.hasGps ? 'is-ok' : (ok ? 'is-warn' : 'is-bad');
+    parts.push(
+      `<div class="evid-line"><span class="evid-badge ${tone}">📍 Localização do celular</span> ` +
+      `<span class="evid-dim">±${dv.accuracyM} m · ${dv.distM} m do ponto` +
+      `${!e.hasGps ? (ok ? ' · atenção: sem GPS na foto' : ' · fora da regra da campanha') : ''}</span></div>`
     );
   }
 
